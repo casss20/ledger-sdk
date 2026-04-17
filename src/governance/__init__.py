@@ -1,19 +1,18 @@
-"""
-Governance module exports.
-"""
+"""Governance layer — capability tokens, audit, killswitches, rate limiting."""
 
-from governance.capability import Capability, CapabilityIssuer
-from governance.risk import Risk, Approval, classify
-from governance.audit import AuditService
-from governance.killswitch import Flag, KillSwitch
+from .capability import CapabilityIssuer
+from .audit import AuditService
+from .killswitch import KillSwitch
+from .risk import classify, Approval
+from .rate_limit import RateLimiter, rate_limited, RateLimitExceeded
 
 __all__ = [
-    "Capability",
     "CapabilityIssuer",
-    "Risk",
-    "Approval",
-    "classify",
     "AuditService",
-    "Flag",
     "KillSwitch",
+    "classify",
+    "Approval",
+    "RateLimiter",
+    "rate_limited",
+    "RateLimitExceeded",
 ]
