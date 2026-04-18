@@ -16,8 +16,8 @@ from typing import Dict, List, Optional, Any
 from ledger.sdk import Ledger
 from ledger.schema import AgentOutput, OutputType
 from ledger.router import LedgerRouter, RoutingDecision
-from governance.risk import classify as classify_risk, Approval
-from governance.killswitch import KillSwitch
+from ledger.governance.risk import classify as classify_risk, Approval
+from ledger.governance.killswitch import KillSwitch
 from .middleware import get_current_user, TokenPayload
 
 

@@ -10,10 +10,18 @@ Like Weft's "Infrastructure as nodes, sidecars as the bridge":
 
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 from abc import ABC, abstractmethod
-import aiohttp
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Optional aiohttp import
+try:
+    import aiohttp
+    HAS_AIOHTTP = True
+except ImportError:
+    aiohttp = None
+    HAS_AIOHTTP = False
+    logger.warning("[Sidecar] aiohttp not installed. Sidecar features disabled. Install with: pip install ledger-sdk[sidecar]")
 
 
 class SidecarError(Exception):
@@ -58,12 +66,14 @@ class SidecarClient:
         timeout: float = 30.0,
         retries: int = 3
     ):
+        if not HAS_AIOHTTP:
+            raise ImportError("aiohttp not installed. Install with: pip install ledger-sdk[sidecar]")
         self.endpoint = endpoint.rstrip('/')
         self.timeout = timeout
         self.retries = retries
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: Optional[Any] = None
     
-    async def _get_session(self) -> aiohttp.ClientSession:
+    async def _get_session(self) -> Any:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=self.timeout)

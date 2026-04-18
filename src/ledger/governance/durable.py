@@ -7,13 +7,21 @@ Inspired by Weft's durable execution via Restate.
 
 import asyncio
 import json
-import redis.asyncio as redis
 from dataclasses import dataclass, asdict
 from typing import Optional, Any, Callable, Awaitable
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Optional redis import
+try:
+    import redis.asyncio as redis
+    HAS_REDIS = True
+except ImportError:
+    redis = None
+    HAS_REDIS = False
+    logger.warning("[Durable] redis not installed. Durable execution disabled. Install with: pip install ledger-sdk[durable]")
 
 
 @dataclass
@@ -39,16 +47,21 @@ class DurablePromise:
     action_id: Optional[str] = None  # Link to GOVERNOR record
     
     # Redis client (class-level)
-    _redis: Optional[redis.Redis] = None
+    _redis: Optional[Any] = None
     
     @classmethod
-    def get_redis(cls) -> redis.Redis:
+    def get_redis(cls) -> Optional[Any]:
+        if not HAS_REDIS:
+            raise ImportError("redis not installed. Install with: pip install ledger-sdk[durable]")
         if cls._redis is None:
             cls._redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         return cls._redis
     
     async def persist(self, ttl_seconds: int = 86400) -> None:
         """Save to Redis with TTL (default 24 hours)."""
+        if not HAS_REDIS:
+            logger.error("[Durable] Cannot persist: redis not installed")
+            return
         r = self.get_redis()
         data = json.dumps(asdict(self), default=str)
         await r.setex(f"ledger:promise:{self.promise_id}", ttl_seconds, data)
@@ -60,6 +73,9 @@ class DurablePromise:
         Survives server restarts.
         Updates GOVERNOR state on fulfillment/rejection.
         """
+        if not HAS_REDIS:
+            logger.error("[Durable] Cannot wait: redis not installed")
+            return False
         r = self.get_redis()
         start_time = asyncio.get_event_loop().time()
         attempt = 0
@@ -131,6 +147,9 @@ class DurablePromise:
     
     async def fulfill(self, approved: bool, approved_by: str = "system", result: Any = None) -> None:
         """Fulfill the promise (called by dashboard/API)."""
+        if not HAS_REDIS:
+            logger.error("[Durable] Cannot fulfill: redis not installed")
+            return
         r = self.get_redis()
         self.state = "fulfilled" if approved else "rejected"
         self.approved_by = approved_by
@@ -144,6 +163,8 @@ class DurablePromise:
     @classmethod
     async def get_pending(cls) -> list:
         """Get all pending promises (for dashboard)."""
+        if not HAS_REDIS:
+            return []
         r = cls.get_redis()
         keys = await r.keys("ledger:promise:*")
         promises = []
@@ -158,6 +179,8 @@ class DurablePromise:
     @classmethod
     async def get_by_id(cls, promise_id: str) -> Optional[dict]:
         """Get promise by ID."""
+        if not HAS_REDIS:
+            return None
         r = cls.get_redis()
         data = await r.get(f"ledger:promise:{self.promise_id}")
         return json.loads(data) if data else None

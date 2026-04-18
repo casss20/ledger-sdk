@@ -15,8 +15,8 @@ from fastapi import Request, Response, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from governance.rate_limit import RateLimiter, RateLimitExceeded
-from governance.audit import AuditService
+from ledger.governance.rate_limit import RateLimiter, RateLimitExceeded
+from ledger.governance.audit import AuditService
 
 
 # ============================================================================

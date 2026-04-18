@@ -10,10 +10,10 @@ from typing import Any, Callable, Awaitable
 from ledger.loader import build_system_prompt
 from ledger.classifier import classify as classify_path
 from ledger.governor import Governor, ActionState, get_governor
-from governance.capability import CapabilityIssuer
-from governance.risk import classify as classify_risk, Approval
-from governance.audit import AuditService
-from governance.killswitch import KillSwitch
+from ledger.governance.capability import CapabilityIssuer
+from ledger.governance.risk import classify as classify_risk, Approval
+from ledger.governance.audit import AuditService
+from ledger.governance.killswitch import KillSwitch
 
 
 class Denied(Exception):

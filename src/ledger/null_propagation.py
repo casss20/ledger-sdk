@@ -11,7 +11,7 @@ Principles:
 - Skipped actions are tracked by GOVERNOR for visibility
 """
 
-from typing import Any, Optional, TypeVar, Generic, Callable
+from typing import Any, Optional as TypingOptional, TypeVar, Generic, Callable
 from functools import wraps
 import logging
 import asyncio
@@ -105,7 +105,7 @@ class Optional:
     """
     
     @staticmethod
-    def check(value: Any) -> Optional[Any]:
+    def check(value: Any) -> TypingOptional[Any]:
         """
         Return value if present, None if null/empty.
         Never raises SkipExecution.
@@ -136,7 +136,7 @@ class NullPropagator:
         return Required.check(value, name, action_id=action_id)
     
     @staticmethod
-    def optional(value: Any) -> Optional[Any]:
+    def optional(value: Any) -> TypingOptional[Any]:
         """Alias for Optional.check"""
         return Optional.check(value)
     

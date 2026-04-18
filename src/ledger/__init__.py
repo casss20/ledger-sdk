@@ -19,6 +19,14 @@ from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph
 from .analytics import AnalyticsEngine, BehaviorProfiler, TimeWindow, get_analytics, get_profiler
 from .dashboard_api import DashboardAPI, create_dashboard_api, get_fastapi_router
 
+# Governance subpackage
+from .governance.risk import classify as classify_risk, Approval, Risk
+from .governance.killswitch import KillSwitch
+from .governance.audit import AuditService
+from .governance.rate_limit import RateLimiter, TokenBucket
+from .governance.capability import CapabilityIssuer
+from .governance.durable import DurablePromise, DurableApprovalQueue, get_durable_queue
+
 __all__ = [
     "Ledger",
     "Denied",
@@ -74,4 +82,16 @@ __all__ = [
     "DashboardAPI",
     "create_dashboard_api",
     "get_fastapi_router",
+    # Governance (submodules)
+    "classify_risk",
+    "Approval",
+    "Risk",
+    "KillSwitch",
+    "AuditService",
+    "RateLimiter",
+    "TokenBucket",
+    "CapabilityIssuer",
+    "DurablePromise",
+    "DurableApprovalQueue",
+    "get_durable_queue",
 ]

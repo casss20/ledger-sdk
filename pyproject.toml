@@ -1,27 +1,109 @@
-[project]
-name = "ledger-sdk"
-version = "0.1.0"
-description = "AI governance: constitution + audit for agent builders"
-requires-python = ">=3.11"
-dependencies = [
-    "asyncpg>=0.29",
-    "pydantic>=2.5",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.23",
-    "ruff>=0.3",
-]
-fastapi = [
-    "fastapi>=0.109",
-    "PyJWT>=2.8",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project]
+name = "ledger-sdk"
+version = "0.1.0"
+description = "AI Governance: Constitution + Audit for Agent Builders"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Anthony Cass", email = "anthony@cass.solutions"}
+]
+keywords = [
+    "ai",
+    "governance",
+    "agent",
+    "audit",
+    "compliance",
+    "llm",
+    "safety",
+    "approval",
+    "kill-switch"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "typing-extensions>=4.0",
+]
+
+[project.optional-dependencies]
+fastapi = [
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
+]
+durable = [
+    "redis>=5.0",
+]
+sidecar = [
+    "aiohttp>=3.8",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5",
+    "httpx>=0.25",
+]
+all = [
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
+    "redis>=5.0",
+    "aiohttp>=3.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/casss20/ledger-sdk"
+Documentation = "https://github.com/casss20/ledger-sdk/tree/master/docs"
+Repository = "https://github.com/casss20/ledger-sdk.git"
+Issues = "https://github.com/casss20/ledger-sdk/issues"
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/ledger", "src/governance", "src/ledger_fastapi"]
+packages = ["src/ledger"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # Line too long (handled by black)
+]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["src"]
