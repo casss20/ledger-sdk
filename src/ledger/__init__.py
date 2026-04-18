@@ -16,6 +16,8 @@ from .sidecar import SidecarClient, PostgresSidecar, RedisSidecar
 from .governor import Governor, ActionRecord, ActionState, get_governor
 from .error_handling import try_governed, catch, Retry, Catch, Default, DeadLetter
 from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph_executor
+from .analytics import AnalyticsEngine, BehaviorProfiler, TimeWindow, get_analytics, get_profiler
+from .dashboard_api import DashboardAPI, create_dashboard_api, get_fastapi_router
 
 __all__ = [
     "Ledger",
@@ -62,4 +64,14 @@ __all__ = [
     "OutputDefinition",
     "Subgraph",
     "get_subgraph_executor",
+    # Analytics
+    "AnalyticsEngine",
+    "BehaviorProfiler",
+    "TimeWindow",
+    "get_analytics",
+    "get_profiler",
+    # Dashboard API
+    "DashboardAPI",
+    "create_dashboard_api",
+    "get_fastapi_router",
 ]

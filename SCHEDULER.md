@@ -70,14 +70,16 @@
 ---
 
 ### Cross-Action Analytics
-**Status:** `TODO`  
-**Priority:** MEDIUM  
-**Why deferred:** Single-action tracking works for now  
-**Impact:** Can't see "agent tried 50 emails in 1 minute" patterns  
+**Status:** `DONE`  
+**Completed:** 2026-04-19  
+**Impact:** Can detect "agent tried 50 emails in 1 minute" patterns  
 **Acceptance:**
-- [ ] Time-windowed rate analysis
-- [ ] Anomaly detection (sudden spike in HIGH risk actions)
-- [ ] Agent behavior profiling
+- [x] Time-windowed rate analysis
+- [x] Anomaly detection (sudden spike in HIGH risk actions)
+- [x] Agent behavior profiling (baseline building)
+- [x] Health scoring
+
+**File:** `src/ledger/analytics.py`
 
 ---
 
@@ -142,10 +144,10 @@ Before declaring milestone complete:
 
 ## 🎯 Next Actions
 
-1. **Cross-action analytics** — Time-windowed rate analysis, anomaly detection
-2. **Dashboard API** — Governor endpoints for UI consumption  
-3. **PyPI prep** — Package for distribution
-4. **Review SCHEDULER.md** — Every sprint, check for drift
+1. **PyPI preparation** — Package for distribution, setup.py, README polish
+2. **Documentation** — API docs, examples, deployment guide  
+3. **Review SCHEDULER.md** — Mark complete, archive deferred items
+4. **1.0 release** — Tag, publish, announce
 
 ---
 
