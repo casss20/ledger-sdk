@@ -15,6 +15,7 @@ from .groups import ActionGroup, ActionNode, get_registry
 from .sidecar import SidecarClient, PostgresSidecar, RedisSidecar
 from .governor import Governor, ActionRecord, ActionState, get_governor
 from .error_handling import try_governed, catch, Retry, Catch, Default, DeadLetter
+from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph_executor
 
 __all__ = [
     "Ledger",
@@ -56,4 +57,9 @@ __all__ = [
     "Catch",
     "Default",
     "DeadLetter",
+    # Subgraph execution
+    "SubgraphExecutor",
+    "OutputDefinition",
+    "Subgraph",
+    "get_subgraph_executor",
 ]

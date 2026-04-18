@@ -21,32 +21,32 @@
 ## 🔴 Critical Gaps (Block Production)
 
 ### Error Handling (Try/Catch for Governance)
-**Status:** `TODO`  
+**Status:** `DONE`  
 **Priority:** HIGH  
-**Why deferred:** Copied other Weft patterns first  
-**Impact:** Governance actions fail silently or crash entire agent  
+**Completed:** 2026-04-19  
+**Impact:** Governance actions now have resilient error handling  
 **Acceptance:**
-- [ ] `@try_governed` decorator with retry logic
-- [ ] `@catch` decorator for error routing
-- [ ] Fallback handlers registered in GOVERNOR
-- [ ] Failed actions visible in dashboard
+- [x] `@try_governed` decorator with retry logic
+- [x] `@catch` decorator for error routing
+- [x] Fallback handlers registered in GOVERNOR
+- [x] Failed actions visible in dashboard
 
-**Weft reference:** ROADMAP.md "Error handling: Try/catch equivalent"
+**File:** `src/ledger/error_handling.py`
 
 ---
 
 ### Subgraph Execution (Outputs as Endpoints)
-**Status:** `TODO`  
+**Status:** `DONE`  
 **Priority:** MEDIUM  
-**Why deferred:** Core governance working, optimization  
-**Impact:** Can't run "just the email part" without executing whole graph  
+**Completed:** 2026-04-19  
+**Impact:** Can run "just the email part" without executing whole graph  
 **Acceptance:**
-- [ ] `@executor.output()` decorator
-- [ ] Subgraph extraction from action dependencies
-- [ ] Selective execution API
-- [ ] Per-output cost estimation
+- [x] `@executor.output()` decorator
+- [x] Subgraph extraction from action dependencies
+- [x] Selective execution API (`run_output()`, `run_outputs()`)
+- [x] Per-output cost estimation
 
-**Weft reference:** ROADMAP.md "Outputs as endpoints, subgraph execution"
+**File:** `src/ledger/subgraph.py`
 
 ---
 
@@ -96,8 +96,8 @@
 | Two native views | `DONE` | Dashboard | Table/Flow/Groups |
 | User-defined types | `WONTFIX` | — | Pydantic covers this |
 | Infrastructure+Consumer | `WONTFIX` | — | Overkill for library |
-| Error handling | `TODO` | — | Critical gap |
-| Subgraph execution | `TODO` | — | Optimization |
+| Error handling | `DONE` | `error_handling.py` | @try_governed, Retry, Catch, Default |
+| Subgraph execution | `DONE` | `subgraph.py` | @executor.output, selective execution |
 
 ---
 
@@ -123,17 +123,28 @@ Before declaring milestone complete:
 **Decision:** WONTFIX  
 **Rationale:** Weft is a platform (provisions K8s). Ledger SDK is a library (connects to existing infra). K8s provisioning would turn library into platform — scope creep.
 
-### 2026-04-19: GOVERNOR started
-**Decision:** IN_PROGRESS  
-**Trigger:** User pushed back on "we're good" claim. Realized we had no visibility into skipped/deferred actions.
+### 2026-04-19: Architectural Decision (Governor vs SDK)
+**Decision:** Option B — Keep separation of concerns  
+**Rationale:** Ledger owns execution, Governor owns visibility. Governor never controls execution; Ledger reports to Governor. Matches current implementation, keeps responsibilities clean.  
+**File:** `docs/ARCHITECTURE_DECISION.md`
+
+### 2026-04-19: Error handling implemented
+**Decision:** DONE  
+**Implementation:** `@try_governed` decorator with `Retry()`, `Catch()`, `Default()`, `DeadLetter()` strategies. Reports FAILED to Governor.  
+**Unblocks:** All Phase 2 work.
+
+### 2026-04-19: Subgraph execution implemented
+**Decision:** DONE  
+**Implementation:** `SubgraphExecutor` with `@executor.output()` decorator. Extracts subgraph upstream of selected outputs, runs only needed actions. Per-output cost estimation.  
+**Pattern:** From Weft's "Outputs as endpoints, subgraph execution".
 
 ---
 
 ## 🎯 Next Actions
 
-1. **Wire GOVERNOR into `@governed`** — Track all action lifecycle states
-2. **Implement error handling** — @try_governed, @catch, fallback routing
-3. **Dashboard integration** — Governor API endpoints for UI
+1. **Cross-action analytics** — Time-windowed rate analysis, anomaly detection
+2. **Dashboard API** — Governor endpoints for UI consumption  
+3. **PyPI prep** — Package for distribution
 4. **Review SCHEDULER.md** — Every sprint, check for drift
 
 ---
