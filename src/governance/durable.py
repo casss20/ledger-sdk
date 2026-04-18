@@ -23,6 +23,8 @@ class DurablePromise:
     
     Like Weft's durable execution — a human approval that takes 3 days
     is the same code as one that takes 3 seconds.
+    
+    Reports DEFERRED state to GOVERNOR for visibility.
     """
     promise_id: str
     action: str
@@ -34,6 +36,7 @@ class DurablePromise:
     result: Optional[Any] = None
     approved_by: Optional[str] = None
     approved_at: Optional[str] = None
+    action_id: Optional[str] = None  # Link to GOVERNOR record
     
     # Redis client (class-level)
     _redis: Optional[redis.Redis] = None
@@ -55,16 +58,38 @@ class DurablePromise:
         """
         Wait for fulfillment with exponential backoff.
         Survives server restarts.
+        Updates GOVERNOR state on fulfillment/rejection.
         """
         r = self.get_redis()
         start_time = asyncio.get_event_loop().time()
         attempt = 0
+        
+        # Report DEFERRED to GOVERNOR
+        if self.action_id:
+            try:
+                from ledger.governor import get_governor, ActionState
+                gov = get_governor()
+                await gov.defer(
+                    self.action_id,
+                    self.promise_id,
+                    scheduled_for=None  # Waiting for human
+                )
+            except Exception as e:
+                logger.debug(f"[Durable] Could not report defer to governor: {e}")
         
         while True:
             # Check if we've exceeded timeout
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout_sec:
                 logger.warning(f"[Durable] Timeout waiting for {self.promise_id}")
+                # Report TIMEOUT to GOVERNOR
+                if self.action_id:
+                    try:
+                        from ledger.governor import get_governor, ActionState
+                        gov = get_governor()
+                        await gov.transition(self.action_id, ActionState.TIMEOUT)
+                    except Exception:
+                        pass
                 return False
             
             # Check Redis for state
@@ -76,9 +101,27 @@ class DurablePromise:
                     self.approved_by = state.get("approved_by")
                     self.approved_at = state.get("approved_at")
                     logger.info(f"[Durable] ✅ Promise fulfilled: {self.promise_id}")
+                    # Report back to GOVERNOR
+                    if self.action_id:
+                        try:
+                            from ledger.governor import get_governor, ActionState
+                            gov = get_governor()
+                            await gov.transition(self.action_id, ActionState.PENDING,
+                                               metadata={"promise_fulfilled": True})
+                        except Exception:
+                            pass
                     return True
                 if state.get("state") == "rejected":
                     logger.info(f"[Durable] ❌ Promise rejected: {self.promise_id}")
+                    # Report DENIED to GOVERNOR
+                    if self.action_id:
+                        try:
+                            from ledger.governor import get_governor, ActionState
+                            gov = get_governor()
+                            await gov.transition(self.action_id, ActionState.DENIED,
+                                               metadata={"promise_rejected": True})
+                        except Exception:
+                            pass
                     return False
             
             # Exponential backoff, capped at 60 seconds
@@ -193,10 +236,12 @@ async def durable_approval_hook(ctx: dict) -> bool:
     """
     Durable approval hook for @governed decorator.
     Survives server restarts.
+    Reports DEFERRED state to GOVERNOR.
     """
     import uuid
     
     queue = get_durable_queue()
+    action_id = ctx.get("id")  # From @governed decorator
     
     promise = DurablePromise(
         promise_id=f"req_{uuid.uuid4().hex[:12]}",
@@ -205,6 +250,7 @@ async def durable_approval_hook(ctx: dict) -> bool:
         risk=ctx.get("risk", "unknown"),
         args=ctx.get("args", {}),
         created_at=datetime.utcnow().isoformat(),
+        action_id=action_id,
     )
     
     await queue.push(promise)

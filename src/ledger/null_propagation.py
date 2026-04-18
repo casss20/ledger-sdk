@@ -8,11 +8,13 @@ Principles:
 - Required inputs refuse to run on null
 - Null cascades through the graph until hitting something that handles it
 - Optional ports (marked with ?) opt into receiving null
+- Skipped actions are tracked by GOVERNOR for visibility
 """
 
 from typing import Any, Optional, TypeVar, Generic, Callable
 from functools import wraps
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +44,16 @@ class Required:
     """
     
     @staticmethod
-    def check(value: Any, name: str, context: dict = None) -> Any:
+    def check(value: Any, name: str, context: dict = None, action_id: str = None) -> Any:
         """
         Validate required input. Raises SkipExecution if null/empty.
+        Reports skip to GOVERNOR if action_id provided.
         
         Args:
             value: The input value to check
             name: Name of the input (for error messages)
             context: Additional context for logging
+            action_id: Action ID to report skip to GOVERNOR
             
         Returns:
             The value if valid
@@ -60,6 +64,20 @@ class Required:
         if value is None or value == "" or value == [] or value == {}:
             ctx_str = f" | context: {context}" if context else ""
             logger.info(f"[NullProp] Required input '{name}' is null — skipping execution{ctx_str}")
+            
+            # Report to GOVERNOR if we have an action_id
+            if action_id:
+                try:
+                    from .governor import get_governor, ActionState
+                    gov = get_governor()
+                    # Use sync version or schedule async
+                    asyncio.create_task(gov.skip(
+                        action_id, 
+                        reason=f"required_input_null:{name}"
+                    ))
+                except Exception as e:
+                    logger.debug(f"[NullProp] Could not report skip to governor: {e}")
+            
             raise SkipExecution(f"Required input '{name}' is null")
         return value
     
@@ -113,9 +131,9 @@ class NullPropagator:
     """
     
     @staticmethod
-    def required(value: Any, name: str) -> Any:
-        """Alias for Required.check"""
-        return Required.check(value, name)
+    def required(value: Any, name: str, action_id: str = None) -> Any:
+        """Alias for Required.check with optional action_id"""
+        return Required.check(value, name, action_id=action_id)
     
     @staticmethod
     def optional(value: Any) -> Optional[Any]:
@@ -128,10 +146,11 @@ class NullPropagator:
         return Optional.with_default(value, default)
 
 
-def null_safe(fn: Callable) -> Callable:
+def null_safe(fn: Callable, action_id: str = None) -> Callable:
     """
     Decorator that makes a function null-safe.
     If any required argument is null, execution skips gracefully.
+    Reports skip to GOVERNOR.
     
     Like Weft's automatic null propagation through connected nodes.
     """
@@ -141,6 +160,14 @@ def null_safe(fn: Callable) -> Callable:
             return await fn(*args, **kwargs)
         except SkipExecution as e:
             logger.info(f"[NullSafe] Skipped {fn.__name__}: {e}")
+            # Report to GOVERNOR
+            if action_id:
+                try:
+                    from .governor import get_governor
+                    gov = get_governor()
+                    asyncio.create_task(gov.skip(action_id, reason=str(e)))
+                except Exception:
+                    pass
             return NullValue  # Propagate skip
     
     @wraps(fn)
@@ -151,7 +178,6 @@ def null_safe(fn: Callable) -> Callable:
             logger.info(f"[NullSafe] Skipped {fn.__name__}: {e}")
             return NullValue  # Propagate skip
     
-    import asyncio
     if asyncio.iscoroutinefunction(fn):
         return async_wrapper
     return sync_wrapper
@@ -163,8 +189,9 @@ class Pipeline:
     Like Weft's graph execution with null propagation.
     """
     
-    def __init__(self, name: str = "pipeline"):
+    def __init__(self, name: str = "pipeline", action_id: str = None):
         self.name = name
+        self.action_id = action_id
         self.steps: list[Callable] = []
         self.results: list[Any] = []
     
@@ -184,6 +211,7 @@ class Pipeline:
         Execute pipeline with null propagation.
         If any step returns NullValue or raises SkipExecution,
         remaining steps are skipped gracefully.
+        Reports skip to GOVERNOR.
         """
         current = initial_input
         
@@ -193,11 +221,19 @@ class Pipeline:
                 for name in required_names:
                     if current is None or current == NullValue:
                         logger.info(f"[Pipeline] Step {i} skipped: required input '{name}' is null")
+                        if self.action_id:
+                            from .governor import get_governor
+                            gov = get_governor()
+                            await gov.skip(self.action_id, reason=f"pipeline_step_{i}_null:{name}")
                         return NullValue
                 
                 # Execute step
                 if current is NullValue:
                     logger.info(f"[Pipeline] Step {i} skipped: upstream produced null")
+                    if self.action_id:
+                        from .governor import get_governor
+                        gov = get_governor()
+                        await gov.skip(self.action_id, reason=f"pipeline_step_{i}_upstream_null")
                     return NullValue
                 
                 if callable(step):
@@ -211,10 +247,18 @@ class Pipeline:
                 # Check if step produced null
                 if current is NullValue:
                     logger.info(f"[Pipeline] Stopping at step {i}: produced null")
+                    if self.action_id:
+                        from .governor import get_governor
+                        gov = get_governor()
+                        await gov.skip(self.action_id, reason=f"pipeline_step_{i}_produced_null")
                     break
                     
             except SkipExecution as e:
                 logger.info(f"[Pipeline] Step {i} skipped: {e}")
+                if self.action_id:
+                    from .governor import get_governor
+                    gov = get_governor()
+                    await gov.skip(self.action_id, reason=f"pipeline_step_{i}:{str(e)}")
                 return NullValue
         
         return current
