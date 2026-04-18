@@ -6,6 +6,14 @@ from .classifier import classify
 from .schema import AgentOutput, OutputType, ApprovalLevel
 from .router import LedgerRouter, RoutingDecision
 
+# Weft-inspired patterns
+from .mocking import mockable, MockRegistry, Mock
+from .validation import validate_at_startup, GovernanceConfig, Validator
+from .dense import gov, DenseRule
+from .null_propagation import Required, Optional, SkipExecution
+from .groups import ActionGroup, ActionNode, get_registry
+from .sidecar import SidecarClient, PostgresSidecar, RedisSidecar
+
 __all__ = [
     "Ledger",
     "Denied",
@@ -16,4 +24,22 @@ __all__ = [
     "ApprovalLevel",
     "LedgerRouter",
     "RoutingDecision",
+    # Weft patterns
+    "mockable",
+    "MockRegistry",
+    "Mock",
+    "validate_at_startup",
+    "GovernanceConfig",
+    "Validator",
+    "gov",
+    "DenseRule",
+    "Required",
+    "Optional",
+    "SkipExecution",
+    "ActionGroup",
+    "ActionNode",
+    "get_registry",
+    "SidecarClient",
+    "PostgresSidecar",
+    "RedisSidecar",
 ]
