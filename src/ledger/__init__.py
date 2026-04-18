@@ -14,6 +14,7 @@ from .null_propagation import Required, Optional, SkipExecution
 from .groups import ActionGroup, ActionNode, get_registry
 from .sidecar import SidecarClient, PostgresSidecar, RedisSidecar
 from .governor import Governor, ActionRecord, ActionState, get_governor
+from .error_handling import try_governed, catch, Retry, Catch, Default, DeadLetter
 
 __all__ = [
     "Ledger",
@@ -48,4 +49,11 @@ __all__ = [
     "ActionRecord",
     "ActionState",
     "get_governor",
+    # Error handling
+    "try_governed",
+    "catch",
+    "Retry",
+    "Catch",
+    "Default",
+    "DeadLetter",
 ]
