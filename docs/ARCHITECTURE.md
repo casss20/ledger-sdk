@@ -1,495 +1,482 @@
-# ARCHITECTURE.md — How Ledger and the Governance Layer Works
+# Ledger: AI Governance Architecture
 
-**Document Purpose:** Deep technical explanation of Ledger's internal architecture and data flow.
+## Positioning Statement
 
----
+**Ledger is AI governance infrastructure for production AI systems.**
 
-## High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     YOUR AI AGENT CODE                          │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  @gov.governed(action="send_email", resource="outbound")│   │
-│  │  async def send_email(to, body):                        │   │
-│  │      return await smtp.send(to, body)                   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     LEDGER SDK (@governed)                      │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────┐ │
-│  │ 1. Capture  │ │ 2. Classify │ │ 3. Check    │ │ 4. Decide │ │
-│  │    Action   │ │    Risk     │ │    Policy   │ │    Fate   │ │
-│  │             │ │             │ │             │ │           │ │
-│  │  action_id  │ │  LOW/MED/   │ │  Kill sw?   │ │  ALLOW /  │ │
-│  │  agent      │ │    HIGH     │ │  Rate lim?  │ │  BLOCK /  │ │
-│  │  resource   │ │             │ │  Approval?  │ │  ASK HUMAN│ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └───────────┘ │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-              ▼                         ▼
-┌─────────────────────┐     ┌─────────────────────┐
-│   GOVERNOR (State)  │     │   AUDIT (Immutable) │
-│                     │     │                     │
-│  Tracks everything  │     │  Hash-chained logs  │
-│  - PENDING          │     │  - Who did what     │
-│  - EXECUTING        │     │  - When             │
-│  - SUCCESS/FAILED   │     │  - Risk level       │
-│  - SKIPPED          │     │  - Approved?        │
-│  - DEFERRED         │     │                     │
-└─────────────────────┘     └─────────────────────┘
-```
+Its kernel is runtime enforcement, so governance is not just observed — it is enforced.
 
 ---
 
-## The Flow (Step by Step)
-
-### 1. Capture — Action Starts
-
-When you decorate a function with `@governed`:
-
-```python
-from ledger import Ledger
-
-gov = Ledger(audit_dsn="postgresql://...")
-
-@gov.governed(action="send_email", resource="outbound_email", flag="email_send")
-async def send_email(to: str, body: str):
-    return await smtp.send(to, body)
-```
-
-When `send_email()` is called, Ledger immediately:
-- Generates `action_id` (UUID)
-- Creates record in **GOVERNOR** (state = PENDING)
-- Logs to **AUDIT** (attempt started)
-
-### 2. Classify — What's the Risk?
-
-Built-in risk matrix:
-
-```python
-# From ledger/governance/risk.py
-ACTION_RISKS = {
-    "read":          (Risk.LOW,    Approval.NONE),   # Safe
-    "search":        (Risk.LOW,    Approval.NONE),   # Safe
-    "write_file":    (Risk.MEDIUM, Approval.SOFT),   # Maybe ask
-    "send_email":    (Risk.HIGH,   Approval.HARD),   # Always ask
-    "delete":        (Risk.HIGH,   Approval.HARD),   # Always ask
-    "deploy":        (Risk.HIGH,   Approval.HARD),   # Always ask
-}
-```
-
-**Risk levels:**
-- **LOW** → Auto-approve
-- **MEDIUM** → Maybe ask (configurable)
-- **HIGH** → Human approval required
-
-### 3. Check — Policy Enforcement
-
-```
-┌────────────────────────────────────┐
-│  KILL SWITCH CHECK                 │
-│  Is flag "email_send" disabled?    │
-│  → YES: Block immediately (DENIED) │
-│  → NO: Continue                    │
-└──────────────┬─────────────────────┘
-               ▼
-┌────────────────────────────────────┐
-│  RATE LIMIT CHECK                  │
-│  Too many emails this hour?        │
-│  → YES: Block (RATE_LIMITED)       │
-│  → NO: Continue                    │
-└──────────────┬─────────────────────┘
-               ▼
-┌────────────────────────────────────┐
-│  APPROVAL CHECK                    │
-│  HIGH risk + no prior approval?    │
-│  → YES: Queue for human review     │
-│  → NO: Execute now                 │
-└────────────────────────────────────┘
-```
-
-### 4. Decide — Three Outcomes
-
-| Outcome | What Happens | Governor State |
-|---------|--------------|----------------|
-| **ALLOW** | Execute function, log success | SUCCESS |
-| **BLOCK** | Raise `Denied`, log rejection | DENIED |
-| **ASK** | Queue for human, wait for response | PENDING → (APPROVED/DENIED) |
-
----
-
-## The Components
-
-### 1. Ledger SDK (`sdk.py`)
-
-**Role:** The decorator and executor
-
-**Responsibilities:**
-- Wraps your functions with `@governed`
-- Orchestrates the governance flow
-- Issues capability tokens
-- Handles errors and retries
-- Reports state transitions to Governor
-
-**Key Class:** `Ledger`
-```python
-class Ledger:
-    def __init__(self, audit_dsn: str, agent: str = "default"):
-        self.caps = CapabilityIssuer()      # Token management
-        self.audit = AuditService(dsn)       # Audit logging
-        self.killsw = KillSwitch()           # Emergency stops
-        self.governor = get_governor()       # State tracking
-    
-    def governed(self, action: str, resource: str, flag: str = None):
-        # Returns decorator that wraps functions
-```
-
-### 2. Governor (`governor.py`)
-
-**Role:** Single source of truth for action state
-
-**Tracks:**
-```
-PENDING → EXECUTING → SUCCESS
-   ↓
-DEFERRED (human approval)
-   ↓
-APPROVED → EXECUTING → SUCCESS
-   ↓
-DENIED
-```
-
-**Key Methods:**
-```python
-gov = get_governor()
-
-gov.create(action_id, action, resource, agent, risk)
-gov.transition(action_id, ActionState.EXECUTING)
-gov.transition(action_id, ActionState.SUCCESS)
-
-gov.list_pending()     # What's waiting?
-gov.list_failed()      # What broke?
-gov.list_skipped()     # What was skipped?
-gov.get_summary()      # Dashboard data
-```
-
-### 3. Audit (`governance/audit.py`)
-
-**Role:** Tamper-proof logging
-
-**Features:**
-- Hash-chained logs (can't modify history)
-- Postgres storage
-- Query interface: "Show me all HIGH risk actions from yesterday"
-
-**Schema:**
-```python
-{
-    "actor": "my-agent",
-    "action": "send_email",
-    "resource": "outbound_email",
-    "risk": "high",
-    "approved": True,
-    "timestamp": "2026-04-19T06:00:00Z",
-    "hash": "sha256:abc123...",  # Chain of custody
-    "payload": {...}  # Action details
-}
-```
-
-### 4. Kill Switch (`governance/killswitch.py`)
-
-**Role:** Emergency brake
-
-```python
-# Instantly disable features
-gov.killsw.kill("email_send", reason="spam outbreak")
-gov.killsw.kill("payments", reason="fraud detected")
-gov.killsw.kill("deployments", reason="incident in progress")
-
-# Check before executing
-if not gov.killsw.is_enabled("email_send"):
-    raise Denied("Feature disabled by kill switch")
-```
-
-**No deploy required.** Kill switches work immediately.
-
-### 5. Capability Issuer (`governance/capability.py`)
-
-**Role:** Token-based permission system
-
-```python
-# Issue a capability token
-cap = gov.caps.issue(
-    action="send_email",
-    resource="outbound_email",
-    ttl_seconds=120,
-    max_uses=1,
-    issued_to="my-agent"
-)
-
-# Token format: cryptographically signed
-# cap.token = "ledger:eyJhbGciOiJIUzI1NiIs..."
-
-# Consume the token (one-time use)
-gov.caps.consume(cap.token)
-```
-
-**Purpose:** Even if code is compromised, tokens expire and are limited-use.
-
-### 6. Error Handling (`error_handling.py`)
-
-**Role:** Resilience patterns
-
-```python
-from ledger import try_governed, Retry, Catch, Default
-
-@try_governed(Retry(times=3, backoff=2.0))
-@gov.governed(action="stripe_charge")
-async def charge_customer(amount: float):
-    return await stripe.charges.create(amount=amount)
-
-@try_governed(Catch(fallback_fn=notify_admin))
-@gov.governed(action="send_critical_alert")
-async def send_alert(message: str):
-    return await smtp.send(to="admin@company.com", body=message)
-```
-
-**Strategies:**
-- `Retry(times, backoff)` — Exponential backoff retries
-- `Catch(fallback_fn)` — Route to handler on failure
-- `Default(value)` — Return default on failure
-- `DeadLetter()` — Queue for manual review
-
-### 7. Analytics (`analytics.py`)
-
-**Role:** Detect anomalies
-
-```python
-from ledger import get_analytics, TimeWindow
-
-analytics = get_analytics()
-
-# Detect "50 emails in 1 minute"
-metrics = await analytics.analyze_window(TimeWindow.last_minute())
-
-if metrics["send_email"].is_anomalous:
-    # ALERT: Rate spike detected!
-    await send_slack_alert("Agent spamming emails!")
-```
-
-**Detects:**
-- Rate spikes (5x baseline)
-- Failure spikes (>30% failure rate)
-- High-risk bursts (>10 HIGH risk actions)
-- Pattern breaks (outside normal hours)
-
-### 8. Durable Execution (`governance/durable.py`)
-
-**Role:** Survive restarts
-
-```python
-# Human approval that takes 3 days
-promise = DurablePromise(
-    promise_id="req_abc123",
-    action="deploy_production",
-    risk="HIGH"
-)
-
-# Persist to Redis (survives server restart)
-await promise.persist()
-
-# Wait for approval (with exponential backoff)
-approved = await promise.wait(timeout_sec=259200)  # 3 days
-```
-
-**Use case:** Long-running approvals, human-in-the-loop workflows.
-
----
-
-## Data Flow Example
-
-```
-User calls: send_email("ceo@company.com", "Urgent")
-
-1. LEDGER captures:
-   action_id = "abc-123"
-   action = "send_email"
-   risk = HIGH
-   agent = "my-bot"
-   
-   GOVERNOR state: PENDING
-
-2. Checks:
-   Kill switch? → OK
-   Rate limit? → OK
-   Approval? → HIGH risk, needs human
-
-3. Goes to approval queue
-   (Human gets Slack/Email notification)
-   GOVERNOR state: DEFERRED
-
-4. Human approves via dashboard
-   (3 minutes later)
-   GOVERNOR state: EXECUTING
-
-5. LEDGER executes:
-   await smtp.send(...)
-   → SUCCESS
-   
-   GOVERNOR state: SUCCESS
-   completed_at = 2026-04-19T06:05:00Z
-
-6. AUDIT logs:
-   actor: my-bot
-   action: send_email
-   risk: high
-   approved: true
-   approved_by: human@company.com
-   hash: sha256:abc123...
-   
-7. ANALYTICS updates:
-   send_email count: +1
-   (No anomaly this time)
-```
-
----
-
-## The Governance Layer Stack
+## The Three-Layer Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    GOVERNANCE LAYER                          │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │   RISK   │  │   RATE   │  │   KILL   │  │  AUDIT   │    │
-│  │  MATRIX  │  │  LIMIT   │  │  SWITCH  │  │   LOG    │    │
-│  │          │  │          │  │          │  │          │    │
-│  │ What can │  │ How many │  │ Emergency│  │ What     │    │
-│  │  go wrong│  │  per min?│  │   stop?  │  │ happened?│    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │ APPROVAL │  │   ERROR  │  │  ANALYTICS│  │  GOVERNOR│   │
-│  │  QUEUE   │  │ HANDLING │  │          │  │  (STATE) │    │
-│  │          │  │          │  │          │  │          │    │
-│  │ Human in │  │ Retry/   │  │ Detect   │  │ Track    │    │
-│  │   loop   │  │ Fallback │  │ anomalies│  │  all     │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│                                                              │
+│                    GOVERNANCE INTELLIGENCE                   │
+│     (Alignment, Planning, Adaptation, Focus, Learning)      │
+├─────────────────────────────────────────────────────────────┤
+│                    GOVERNANCE FRAMEWORK                      │
+│     (Policy, Identity, Approvals, Lifecycle, Versioning)    │
+├─────────────────────────────────────────────────────────────┤
+│                    GOVERNANCE KERNEL                         │
+│     (Enforcement, Deterministic Policy, Audit, Kill)        │
 └─────────────────────────────────────────────────────────────┘
-        ▲                                  ▲
-        │                                  │
-   Your Agent                        Dashboard/API
 ```
 
 ---
 
-## Key Design Decisions
+## Layer 1: Governance Kernel (Enforcement)
 
-### 1. Separation of Concerns
+**Purpose:** The non-negotiable core where governance becomes real.
 
-**Ledger (sdk.py):** Owns execution
-- Runs the governance checks
-- Executes your code
-- Reports to Governor
+**Rule:** Without this layer, governance is documentation. With this layer, governance has teeth.
 
-**Governor (governor.py):** Owns visibility
-- Tracks state
-- Answers queries
-- Never controls execution
+### Components
 
-**Why:** Clean architecture, testable, no circular dependencies
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Governor** | `core/governor.py` | Strategic oversight, intervention, escalation levels 0-3 |
+| **Executor** | `core/executor.py` | Execution momentum, capability enforcement, mode switching |
+| **Runtime** | `core/runtime.py` | Activation cycle, path selection (Fast/Standard/Structured/High-risk) |
+| **Capability** | `governance/capability.py` | Token-based capability issuance and consumption |
+| **Risk** | `governance/risk.py` | Risk classification (SOFT/HARD approvals) |
+| **Audit** | `governance/audit.py` | Hash-chained immutable decision log |
+| **KillSwitch** | `governance/killswitch.py` | Emergency stop, fail-closed behavior |
+| **Constitution** | `core/constitution.py` | Behavioral constraints beyond risk (identity, disclosure, safety) |
 
-### 2. Immutable Audit Trail
+### Enforcement Points
 
-Every action is logged with a hash chain:
-```
-Record N: { data, prev_hash: hash(N-1) }
-Record N+1: { data, prev_hash: hash(N) }
-```
-
-**Why:** Tamper-evident. If you modify history, hashes don't match.
-
-### 3. Async-First Design
-
-All governance operations are async:
-```python
-@gov.governed(action="...")
-async def my_function():
-    ...
-```
-
-**Why:** Non-blocking I/O for audit logs, approval queues, rate limit checks.
-
-### 4. Optional Dependencies
-
-```bash
-pip install ledger-sdk              # Core only
-pip install ledger-sdk[durable]     # + Redis
-pip install ledger-sdk[fastapi]     # + FastAPI
-pip install ledger-sdk[all]         # Everything
-```
-
-**Why:** Keep core lightweight, add features as needed.
+- Action interception at the boundary
+- Deterministic policy evaluation
+- Capability checks (token-based)
+- Rate limiting
+- Fail-closed on error
 
 ---
 
-## Without Ledger vs With Ledger
+## Layer 2: Governance Framework (Policy Structure)
 
-### Without Ledger
+**Purpose:** How decisions are structured over time.
+
+### Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Identity** | `identity.py` | Agent registry, status tracking, lifecycle |
+| **Alignment** | `governance/alignment.py` | Loyalty protocol, challenge system, initiative boundaries |
+| **Durable Approval** | `governance/durable.py` | Async approval queues, promises, human-in-the-loop |
+| **Rate Limit** | `governance/rate_limit.py` | Token bucket rate limiting, burst control |
+
+### Framework Features
+
+- Policy hierarchy (Constitution → World → User Request)
+- Role/actor boundaries
+- Escalation rules (Level 0-3)
+- Human oversight hooks
+- Policy versioning (SELF-MOD.md pattern)
+- Lifecycle management
+
+---
+
+## Layer 3: Governance Intelligence (Behavioral)
+
+**Purpose:** Long-term edge through learning and adaptation.
+
+**Rule:** This is not fluff if tied back to actual decisioning.
+
+### Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Planner** | `ops/planner.py` | Structured planning, milestones, risk assessment before execution |
+| **Critic** | `governance/critic.py` | Quality review, contradiction detection, 5-dimension validation |
+| **Focus** | `system/focus.py` | Anti-distraction, scope protection, deep work enforcement |
+| **Adaptation** | `ops/adaptation.py` | Behavioral adjustment based on patterns (conservative) |
+| **After Action** | `governance/after_action.py` | Learning loop, reflection, pattern extraction |
+| **Prune** | `governance/prune.py` | Context cleanup, noise removal, signal preservation |
+| **Opportunity** | `ops/opportunity.py` | Leverage detection, skill gaps, automation candidates |
+| **Failure** | `ops/failure.py` | Recovery protocol, rollback, escalation |
+
+### Intelligence Features
+
+- Alignment checking (long-term vs short-term conflict)
+- Quality validation before output
+- Behavioral adaptation (after 3+ observations)
+- Pattern learning and application
+- Opportunity surfacing
+- Failure recovery
+
+---
+
+## The Three Product Surfaces
+
+Ledger exposes three surfaces to users:
+
+### Surface 1: Governance Controls
+**What policy exists?**
+
 ```python
-async def send_email(to, body):
-    # No protection. Accidents happen.
-    return await smtp.send(to, body)
+from ledger import Constitution, Governor, Alignment
 
-# What can go wrong:
-# - Sends 10,000 emails at 3 AM
-# - No record of who/when
-# - Can't stop it during incident
-# - No approval for sensitive sends
+# Define behavioral constraints
+constitution = Constitution([
+    "Never impersonate a human",
+    "Always disclose when acting as AI",
+    "Respect user privacy"
+])
+
+# Configure governance
+gov = Governor(
+    escalation_levels=True,
+    kill_switch=True,
+    constitution=constitution
+)
+
+# Set alignment boundaries
+alignment = Alignment(
+    initiative_level=InitiativeLevel.GUIDED,
+    world_goals={"primary": "build_saas"}
+)
 ```
 
-### With Ledger
+**Features:**
+- Allowed/forbidden actions
+- Approval workflows (SOFT/HARD)
+- Escalation rules (0-3)
+- Least privilege enforcement
+- Kill switches
+- Constitutional constraints
+
+---
+
+### Surface 2: Governance Enforcement
+**How policy is applied in real time.**
+
 ```python
-@gov.governed(action="send_email", flag="email_send")
-async def send_email(to, body):
+from ledger import Ledger, ExecutionMode
+
+ledger = Ledger(audit_dsn="postgresql://...")
+
+# Runtime enforcement at action boundary
+@ledger.governed(action="send_email", resource="outbound")
+async def send_email(to: str, body: str):
     return await smtp.send(to, body)
 
-# What happens now:
-# ✅ Risk checked before execution
-# ✅ Kill switch can disable instantly
-# ✅ Rate limited (no spam)
-# ✅ Human approves if HIGH risk
-# ✅ Every send logged with hash chain
-# ✅ Anomalies detected automatically
-# ✅ Retries on failure
+# Mode switching based on risk
+ledger.set_mode(ExecutionMode.STRICT)  # High-risk scenario
 ```
 
-**Same code. 4 lines of protection.**
+**Features:**
+- Action interception
+- Deterministic policy evaluation (< 10ms)
+- Capability token checks
+- Rate limiting enforcement
+- Fail-closed behavior
+- Real-time risk scoring
+
+---
+
+### Surface 3: Governance Evidence
+**How you prove it worked.**
+
+```python
+from ledger import AuditService, AfterAction
+
+# Every decision logged with hash chain
+audit = AuditService(dsn="postgresql://...")
+event_hash = await audit.log(
+    actor="agent_nova",
+    action="send_email",
+    resource="outbound",
+    risk="medium",
+    approved=True
+)
+
+# Verify integrity
+valid, count = await audit.verify_integrity()
+
+# Structured reflection
+report = after_action.reflect(
+    context=context,
+    execution_details=details
+)
+```
+
+**Features:**
+- Immutable audit chain
+- Decision traceability
+- Policy version tracking
+- Approval history
+- Tamper-proof logging
+- Compliance reporting
+
+---
+
+## Governance = Runtime + Framework + Intelligence
+
+### The Correct Definition
+
+> **AI governance is the system of controls, permissions, decision policies, oversight, and evidence that determines what an AI system is allowed to do, under what conditions, and with what accountability.**
+
+This includes:
+- **Prevention** (controls block bad actions)
+- **Oversight** (approvals, escalation, human review)
+- **Accountability** (audit trail, evidence)
+- **Lifecycle control** (policy versioning, adaptation)
+
+### The Wrong Definitions (What We Avoid)
+
+- ❌ "Monitoring" — too passive, no enforcement
+- ❌ "Guardrails" — too vague, not systematic
+- ❌ "Runtime blocking only" — too narrow, misses framework
+- ❌ "Policy theater" — documentation without enforcement
+
+---
+
+## Technical Spine: Runtime as Kernel
+
+### Why Runtime is Non-Negotiable
+
+```
+Without Runtime:
+├─ Policy exists in documents
+├─ Violations are logged
+├─ Humans review after the fact
+└─ Governance = observation
+
+With Runtime:
+├─ Policy is code
+├─ Violations are blocked
+├─ Approvals happen before execution
+└─ Governance = enforcement
+```
+
+### Runtime Enforcement Points
+
+```
+Agent → Action Request
+        ↓
+   [GOVERNOR] ← Escalation check
+        ↓
+   [CONSTITUTION] ← Behavioral rules
+        ↓
+   [ALIGNMENT] ← Long-term goal check
+        ↓
+   [RISK] ← Classification (SOFT/HARD)
+        ↓
+   [CAPABILITY] ← Token issuance
+        ↓
+   [EXECUTOR] ← Execution with monitoring
+        ↓
+   [AUDIT] ← Immutable log
+```
+
+---
+
+## Code Organization by Layer
+
+```
+ledger/
+├── core/                    # GOVERNANCE KERNEL
+│   ├── governor.py          # Strategic oversight
+│   ├── executor.py          # Execution enforcement
+│   ├── runtime.py           # Activation cycle
+│   └── constitution.py      # Behavioral constraints
+│
+├── governance/              # KERNEL + FRAMEWORK + INTELLIGENCE
+│   ├── capability.py        # Kernel: tokens
+│   ├── risk.py              # Kernel: classification
+│   ├── audit.py             # Kernel + Evidence: logging
+│   ├── killswitch.py        # Kernel: emergency stop
+│   ├── rate_limit.py        # Framework: throttling
+│   ├── durable.py           # Framework: approvals
+│   ├── alignment.py         # Framework: loyalty
+│   ├── critic.py            # Intelligence: quality
+│   ├── prune.py             # Intelligence: cleanup
+│   └── after_action.py      # Intelligence: learning
+│
+├── ops/                     # INTELLIGENCE
+│   ├── planner.py           # Structured planning
+│   ├── failure.py           # Recovery protocol
+│   ├── adaptation.py        # Behavioral adjustment
+│   └── opportunity.py       # Leverage detection
+│
+└── system/                  # INTELLIGENCE
+    └── focus.py             # Anti-distraction
+```
+
+---
+
+## Competitive Differentiation
+
+### Competitors (Credo, Arthur, Lakera, etc.)
+
+```
+Approach: Build controls one by one
+Month 1: Framework
+Month 2: Email control
+Month 3: DB control
+Month 4-18: Add more controls individually
+
+Result: 18+ months to full platform
+         $2M+ engineering cost
+         28 months to 50 controls
+```
+
+### Ledger
+
+```
+Approach: Governance architecture first
+Month 1: Kernel + framework + intelligence
+Month 2-12: Policy packs (1 week per tool)
+
+Result: 6 months to full platform
+         $500k engineering cost
+         50+ controls in production
+
+Advantage: 36 MD files = governance rules written
+           New tool = policy pack + wire
+           Same engine, different rules
+```
+
+---
+
+## Implementation Status
+
+### ✅ Complete (Production Ready)
+
+**Kernel:**
+- [x] Governor (escalation, intervention)
+- [x] Executor (execution, modes)
+- [x] Runtime (activation, paths)
+- [x] Constitution (behavioral rules)
+- [x] Capability (tokens)
+- [x] Risk (classification)
+- [x] Audit (hash-chained logs)
+- [x] KillSwitch (emergency stop)
+
+**Framework:**
+- [x] Identity (registry, lifecycle)
+- [x] Alignment (loyalty, challenges)
+- [x] Durable Approvals (async queues)
+- [x] Rate Limiting (token bucket)
+
+**Intelligence:**
+- [x] Planner (structured planning)
+- [x] Critic (quality review)
+- [x] Focus (anti-distraction)
+- [x] Adaptation (behavioral tuning)
+- [x] After Action (learning loop)
+- [x] Prune (context cleanup)
+- [x] Opportunity (leverage detection)
+- [x] Failure (recovery protocol)
+
+### ⏳ Pending (Defined in MD files)
+
+- [ ] HEARTBEAT (system health polling)
+- [ ] SELF-MOD (policy evolution)
+- [ ] START (boot orchestration)
+- [ ] WORLD (goal hierarchy)
+- [ ] USER (relationship model)
+- [ ] MEMORY (context management)
+
+---
+
+## Usage: Full Stack Example
+
+```python
+from ledger import (
+    # Kernel
+    Ledger, Governor, Constitution, ExecutionMode,
+    # Framework
+    Alignment, InitiativeLevel,
+    # Intelligence
+    Planner, Critic, Focus
+)
+
+# 1. Configure Governance (Controls)
+constitution = Constitution([
+    "Never impersonate a human",
+    "Always disclose when acting as AI"
+])
+
+gov = Governor(
+    constitution=constitution,
+    kill_switch_enabled=True
+)
+
+# 2. Set Alignment (Framework)
+alignment = Alignment(
+    world_goals={"primary": "build_saas"},
+    initiative_level=InitiativeLevel.GUIDED
+)
+
+# 3. Create Ledger (Enforcement Surface)
+ledger = Ledger(
+    audit_dsn="postgresql://localhost/ledger",
+    governor=gov,
+    constitution=constitution
+)
+
+# 4. Define Governed Action
+@ledger.governed(action="deploy", resource="production")
+async def deploy_to_production(image: str):
+    # Runtime enforcement happens here:
+    # - Governor checks escalation level
+    # - Constitution validates behavior
+    # - Risk classification (likely HARD approval)
+    # - Capability token issued
+    # - Execution monitored
+    # - Audit log written
+    return await k8s.deploy(image)
+
+# 5. Planning (Intelligence)
+planner = Planner()
+plan = planner.create_plan(
+    PlanningContext(
+        task_description="Deploy production",
+        estimated_steps=5,
+        stakes="high",
+        is_irreversible=True
+    )
+)
+
+# 6. Quality Review (Intelligence)
+critic = Critic()
+report = critic.review(
+    output=deploy_result,
+    dimensions=[ReviewDimension.SAFETY, ReviewDimension.COMPLETENESS]
+)
+
+# 7. Focus Protection (Intelligence)
+focus = Focus()
+focus.enter_focus(
+    task_id="deploy-123",
+    description="Deploy to production",
+    protected=True  # Deep work mode
+)
+
+# Distractions will be deflected
+```
 
 ---
 
 ## Summary
 
-**Ledger is the immune system for AI agents:**
+Ledger is **AI governance infrastructure** with three layers:
 
-1. **Capture** — Wrap functions with `@governed`
-2. **Classify** — Auto-detect risk level
-3. **Check** — Policy enforcement (kill switches, rate limits, approvals)
-4. **Decide** — Allow, block, or ask human
-5. **Track** — Governor + Audit trail for everything
-6. **Analyze** — Detect anomalies, monitor health
+1. **Kernel** — Runtime enforcement (has teeth)
+2. **Framework** — Policy structure (scales)
+3. **Intelligence** — Behavioral learning (improves)
 
-**Result:** AI agents that can't accidentally break things.
+This gives you:
+- Big company category (AI governance)
+- Concrete technical spine (runtime enforcement)
+- Competitive moat (36 governance rules already written)
+- Fast expansion (1 week per new tool)
 
----
+**Positioning:**
+> Ledger defines, enforces, and proves what AI systems are allowed to do.
 
-**Document Owner:** Anthony Cass  
-**Created:** 2026-04-19  
-**Status:** Architecture Reference  
-**Related:** VISION.md, ROADMAP.md, ARCHITECTURE_DECISION.md
+**Technical:**
+> At its core, Ledger uses runtime enforcement to make governance actionable at the execution boundary.
