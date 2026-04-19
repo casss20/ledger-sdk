@@ -35,7 +35,7 @@ from functools import wraps
 import asyncio
 
 from .identity import AgentIdentity, AgentRegistry, get_registry, register_agent
-from .constitution import Constitution, ConstitutionViolation, DEFAULT_CONSTITUTION
+from .core import Constitution, ConstitutionViolation, DEFAULT_CONSTITUTION
 from .sdk import Ledger
 from .governor import get_governor, ActionState
 

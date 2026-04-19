@@ -1,6 +1,50 @@
 """Ledger SDK — AI governance infrastructure."""
 
+# Core exports (from core/)
+from .core import (
+    # Constitution
+    Constitution,
+    ConstitutionalRule,
+    ConstitutionViolation,
+    RuleType,
+    SAFETY_CONSTITUTION,
+    TRANSPARENCY_CONSTITUTION,
+    PRIVACY_CONSTITUTION,
+    DEFAULT_CONSTITUTION,
+    # Governor
+    Governor,
+    EscalationLevel,
+    ExecutionLocked,
+    get_governor,
+    # Executor
+    Executor,
+    ExecutionMode,
+    AutonomyMode,
+    executor as executor_decorator,
+    # Runtime
+    Runtime,
+    RuntimeContext,
+    RuntimeDecision,
+    PathType,
+    Layer,
+    get_runtime,
+)
+
+# Public API (from sdk.py)
 from .sdk import Ledger, Denied
+
+# Identity & Agent (from root)
+from .identity import (
+    AgentIdentity,
+    AgentRegistry,
+    AgentStatus,
+    get_registry,
+    register_agent,
+    get_agent,
+)
+from .agent import Agent, create_agent
+
+# Legacy modules
 from .loader import build_system_prompt
 from .classifier import classify
 from .schema import AgentOutput, OutputType, ApprovalLevel
@@ -13,32 +57,15 @@ from .dense import gov, DenseRule
 from .null_propagation import Required, Optional, SkipExecution
 from .groups import ActionGroup, ActionNode, get_registry
 from .sidecar import SidecarClient, PostgresSidecar, RedisSidecar
-from .governor import Governor, ActionRecord, ActionState, get_governor
+
+# Legacy governor import (for backwards compatibility)
+from .governor import Governor as LegacyGovernor, ActionRecord, ActionState, get_governor as get_legacy_governor
+
+# Error handling
 from .error_handling import try_governed, catch, Retry, Catch, Default, DeadLetter
 from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph_executor
 from .analytics import AnalyticsEngine, BehaviorProfiler, TimeWindow, get_analytics, get_profiler
 from .dashboard_api import DashboardAPI, create_dashboard_api, get_fastapi_router
-
-# Identity, Constitution, Agent (new core files)
-from .constitution import (
-    Constitution,
-    ConstitutionalRule,
-    ConstitutionViolation,
-    RuleType,
-    SAFETY_CONSTITUTION,
-    TRANSPARENCY_CONSTITUTION,
-    PRIVACY_CONSTITUTION,
-    DEFAULT_CONSTITUTION,
-)
-from .identity import (
-    AgentIdentity,
-    AgentRegistry,
-    AgentStatus,
-    get_registry,
-    register_agent,
-    get_agent,
-)
-from .agent import Agent, create_agent
 
 # Governance subpackage
 from .governance.alignment import (
@@ -57,26 +84,46 @@ from .governance.capability import CapabilityIssuer
 from .governance.durable import DurablePromise, DurableApprovalQueue, get_durable_queue
 
 __all__ = [
-    # Core
+    # Core (NEW STRUCTURE)
+    # Constitution
+    "Constitution",
+    "ConstitutionalRule", 
+    "ConstitutionViolation",
+    "RuleType",
+    "SAFETY_CONSTITUTION",
+    "TRANSPARENCY_CONSTITUTION",
+    "PRIVACY_CONSTITUTION",
+    "DEFAULT_CONSTITUTION",
+    # Governor
+    "Governor",
+    "EscalationLevel",
+    "ExecutionLocked",
+    "get_governor",
+    # Executor
+    "Executor",
+    "ExecutionMode",
+    "AutonomyMode",
+    "executor_decorator",
+    # Runtime
+    "Runtime",
+    "RuntimeContext",
+    "RuntimeDecision",
+    "PathType",
+    "Layer",
+    "get_runtime",
+    # Public API
     "Ledger",
     "Denied",
     "Agent",
     "create_agent",
-    # Identity & Constitution
+    # Identity
     "AgentIdentity",
     "AgentRegistry", 
     "AgentStatus",
-    "Constitution",
-    "ConstitutionalRule",
-    "ConstitutionViolation",
-    "RuleType",
-    "SAFETY_CONSTITUTION",
-    "TRANSPARENCY_CONSTITUTION", 
-    "PRIVACY_CONSTITUTION",
-    "DEFAULT_CONSTITUTION",
     "get_registry",
     "register_agent",
     "get_agent",
+    # Legacy modules
     "build_system_prompt",
     "classify",
     "AgentOutput",
@@ -98,15 +145,13 @@ __all__ = [
     "SkipExecution",
     "ActionGroup",
     "ActionNode",
-    "get_registry",
     "SidecarClient",
     "PostgresSidecar",
     "RedisSidecar",
-    # Governor
-    "Governor",
+    # Legacy governor (backwards compat)
+    "LegacyGovernor",
     "ActionRecord",
     "ActionState",
-    "get_governor",
     # Error handling
     "try_governed",
     "catch",
@@ -141,4 +186,11 @@ __all__ = [
     "DurablePromise",
     "DurableApprovalQueue",
     "get_durable_queue",
+    # Alignment
+    "Alignment",
+    "ChallengeResult",
+    "InitiativeLevel",
+    "Challenge",
+    "AlignmentCheck",
+    "get_alignment",
 ]

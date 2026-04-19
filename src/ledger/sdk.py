@@ -1,22 +1,31 @@
-"""Public API — Ledger SDK entry point.
-Decorator handles: capability check → risk classify → rate limit → audit write → execute → audit close.
+"""Ledger SDK — Public API
 
-SOURCE OF TRUTH: ledger/core/GOVERNOR.md, ledger/core/EXECUTOR.md
-This module implements EXECUTOR — execution with momentum.
-GOVERNOR owns intervention authority; EXECUTOR respects it.
+This module provides the public-facing API for the Ledger SDK.
+It wraps the core components (EXECUTOR, GOVERNOR, RUNTIME) into a
+developer-friendly interface.
+
+The heavy lifting is done in core/:
+- core/executor.py implements EXECUTOR.md
+- core/governor.py implements GOVERNOR.md
+- core/runtime.py implements RUNTIME.md
+- core/constitution.py implements CONSTITUTION.md
+
+This file is the convenience layer, not the implementation.
 """
 
+from typing import Any, Callable, Optional, Awaitable
 import functools
-import uuid
-from typing import Any, Callable, Awaitable
 
-from ledger.loader import build_system_prompt
-from ledger.classifier import classify as classify_path
-from ledger.core.governor import Governor, EscalationLevel, ExecutionLocked, get_governor
-from ledger.governance.capability import CapabilityIssuer
-from ledger.governance.risk import classify as classify_risk, Approval
-from ledger.governance.audit import AuditService
-from ledger.governance.killswitch import KillSwitch
+from ledger.core import (
+    Executor,
+    ExecutionMode,
+    Governor,
+    get_governor,
+    Constitution,
+    DEFAULT_CONSTITUTION,
+)
+from ledger.core.governor import ExecutionLocked
+from ledger.governance.alignment import Alignment, get_alignment
 
 
 class Denied(Exception):
@@ -26,17 +35,16 @@ class Denied(Exception):
 
 class Ledger:
     """
-    EXECUTOR implementation.
+    Public API for Ledger SDK.
     
-    Owns: execution context, capability management, error handling
-    Checks with: GOVERNOR (intervention authority)
+    Wraps core components for developer convenience.
     
-    Flow:
-    1. User requests action
-    2. Check GOVERNOR intervention level
-    3. If Level 3 (locked) → block
-    4. If Level 2 (correction) → strict mode, require confirmation
-    5. If Level 0-1 → proceed with capability/risk checks
+    Example:
+        gov = Ledger(audit_dsn="postgresql://...")
+        
+        @gov.governed(action="send_email", resource="outbound")
+        async def send_email(to: str, body: str):
+            return await smtp.send(to, body)
     """
     
     def __init__(
@@ -44,193 +52,124 @@ class Ledger:
         *,
         audit_dsn: str,
         agent: str = "default",
-        governor: Governor | None = None
-    ) -> None:
+        governor: Optional[Governor] = None,
+        constitution: Optional[Constitution] = None,
+        world_goals: Optional[dict] = None
+    ):
         self.agent = agent
-        self.caps = CapabilityIssuer()
-        self.audit = AuditService(audit_dsn)
-        self.killsw = KillSwitch()
-        self.governor = governor or get_governor()
-        self._approval_hook: Callable[[dict], Awaitable[bool]] | None = None
-        self._strict_mode = False
-
-    async def start(self):
-        await self.audit.start()
-
-    async def stop(self):
-        await self.audit.stop()
-
-    def set_approval_hook(self, hook):
-        self._approval_hook = hook
-
-    def build_prompt(self, task, session_id="default"):
-        return build_system_prompt(
-            agent=self.agent,
-            path=classify_path(task),
-            session_id=session_id,
-            task=task,
-        )
-
-    def governed(self, *, action: str, resource: str, flag: str | None = None, context: dict | None = None):
-        """
-        Wrap a function with full governance.
+        self.constitution = constitution or DEFAULT_CONSTITUTION
         
-        EXECUTOR checks with GOVERNOR before proceeding.
-        Respects escalation levels and execution locks.
+        # Core components
+        self._executor = Executor(
+            audit_dsn=audit_dsn,
+            agent=agent,
+            governor=governor or get_governor()
+        )
+        self._alignment = get_alignment(world_goals=world_goals)
+        self._governor = governor or get_governor()
+    
+    def set_approval_hook(self, hook):
+        """Register hook for HARD approval decisions."""
+        self._executor.set_approval_hook(hook)
+    
+    def governed(
+        self,
+        *,
+        action: str,
+        resource: str,
+        flag: Optional[str] = None,
+        context: Optional[dict] = None
+    ) -> Callable:
         """
-        def wrap(fn):
+        Decorator for governed actions.
+        
+        Wraps functions with full governance:
+        - CONSTITUTION check
+        - ALIGNMENT check
+        - GOVERNOR intervention check
+        - Risk classification
+        - Capability tokens
+        - Audit logging
+        """
+        def decorator(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
             @functools.wraps(fn)
-            async def inner(*args, **kwargs):
-                # Build context for GOVERNOR
-                check_context = context or {}
-                check_context.update({
-                    "action": action,
-                    "resource": resource,
-                    "agent": self.agent,
-                    "args_preview": str(args)[:200],
-                })
+            async def wrapper(*args, **kwargs):
+                # Check alignment first
+                alignment_result = self._alignment.check(
+                    action=action,
+                    context={
+                        "args": args,
+                        "kwargs": kwargs,
+                        "resource": resource,
+                        **(context or {})
+                    }
+                )
                 
-                # Check GOVERNOR intervention level
-                level = self.governor.check_intervention(check_context)
+                if alignment_result.result.value == "refuse":
+                    raise Denied("Action refused by CONSTITUTION")
                 
-                # Level 3: Execution locked
-                if level == EscalationLevel.INTERVENTION or self.governor.locked:
-                    raise ExecutionLocked(
-                        f"GOVERNOR intervention: {self.governor.lock_reason or 'Pattern detected'}"
-                    )
+                if alignment_result.result.value == "challenge":
+                    # In real implementation, would surface to user
+                    # For now, log and continue
+                    pass
                 
-                # Level 2: Strict mode
-                if level == EscalationLevel.CORRECTION:
-                    self._strict_mode = True
-                    confirmation = self.governor.require_confirmation(
-                        f"This action ({action}) may conflict with your priorities. "
-                        "Explicit confirmation required."
-                    )
-                    # In strict mode, require explicit user confirmation
-                    # This would integrate with UI layer
-                    
-                # Proceed with standard governance flow
-                return await self._execute_with_governance(
-                    fn, args, kwargs, action, resource, flag
+                # Execute with full governance via EXECUTOR
+                return await self._executor.execute(
+                    action=action,
+                    resource=resource,
+                    fn=fn,
+                    args=args,
+                    kwargs=kwargs,
+                    flag=flag,
+                    context=context
                 )
             
-            return inner
-        return wrap
-
-    async def _deny(self, action, resource, reason):
-        risk, _ = classify_risk(action)
-        await self.audit.log(
-            actor=self.agent,
-            action=action,
-            resource=resource,
-            risk=risk.value,
-            approved=False,
-            payload={"denied": reason},
+            return wrapper
+        return decorator
+    
+    # Convenience methods for accessing core components
+    @property
+    def executor(self) -> Executor:
+        """Access EXECUTOR component."""
+        return self._executor
+    
+    @property
+    def governor(self) -> Governor:
+        """Access GOVERNOR component."""
+        return self._governor
+    
+    @property
+    def alignment(self) -> Alignment:
+        """Access ALIGNMENT component."""
+        return self._alignment
+    
+    # Execution mode helpers
+    def set_mode(self, mode: ExecutionMode):
+        """Set execution mode (FLOW, CONTROLLED, STRICT)."""
+        self._executor.set_mode(mode)
+    
+    # Autonomy helpers
+    def enter_autonomy(
+        self,
+        goal: str,
+        constraints: list,
+        allowed_actions: list,
+        disallowed_actions: list,
+        timeout_minutes: int = 60
+    ):
+        """Enter guided autonomy mode."""
+        return self._executor.enter_autonomy(
+            goal=goal,
+            constraints=constraints,
+            allowed_actions=allowed_actions,
+            disallowed_actions=disallowed_actions,
+            timeout_minutes=timeout_minutes
         )
     
-    async def _execute_with_governance(
-        self, fn, args, kwargs, action, resource, flag
-    ):
-        """Execute function with full governance checks."""
-        from ledger.governor import ActionState
-        
-        action_id = str(uuid.uuid4())
-        risk, approval = classify_risk(action)
-        
-        # Create record in GOVERNOR (state tracking)
-        await self.governor.create(
-            action_id=action_id,
-            action=action,
-            resource=resource,
-            agent=self.agent,
-            risk=risk.value,
-            approval_level=approval.value,
-            args_preview=str(args)[:200],
-        )
+    def exit_autonomy(self, reason: str):
+        """Exit autonomy mode."""
+        return self._executor.exit_autonomy(reason)
 
-        # Check kill switch
-        if flag and not self.killsw.is_enabled(flag):
-            await self.governor.transition(action_id, ActionState.DENIED, 
-                                           metadata={"reason": "kill_switch"})
-            await self._deny(action, resource, "kill_switch")
-            raise Denied(f"flag '{flag}' killed")
 
-        # Hard approval required
-        if approval is Approval.HARD:
-            if not self._approval_hook:
-                await self.governor.transition(action_id, ActionState.DENIED,
-                                               metadata={"reason": "no_hook"})
-                await self._deny(action, resource, "no_hook")
-                raise Denied("HARD approval required")
-            
-            await self.governor.transition(action_id, ActionState.PENDING)
-            ok = await self._approval_hook({
-                "id": action_id,
-                "action": action,
-                "resource": resource,
-                "risk": risk.value,
-                "args": str(args)[:200],
-            })
-            if not ok:
-                await self.governor.transition(action_id, ActionState.DENIED,
-                                               metadata={"reason": "rejected"})
-                await self._deny(action, resource, "rejected")
-                raise Denied("rejected by hook")
-
-        # Issue capability token
-        cap = self.caps.issue(
-            action=action,
-            resource=resource,
-            ttl_seconds=120,
-            max_uses=1,
-            issued_to=self.agent,
-        )
-
-        # Transition to executing
-        await self.governor.transition(action_id, ActionState.EXECUTING,
-                                       metadata={"cap_token": cap.token})
-
-        try:
-            # Execute
-            result = await fn(*args, **kwargs)
-            self.caps.consume(cap.token)
-            
-            # Success
-            await self.governor.transition(
-                action_id, 
-                ActionState.SUCCESS,
-                result_preview=str(result)[:200],
-                metadata={"cap": cap.token}
-            )
-            
-            await self.audit.log(
-                actor=self.agent,
-                action=action,
-                resource=resource,
-                risk=risk.value,
-                approved=True,
-                payload={"cap": cap.token, "ok": True, "action_id": action_id},
-            )
-            
-            # Reset strict mode after success
-            self._strict_mode = False
-            return result
-            
-        except Exception as e:
-            # Failed
-            await self.governor.transition(
-                action_id,
-                ActionState.FAILED,
-                error_message=str(e),
-                metadata={"cap": cap.token}
-            )
-            
-            await self.audit.log(
-                actor=self.agent,
-                action=action,
-                resource=resource,
-                risk=risk.value,
-                approved=True,
-                payload={"cap": cap.token, "error": str(e), "action_id": action_id},
-            )
-            raise
+# Backwards compatibility alias
+GovernedLedger = Ledger

@@ -1,5 +1,7 @@
 """Constitution — AI Behavior Rules & Values
 
+Implementation of CONSTITUTION.md.
+
 The Constitution module defines behavioral constraints that go beyond
 risk classification. While risk catches dangerous ACTIONS, constitution
 catches dangerous BEHAVIOR and ethical violations.
@@ -8,21 +10,8 @@ Examples:
 - Risk: "Don't send 10,000 emails" (rate limit)
 - Constitution: "Never impersonate a human" (identity deception)
 
-Usage:
-    from ledger import Ledger, Constitution
-    
-    constitution = Constitution([
-        "Never impersonate a human",
-        "Always disclose when acting as AI",
-        "Never generate harmful content",
-        "Respect user privacy"
-    ])
-    
-    gov = Ledger(constitution=constitution)
-    
-    @gov.governed(action="chat")
-    async def chat(message: str):
-        return await llm.generate(message)
+SOURCE OF TRUTH: ledger/core/CONSTITUTION.md
+If this code contradicts the MD file, the MD file is correct.
 """
 
 from typing import List, Dict, Any, Optional, Callable
