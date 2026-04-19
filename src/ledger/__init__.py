@@ -41,6 +41,14 @@ from .identity import (
 from .agent import Agent, create_agent
 
 # Governance subpackage
+from .governance.alignment import (
+    Alignment,
+    ChallengeResult,
+    InitiativeLevel,
+    Challenge,
+    AlignmentCheck,
+    get_alignment,
+)
 from .governance.risk import classify as classify_risk, Approval, Risk
 from .governance.killswitch import KillSwitch
 from .governance.audit import AuditService
