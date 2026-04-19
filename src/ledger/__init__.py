@@ -67,7 +67,7 @@ from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph
 from .analytics import AnalyticsEngine, BehaviorProfiler, TimeWindow, get_analytics, get_profiler
 from .dashboard_api import DashboardAPI, create_dashboard_api, get_fastapi_router
 
-# Governance subpackage
+# Governance (submodules)
 from .governance.alignment import (
     Alignment,
     ChallengeResult,
@@ -76,12 +76,58 @@ from .governance.alignment import (
     AlignmentCheck,
     get_alignment,
 )
+from .governance.critic import (
+    Critic,
+    ReviewResult,
+    ReviewDimension,
+    get_critic,
+)
+from .governance.prune import (
+    Prune,
+    PruneTarget,
+    get_prune,
+)
+from .governance.after_action import (
+    AfterAction,
+    AfterActionReport,
+    get_after_action,
+)
 from .governance.risk import classify as classify_risk, Approval, Risk
 from .governance.killswitch import KillSwitch
 from .governance.audit import AuditService
 from .governance.rate_limit import RateLimiter, TokenBucket
 from .governance.capability import CapabilityIssuer
 from .governance.durable import DurablePromise, DurableApprovalQueue, get_durable_queue
+
+# Operations subpackage
+from .ops import (
+    Planner,
+    Plan,
+    PlanType,
+    PlanningContext,
+    get_planner,
+    Failure,
+    FailureType,
+    RecoveryAction,
+    FailureContext,
+    get_failure,
+    Adaptation,
+    AdaptationType,
+    AdaptationConfig,
+    get_adaptation,
+    OpportunityDetector,
+    Opportunity,
+    OpportunityType,
+    get_opportunity_detector,
+)
+
+# System subpackage
+from .system import (
+    Focus,
+    FocusState,
+    CurrentTask,
+    get_focus,
+)
 
 __all__ = [
     # Core (NEW STRUCTURE)
@@ -193,4 +239,46 @@ __all__ = [
     "Challenge",
     "AlignmentCheck",
     "get_alignment",
+    # Critic (NEW)
+    "Critic",
+    "ReviewResult", 
+    "ReviewDimension",
+    "get_critic",
+    # Prune (NEW)
+    "Prune",
+    "PruneTarget",
+    "get_prune",
+    # After Action (NEW)
+    "AfterAction",
+    "AfterActionReport",
+    "get_after_action",
+    # Operations (NEW)
+    # Planner
+    "Planner",
+    "Plan",
+    "PlanType",
+    "PlanningContext",
+    "get_planner",
+    # Failure
+    "Failure",
+    "FailureType",
+    "RecoveryAction",
+    "FailureContext",
+    "get_failure",
+    # Adaptation
+    "Adaptation",
+    "AdaptationType",
+    "AdaptationConfig",
+    "get_adaptation",
+    # Opportunity
+    "OpportunityDetector",
+    "Opportunity",
+    "OpportunityType",
+    "get_opportunity_detector",
+    # System (NEW)
+    # Focus
+    "Focus",
+    "FocusState",
+    "CurrentTask",
+    "get_focus",
 ]
