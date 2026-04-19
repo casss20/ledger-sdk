@@ -129,62 +129,51 @@ createdb ledger_control
 # Run schema
 psql ledger_control -f db/schema.sql
 
-# Verify integrity function works
+# Verify integrity function
 psql ledger_control -c "SELECT * FROM verify_audit_chain();"
+
+# Test capability consumption
+psql ledger_control -c "SELECT * FROM consume_capability('cap_xxx', 'actor_1');"
 ```
 
-## Views for Common Queries
+## Helper Functions
 
-### Active Governance State
+| Function | Purpose |
+|----------|---------|
+| `verify_audit_chain()` | Check hash chain integrity |
+| `consume_capability(token, actor)` | Atomic capability use |
+| `set_updated_at()` | Auto-update timestamp trigger |
+| `prevent_policy_mutation()` | Enforce policy immutability |
+| `forbid_audit_mutation()` | Block audit updates/deletes |
+
+## Idempotency Strategy
+
 ```sql
-SELECT * FROM active_governance_state;
--- Shows all actors, policies, kill switches currently active
+-- Unique constraint prevents duplicates
+INSERT INTO actions (actor_id, action_name, idempotency_key, ...)
+VALUES ('agent_1', 'email.send', 'req_123', ...)
+ON CONFLICT (actor_id, idempotency_key) DO NOTHING;
+
+-- Redis hot cache (5m TTL)
+SETEX dedupe:req_123 300 "1"
 ```
 
-### Pending Approvals Queue
-```sql
-SELECT * FROM pending_approvals_queue;
--- Human-in-the-loop items needing review
-```
+## Production Checklist
 
-### Decision Replay Log
-```sql
-SELECT * FROM decision_replay_log 
-WHERE action_id = 'xxx';
--- Full context for reproducing a decision
-```
+- [ ] WAL archiving for audit immutability
+- [ ] Object-store replication for long-term retention
+- [ ] Table partitioning on `audit_events` by `event_ts`
+- [ ] Remove foreign keys for ultra-hot paths (optional)
+- [ ] Monitor JSONB index overhead
+- [ ] Set up `pending_approvals_queue` alerts
+- [ ] Configure Redis for ephemeral cache only
 
-## Minimal MVP
+## Schema Evolution
 
-Start with just these tables:
-1. `actions` — what was requested
-2. `decisions` — what was decided
-3. `policies` — current policy set
-4. `approvals` — human review queue
-5. `audit_events` — what happened
-6. `kill_switches` — emergency stops
+**Immutable tables** (append-only):
+- `actions`, `decisions`, `audit_events`, `policy_snapshots`
+- Add new columns only, never modify existing
 
-Add later:
-7. `capabilities` — fine-grained permissions
-8. `actors` — full registry
-9. `policy_snapshots` — full replay support
-
-## Tech Stack Recommendation
-
-| Layer | Tool | Role |
-|-------|------|------|
-| Primary store | Postgres 15+ | All authoritative data |
-| Ephemeral cache | Redis 7+ | Rate limits, locks, hot cache |
-| Access | asyncpg / SQLAlchemy | Python async |
-| Schema | JSONB early, normalize later | Flexible rules, strict core |
-
-## Why This Design
-
-**Not a generic app database** — optimized for:
-- Deterministic policy decisions (<10ms evaluation)
-- Tamper-proof audit chains (hash verification)
-- Fast replay for debugging (snapshot references)
-- Horizontal scaling (stateless decision engine)
-- Compliance (immutable history, integrity proofs)
-
-**Control-system DNA:** Every design choice supports governance enforcement at the action boundary.
+**Mutable tables** (live state):
+- `capabilities`, `kill_switches`, `approvals`, `actors`, `policies` (status only)
+- Normal migration patterns apply
