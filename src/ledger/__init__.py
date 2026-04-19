@@ -19,6 +19,27 @@ from .subgraph import SubgraphExecutor, OutputDefinition, Subgraph, get_subgraph
 from .analytics import AnalyticsEngine, BehaviorProfiler, TimeWindow, get_analytics, get_profiler
 from .dashboard_api import DashboardAPI, create_dashboard_api, get_fastapi_router
 
+# Identity, Constitution, Agent (new core files)
+from .constitution import (
+    Constitution,
+    ConstitutionalRule,
+    ConstitutionViolation,
+    RuleType,
+    SAFETY_CONSTITUTION,
+    TRANSPARENCY_CONSTITUTION,
+    PRIVACY_CONSTITUTION,
+    DEFAULT_CONSTITUTION,
+)
+from .identity import (
+    AgentIdentity,
+    AgentRegistry,
+    AgentStatus,
+    get_registry,
+    register_agent,
+    get_agent,
+)
+from .agent import Agent, create_agent
+
 # Governance subpackage
 from .governance.risk import classify as classify_risk, Approval, Risk
 from .governance.killswitch import KillSwitch
@@ -28,8 +49,26 @@ from .governance.capability import CapabilityIssuer
 from .governance.durable import DurablePromise, DurableApprovalQueue, get_durable_queue
 
 __all__ = [
+    # Core
     "Ledger",
     "Denied",
+    "Agent",
+    "create_agent",
+    # Identity & Constitution
+    "AgentIdentity",
+    "AgentRegistry", 
+    "AgentStatus",
+    "Constitution",
+    "ConstitutionalRule",
+    "ConstitutionViolation",
+    "RuleType",
+    "SAFETY_CONSTITUTION",
+    "TRANSPARENCY_CONSTITUTION", 
+    "PRIVACY_CONSTITUTION",
+    "DEFAULT_CONSTITUTION",
+    "get_registry",
+    "register_agent",
+    "get_agent",
     "build_system_prompt",
     "classify",
     "AgentOutput",
