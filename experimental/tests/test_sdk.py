@@ -6,7 +6,7 @@ import os
 import pytest
 import pytest_asyncio
 
-from ledger.sdk import Ledger, Denied
+from ledger import Ledger, Denied
 
 
 # Skip audit-dependent tests if no Postgres

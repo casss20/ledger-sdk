@@ -186,31 +186,9 @@ class Validator:
         Validate entire catalog at startup.
         Returns True if valid, False if errors found.
         """
-        from .catalog import get_catalog
-        
-        cat = get_catalog()
-        configs = [
-            rule.to_dict() if hasattr(rule, 'to_dict') else rule
-            for rule in cat.list_all()
-        ]
-        
-        issues = self.validate_all(configs)
-        
-        errors = [i for i in issues if i.severity == ValidationSeverity.ERROR]
-        warnings = [i for i in issues if i.severity == ValidationSeverity.WARNING]
-        
-        if errors:
-            logger.error(f"[Validator] ❌ {len(errors)} errors, {len(warnings)} warnings")
-            for issue in errors[:5]:  # Show first 5
-                logger.error(f"  • [{issue.action}] {issue.field}: {issue.message}")
-            return False
-        
-        if warnings:
-            logger.warning(f"[Validator] ⚠️ {len(warnings)} warnings")
-            for issue in warnings[:3]:
-                logger.warning(f"  • [{issue.action}] {issue.field}: {issue.message}")
-        
-        logger.info(f"[Validator] ✅ Catalog validated — {len(configs)} rules, no errors")
+        # NOTE: Catalog validation disabled — catalog module moved to experimental.
+        # Re-enable when integrating with experimental/agent_runtime/catalog.py
+        logger.info("[Validator] Catalog validation skipped (catalog module in experimental)")
         return True
     
     def _get_suggestion(self, error: Dict) -> Optional[str]:

@@ -7,7 +7,7 @@ Atomic operations only. All capability state changes go through here.
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
-from ledger.kernel import Action
+from ledger.actions import Action
 from ledger.repository import Repository
 
 
@@ -146,7 +146,7 @@ class CapabilityService:
             return False
         
         # Build mock action for scope check
-        from ledger.kernel import Action
+        from ledger.actions import Action
         mock_action = Action(
             action_id=uuid.uuid4(),
             actor_id=cap['actor_id'],

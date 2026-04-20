@@ -10,7 +10,7 @@ No other module makes these decisions.
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-from ledger.kernel import Action, KernelStatus
+from ledger.actions import Action, KernelStatus
 from ledger.repository import Repository
 from ledger.policy_resolver import PolicySnapshot, PolicyEvaluator, PolicyEvaluationResult
 

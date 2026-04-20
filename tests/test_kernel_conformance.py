@@ -23,14 +23,15 @@ sys.path.insert(0, 'src')
 import asyncpg
 
 # Kernel components
-from ledger.kernel import Kernel, Action, KernelResult, KernelStatus
+from ledger.actions import Action, KernelStatus, KernelResult
+from ledger.execution.kernel import Kernel
 from ledger.repository import Repository
 from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
 from ledger.precedence import Precedence
 from ledger.approval_service import ApprovalService
 from ledger.capability_service import CapabilityService
 from ledger.audit_service import AuditService
-from ledger.executor import Executor as ActionExecutor
+from ledger.execution.executor import Executor as ActionExecutor
 from ledger.status import ActorType
 
 

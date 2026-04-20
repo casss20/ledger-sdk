@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from ledger.kernel import Action, KernelStatus
+from ledger.actions import Action, KernelStatus
 from ledger.repository import Repository
 
 

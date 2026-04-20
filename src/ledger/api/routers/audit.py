@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from ledger.kernel import Kernel
+from ledger.execution.kernel import Kernel
 from ledger.api.dependencies import get_kernel, require_api_key
 
 router = APIRouter(tags=["audit"])

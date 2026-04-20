@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List
 import json
 import asyncpg
 
-from ledger.kernel import Action, Decision
+from ledger.actions import Action, Decision
 
 
 class Repository:
@@ -125,7 +125,7 @@ class Repository:
             return self._row_to_decision(row) if row else None
     
     def _row_to_decision(self, row: asyncpg.Record) -> Decision:
-        from ledger.kernel import Decision, KernelStatus
+        from ledger.actions import Decision, KernelStatus
         return Decision(
             decision_id=row['decision_id'],
             action_id=row['action_id'],

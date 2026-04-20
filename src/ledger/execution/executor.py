@@ -7,7 +7,7 @@ No governance logic here - that's all done before we get here.
 
 from typing import Any, Callable, Awaitable, Optional
 
-from ledger.kernel import Action
+from ledger.actions import Action
 
 
 class Executor:

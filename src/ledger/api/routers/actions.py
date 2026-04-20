@@ -12,7 +12,8 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ledger.kernel import Kernel, Action, KernelStatus
+from ledger.actions import Action, KernelStatus
+from ledger.execution.kernel import Kernel
 from ledger.api.dependencies import get_kernel, require_api_key
 
 router = APIRouter(tags=["actions"])

@@ -11,7 +11,7 @@ import json
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from ledger.kernel import Action
+from ledger.actions import Action
 from ledger.repository import Repository
 
 

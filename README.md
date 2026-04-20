@@ -1,224 +1,104 @@
 # Ledger SDK
 
-**AI Governance: Constitution + Audit for Agent Builders**
+**Governed action execution with audit trails.**
 
-Stop agent accidents before they happen. Block risky actions, require human approval, log everything to tamper-proof audit trails, and kill features instantly.
+A governance engine that intercepts actions, applies policy, requires approval for risky ones, executes the allowed ones, and logs everything to a tamper-evident audit chain.
 
-[![PyPI version](https://badge.fury.io/py/ledger-sdk.svg)](https://pypi.org/project/ledger-sdk/)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## What Core Does Today
 
-```python
-from ledger import Ledger, Retry, try_governed
+The production core is a **stateless governance pipeline** backed by PostgreSQL:
 
-gov = Ledger(audit_dsn="postgresql://...", agent="my-agent")
+1. **Policy Resolution** — Rules match on actor, action, resource, and context. Rules resolve in precedence order. The winning rule decides: `ALLOWED`, `BLOCKED_*`, `PENDING_APPROVAL`, `RATE_LIMITED`.
 
-@try_governed(Retry(times=3))  # Auto-retry on failure
-@gov.governed(action="send_email", resource="outbound_email", flag="email_send")
-async def send_email(to: str, subject: str, body: str):
-    # Blocked until approved, retried on failure, tracked in audit
-    return await smtp.send(to, subject, body)
+2. **Capability Tokens** — Scoped, expiring, use-limited tokens that bypass policy for pre-authorized actions.
+
+3. **Approval Queue** — Human-in-the-loop for actions that match `PENDING_APPROVAL` rules. Approvers get a queue; decisions are recorded with reasons.
+
+4. **Execution** — Allowed actions execute through a configurable executor. Results are captured or failures are logged.
+
+5. **Audit Chain** — Every action and decision is hashed and linked in Postgres. The chain is append-only (triggers block UPDATE/DELETE). A `verify_audit_chain()` function checks integrity.
+
+6. **Idempotency** — Duplicate requests with the same `idempotency_key` return the original result without re-executing.
+
+7. **FastAPI API** — `POST /v1/actions/execute` runs an action through the full pipeline. `GET /v1/audit/verify` checks chain integrity. `GET /health/ready` reports database connectivity. API key auth via `X-API-Key`.
+
+8. **Universal SDK** — `LedgerClient(base_url, api_key)` works from Python with `httpx`. `execute()`, `guard()`, `wrap()`, `approve()`, `reject()`, `verify_audit()` are the surface.
+
+9. **Orchestrator** — `Orchestrator(kernel, executor)` runs a goal through a loop: plan → govern → execute → review → cleanup. Planner, critic, and prune are injected; stubs are used by default.
+
+### Directory Layout (Core)
+
+```
+src/ledger/
+├── actions/          # Canonical Action, Decision, KernelStatus, KernelResult models
+├── execution/        # Kernel (governance pipeline) + Executor (action runner)
+├── audit/            # AuditService + audit chain verification
+├── api/              # FastAPI app, routers, middleware, dependencies
+├── sdk/              # LedgerClient (httpx-based universal client)
+├── policies/         # PolicyResolver, Precedence, PolicyEvaluator
+├── repository.py     # All DB access (actions, decisions, audit, capabilities, actors, policies)
+├── approval_service.py
+├── capability_service.py
+├── orchestrator.py
+└── config.py         # Pydantic Settings, .env support
 ```
 
-## Features
+## What Experimental Is Building Toward
 
-- 🛡️ **@governed decorator** — Wrap any function with risk classification
-- 🔄 **Error handling** — `Retry()`, `Catch()`, `Default()`, `DeadLetter()`
-- 🎯 **Subgraph execution** — Run only the outputs you need
-- 📈 **Analytics** — Detect "50 emails in 1 minute" anomalies
-- 🛑 **Kill switches** — Instantly disable features without deploy
-- ✅ **Approval queue** — Human-in-the-loop for risky actions
-- 📊 **Audit trail** — Hash-chained, tamper-evident logging
-- 📜 **Constitution** — Markdown governance rules LLMs read
-- ⚡ **FastAPI integration** — Drop-in middleware and routes
+The `experimental/agent_runtime/` directory contains aspirational modules for an **autonomous agent governance runtime** — a different system from the core action-authorization engine. These modules are isolated from core; nothing in `src/ledger/` imports them.
+
+**Modules in experimental:**
+
+- `planner.py` (~520 lines) — Goal decomposition and action sequencing
+- `critic.py` (~450 lines) — Post-execution review and feedback loops
+- `prune.py` (~400 lines) — State cleanup and memory management
+- `focus.py` (~470 lines) — Attention routing and mode selection
+- `constitution.py` (~250 lines) — Agent self-governance rules
+
+**What would need to happen for experimental to integrate with core:**
+
+1. **Shared model** — `experimental/planner.py` must output `ledger.actions.Action` objects so the core kernel can govern them.
+
+2. **State contract** — `experimental/critic.py` and `experimental/prune.py` must accept `ledger.orchestrator.OrchestratorState` instead of their own state types.
+
+3. **Policy bridge** — `experimental/constitution.py` rules must map to `ledger.policies.Policy` objects so the kernel's `PolicyResolver` can evaluate them.
+
+4. **Execution wiring** — `experimental/planner.py` → `ledger.orchestrator.Orchestrator.run()` → `ledger.execution.Kernel.handle()` → `ledger.execution.Executor.execute()`.
+
+5. **Test isolation** — Experimental tests live in `experimental/tests/` and run separately from core tests.
+
+**Status:** Experimental is not wired to core. The Orchestrator accepts planner/critic/prune as constructor arguments, so they *can* be injected, but the experimental modules do not yet conform to the core interfaces. The README will be updated when that wiring is complete.
 
 ## Installation
 
 ```bash
-# Core functionality
 pip install ledger-sdk
-
-# With optional dependencies
-pip install ledger-sdk[fastapi]    # FastAPI integration
-pip install ledger-sdk[durable]    # Redis-backed execution
-pip install ledger-sdk[sidecar]    # HTTP sidecar pattern
-pip install ledger-sdk[all]        # Everything
 ```
+
+Requires PostgreSQL 14+ for the audit chain and policy storage.
 
 ## Quick Start
 
-### Basic Governance
-
 ```python
-import asyncio
-from ledger import Ledger
+import ledger
 
-async def main():
-    gov = Ledger(audit_dsn="postgresql://user:pass@localhost/db")
-    await gov.start()
-    
-    @gov.governed(action="publish", resource="listing")
-    async def publish_listing(data: dict):
-        return {"status": "published"}
-    
-    # This will block for approval
-    result = await publish_listing({"title": "New Product"})
-    print(result)
-    
-    await gov.stop()
-
-asyncio.run(main())
-```
-
-### Error Handling
-
-```python
-from ledger import try_governed, Retry, Catch
-
-# Auto-retry with exponential backoff
-@try_governed(Retry(times=3, backoff=2.0))
-@gov.governed(action="stripe_charge")
-async def charge_customer(amount: float):
-    return await stripe.charges.create(amount=amount)
-
-# Route failures to fallback
-@try_governed(Catch(notify_admin_alert))
-@gov.governed(action="send_email")
-async def send_critical_alert(message: str):
-    return await smtp.send(to="admin@company.com", body=message)
-```
-
-### Subgraph Execution
-
-```python
-from ledger import SubgraphExecutor, get_subgraph_executor
-
-executor = get_subgraph_executor()
-
-@executor.output("summary", cost_estimate=0.05)
-@gov.governed(action="generate_summary")
-async def generate_summary(text: str):
-    return await llm.summarize(text)
-
-@executor.output("translation", cost_estimate=0.08)
-@gov.governed(action="translate_text")
-async def translate_text(text: str):
-    return await llm.translate(text, lang="es")
-
-# Run just what you need
-result = await executor.run_output("summary", text="Long document...")
-```
-
-### Analytics & Monitoring
-
-```python
-from ledger import get_analytics, get_profiler
-
-# Check for anomalies
-analytics = get_analytics()
-metrics = await analytics.analyze_window(TimeWindow.last_hour())
-
-# Build behavior profile
-profiler = get_profiler()
-profile = await profiler.build_profile(agent="my-agent", days=7)
-
-# Health check
-health = await analytics.check_agent_health("my-agent")
-print(f"Health score: {health['health_score']}/100")
-```
-
-## Dashboard API
-
-```python
-from ledger import get_fastapi_router
-from fastapi import FastAPI
-
-app = FastAPI()
-app.include_router(get_fastapi_router())
-
-# Endpoints:
-# GET /dashboard/summary       → Executive summary
-# GET /dashboard/pending       → Pending approvals
-# GET /dashboard/failed        → Recent failures
-# GET /dashboard/anomalies     → Detected anomalies
-# GET /dashboard/agent/{agent}/health → Per-agent health
+# Via API
+client = ledger.LedgerClient(base_url="http://localhost:8000", api_key="your-key")
+result = await client.execute(
+    action="email.send",
+    resource="user:123",
+    payload={"to": "user@example.com"},
+    actor_id="agent-1",
+)
+print(result.status)  # "executed", "blocked", "pending_approval"
 ```
 
 ## Documentation
 
-- [Integration Guide](docs/GOVERNANCE_WIRING.md) — How to wire into your app
-- [Product Roadmap](docs/ROADMAP.md) — 4-week plan to production
-- [Architecture Decision](docs/ARCHITECTURE_DECISION.md) — Governor vs SDK design
-- [API Reference](https://github.com/casss20/ledger-sdk/tree/master/src/ledger)
-
-## Examples
-
-```bash
-# Run the governed actions demo
-python examples/governed_actions.py
-
-# FastAPI integration
-python examples/fastapi_integration.py
-
-# Error handling patterns
-python examples/error_handling_demo.py
-```
-
-## Governance Constitution
-
-The SDK ships with 24 governance markdown files:
-
-- `CONSTITUTION.md` — Core principles and approval rules
-- `GOVERNOR.md` — Escalation patterns
-- `RUNTIME.md` — Mode selection (fast/standard/structured/high_risk)
-- `EXECUTOR.md` — Execution patterns
-- `AUDIT.md` — Audit requirements
-- ...and 19 more
-
-These are injected into LLM system prompts so agents *know* the rules.
-
-## Weft-Inspired Patterns
-
-Ledger SDK adopts proven patterns from [Weft](https://github.com/WeaveMindAI/weft):
-
-| Pattern | Implementation |
-|---------|----------------|
-| Durable execution | Redis-backed promises (`DurablePromise`) |
-| Null propagation | `SkipExecution` cascades through graphs |
-| Recursive groups | Collapsible `ActionGroup`/`ActionNode` |
-| Subgraph execution | `SubgraphExecutor` for selective output |
-| Native mocking | `@mockable` decorator |
-| Compile validation | Pydantic `validate_at_startup` |
-| Dense syntax | `gov.action()`, `gov.email()` DSL |
-| Sidecar pattern | HTTP bridge to infrastructure |
-
-## Why Ledger?
-
-| Competitors | Ledger |
-|-------------|--------|
-| "AI governance platform" (vague) | "Stop agent accidents" (concrete) |
-| Days of integration | 4 lines of code |
-| $2k+/mo | $0 open source |
-| Black box | Full visibility (Governor, Analytics, Dashboard) |
-
-**Customer reaction**: *"Oh fuck, we NEED this. Our agent nearly broke production yesterday."*
-
-## Changelog
-
-### v0.1.0 (2026-04-19)
-
-- Initial release
-- Core governance: `@governed`, kill switches, approval queue, audit
-- Error handling: `Retry`, `Catch`, `Default`, `DeadLetter`
-- Subgraph execution: selective output execution
-- Cross-action analytics: anomaly detection, health scoring
-- Dashboard API: FastAPI endpoints
-- 8 Weft patterns adopted
+- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) — Module dependency graph
+- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
+- [API Reference](docs/API.md) — HTTP endpoints and request/response schemas
 
 ## License
 
-MIT — See [LICENSE](LICENSE)
-
----
-
-Built for [agent-world](https://github.com/casss20/agent-world) | [GitHub](https://github.com/casss20/ledger-sdk) | [PyPI](https://pypi.org/project/ledger-sdk/)
+MIT
