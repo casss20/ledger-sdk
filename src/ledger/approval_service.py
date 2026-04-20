@@ -24,6 +24,7 @@ class ApprovalCheck:
     priority: str  # 'low', 'medium', 'high', 'critical'
     reason: str
     expires_hours: int = 24
+    risk_level: Optional[str] = None
 
 
 @dataclass

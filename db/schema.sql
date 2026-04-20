@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS capabilities (
 
 CREATE INDEX IF NOT EXISTS idx_capabilities_actor_id ON capabilities (actor_id);
 CREATE INDEX IF NOT EXISTS idx_capabilities_active ON capabilities (actor_id, action_scope, resource_scope)
-    WHERE revoked = FALSE AND uses < max_uses AND expires_at > NOW();
+    WHERE revoked = FALSE AND uses < max_uses;
 CREATE INDEX IF NOT EXISTS idx_capabilities_expires_at ON capabilities (expires_at)
     WHERE revoked = FALSE;
 
@@ -395,12 +395,12 @@ RETURNS TRIGGER AS $$
 BEGIN
     NEW.event_hash := encode(
         digest(
-            NEW.event_id::text || 
             COALESCE(NEW.action_id::text, '') || 
             NEW.event_type || 
             NEW.event_ts::text || 
             COALESCE(NEW.payload_json::text, '{}') ||
-            NEW.prev_hash,
+            COALESCE(NEW.prev_hash, repeat('0', 64)) ||
+            COALESCE(NEW.actor_id, ''),
             'sha256'
         ),
         'hex'
@@ -446,7 +446,7 @@ CREATE OR REPLACE VIEW active_governance_state AS
 SELECT 
     'actor' as entity_type,
     actor_id as entity_id,
-    status as state,
+    status::text as state,
     jsonb_build_object('type', actor_type, 'tenant', tenant_id) as config
 FROM actors 
 WHERE status = 'active'
@@ -454,7 +454,7 @@ UNION ALL
 SELECT 
     'policy' as entity_type,
     policy_id::text as entity_id,
-    status as state,
+    status::text as state,
     jsonb_build_object('name', name, 'version', version, 'scope', scope_type || ':' || scope_value) as config
 FROM policies 
 WHERE status = 'active'

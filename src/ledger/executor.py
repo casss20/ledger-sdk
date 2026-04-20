@@ -5,7 +5,7 @@ Only job: Execute the action function.
 No governance logic here - that's all done before we get here.
 """
 
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, Optional
 
 from ledger.kernel import Action
 
@@ -24,7 +24,7 @@ class Executor:
     async def run(
         self,
         action: Action,
-        func: Callable[..., Awaitable[Any]],
+        func: Optional[Callable[..., Awaitable[Any]]] = None,
         *args,
         **kwargs
     ) -> Any:
@@ -32,9 +32,10 @@ class Executor:
         Execute the governed action.
         
         All governance checks already passed. Just run it.
+        If no function provided, returns a default success result.
         """
-        # Could add: timing, circuit breakers, timeouts here
-        # But keep it simple for MVP
+        if func is None:
+            return {"status": "allowed", "action": action.action_name}
         
         result = await func(*args, **kwargs)
         return result

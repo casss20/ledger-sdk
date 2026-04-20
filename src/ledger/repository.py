@@ -8,6 +8,7 @@ No other module has direct DB access.
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+import json
 import asyncpg
 
 from ledger.kernel import Action, Decision
@@ -52,8 +53,8 @@ class Repository:
                 action.action_name,
                 action.resource,
                 action.tenant_id,
-                action.payload,
-                action.context,
+                json.dumps(action.payload) if action.payload else '{}',
+                json.dumps(action.context) if action.context else '{}',
                 action.session_id,
                 action.request_id,
                 action.idempotency_key,
@@ -280,7 +281,7 @@ class Repository:
             await conn.execute("""
                 INSERT INTO policy_snapshots (snapshot_id, policy_id, policy_version, snapshot_hash, snapshot_json)
                 VALUES ($1, $2, $3, $4, $5)
-            """, snapshot_id, policy_id, version, snapshot_hash, snapshot_json)
+            """, snapshot_id, policy_id, version, snapshot_hash, json.dumps(snapshot_json) if snapshot_json else '{}')
         return snapshot_id
     
     # =========================================================================
@@ -295,13 +296,26 @@ class Repository:
         actor_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> int:
-        """Append audit event."""
+        """Append audit event with hash chain."""
         async with self.pool.acquire() as conn:
+            # Get previous hash
+            prev_row = await conn.fetchrow("""
+                SELECT event_hash FROM audit_events
+                ORDER BY event_id DESC LIMIT 1
+            """)
+            prev_hash = prev_row['event_hash'] if prev_row else '0' * 64
+            
+            # Compute event hash with nonce to avoid collisions
+            import hashlib
+            nonce = uuid.uuid4().hex
+            event_data = f"{action_id}{event_type}{datetime.utcnow().isoformat()}{json.dumps(payload)}{prev_hash}{actor_id or ''}{nonce}"
+            event_hash = hashlib.sha256(event_data.encode()).hexdigest()
+            
             row = await conn.fetchrow("""
-                INSERT INTO audit_events (action_id, event_type, payload_json, actor_id, tenant_id)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO audit_events (action_id, event_type, payload_json, prev_hash, event_hash, actor_id, tenant_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING event_id
-            """, action_id, event_type, payload, actor_id, tenant_id)
+            """, action_id, event_type, json.dumps(payload) if payload else '{}', prev_hash, event_hash, actor_id, tenant_id)
             return row['event_id']
     
     async def verify_audit_chain(self) -> Dict:
@@ -332,7 +346,7 @@ class Repository:
             await conn.execute("""
                 INSERT INTO execution_results (action_id, success, result_json, error_message)
                 VALUES ($1, $2, $3, $4)
-            """, action_id, success, result, error)
+            """, action_id, success, json.dumps(result) if result else '{}', error)
     
     # =========================================================================
     # ACTORS

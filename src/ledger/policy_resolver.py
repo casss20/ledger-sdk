@@ -112,13 +112,17 @@ class PolicyResolver:
         version = f"{policy['name']}:{policy['version']}"
         
         # Build snapshot JSON
+        rules_json = policy['rules_json']
+        if isinstance(rules_json, str):
+            rules_json = json.loads(rules_json)
+        
         snapshot_json = {
             'policy_id': str(policy_id),
             'name': policy['name'],
             'version': policy['version'],
             'scope_type': policy['scope_type'],
             'scope_value': policy['scope_value'],
-            'rules': policy['rules_json'].get('rules', []),
+            'rules': rules_json.get('rules', []),
             'resolved_at': str(uuid.uuid1()),  # Unique resolution marker
         }
         

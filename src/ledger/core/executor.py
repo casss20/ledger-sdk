@@ -408,6 +408,23 @@ class Executor:
         """
         return attempts >= 2
 
+    async def run(self, action) -> Any:
+        """
+        Run action through executor with a no-op function.
+        This is used when the kernel just needs to mark an action as allowed
+        without executing a specific user function.
+        """
+        async def noop():
+            return {"status": "allowed", "action": action.action_name}
+        
+        return await self.execute(
+            action=action.action_name,
+            resource=action.resource,
+            fn=noop,
+            args=(),
+            kwargs={},
+        )
+
 
 # Convenience decorator
 def executor(gov: Governor = None, audit_dsn: str = None, agent: str = "default"):

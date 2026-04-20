@@ -213,12 +213,13 @@ class AuditService:
         """Log idempotent cache hit."""
         return await self._log(
             action=action,
-            event_type='action_received',  # Still received
+            event_type='action_received',
             payload={
                 'idempotent': True,
                 'cached_decision_id': str(cached_decision.decision_id),
                 'cached_status': cached_decision.status.value,
-            }
+            },
+            override_action_id=cached_decision.action_id,
         )
     
     async def escalation_triggered(
@@ -242,10 +243,11 @@ class AuditService:
         action: Action,
         event_type: str,
         payload: Dict[str, Any],
+        override_action_id: Optional[uuid.UUID] = None,
     ) -> int:
         """Write event to audit log."""
         return await self.repo.save_audit_event(
-            action_id=action.action_id,
+            action_id=override_action_id or action.action_id,
             event_type=event_type,
             payload=payload,
             actor_id=action.actor_id,

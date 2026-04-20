@@ -81,9 +81,9 @@ class KernelResult:
 class Kernel:
     """
     Governance kernel - orchestrates the action lifecycle.
-    
+
     Single entry point: handle(action) -> KernelResult
-    
+
     Lifecycle:
     1. Normalize action -> write to actions table
     2. Check idempotency -> return cached if duplicate
@@ -94,7 +94,7 @@ class Kernel:
     7. Write terminal decision
     8. Audit log
     """
-    
+
     def __init__(
         self,
         repository: 'Repository',
@@ -112,7 +112,7 @@ class Kernel:
         self.caps = capability_service
         self.audit = audit_service
         self.executor = executor
-    
+
     async def handle(
         self,
         action: Action,
@@ -120,14 +120,10 @@ class Kernel:
     ) -> KernelResult:
         """
         Handle a single action through the governance lifecycle.
-        
+
         This is the ONLY entry point. All paths go through here.
         """
-        # 1. Persist action
-        await self.repo.save_action(action)
-        await self.audit.action_received(action)
-        
-        # 2. Check idempotency
+        # 1. Check idempotency FIRST (before persisting duplicate action)
         if action.idempotency_key:
             cached = await self.repo.find_decision_by_idempotency(
                 action.actor_id, action.idempotency_key
@@ -141,7 +137,11 @@ class Kernel:
                     result=None,
                     error=None
                 )
-        
+
+        # 2. Persist action
+        await self.repo.save_action(action)
+        await self.audit.action_received(action)
+
         # 3. Resolve policy snapshot
         try:
             snapshot = await self.policy.resolve(action)
@@ -151,16 +151,15 @@ class Kernel:
                 action, KernelStatus.BLOCKED_SCHEMA, "policy_resolution_failed", str(e)
             )
             return KernelResult(action=action, decision=decision, executed=False, result=None, error=str(e))
-        
+
         # 4. Precedence evaluation (kill switch -> capability -> policy)
         precedence_result = await self.precedence.evaluate(
             action=action,
             snapshot=snapshot,
             capability_token=capability_token,
-            caps=self.caps,
-            audit=self.audit,
+            context=action.context,
         )
-        
+
         if precedence_result.blocked:
             decision = await self._terminal_decision(
                 action,
@@ -171,15 +170,15 @@ class Kernel:
                 capability_token=capability_token,
             )
             return KernelResult(action=action, decision=decision, executed=False, result=None, error=precedence_result.reason)
-        
+
         # 5. Risk assessment / approval check
         approval_check = await self.approvals.check_required(action, snapshot)
-        
+
         if approval_check.required:
             # Create pending approval
             approval_id = await self.approvals.create_pending(action, approval_check)
             await self.audit.approval_requested(action, approval_id)
-            
+
             decision = await self._terminal_decision(
                 action,
                 KernelStatus.PENDING_APPROVAL,
@@ -189,7 +188,7 @@ class Kernel:
                 risk_level=approval_check.risk_level,
             )
             return KernelResult(action=action, decision=decision, executed=False, result=None, error=None)
-        
+
         # 6. Execute (if we get here, action is allowed)
         try:
             result = await self.executor.run(action)
@@ -201,7 +200,7 @@ class Kernel:
             executed = False
             exec_status = KernelStatus.FAILED_EXECUTION
             exec_error = str(e)
-        
+
         # 7. Write terminal decision
         decision = await self._terminal_decision(
             action,
@@ -212,7 +211,7 @@ class Kernel:
             capability_token=capability_token,
             path_taken=precedence_result.path_taken,
         )
-        
+
         # 8. Log execution result
         if executed:
             await self.repo.save_execution_result(action.action_id, True, result)
@@ -220,7 +219,7 @@ class Kernel:
         else:
             await self.repo.save_execution_result(action.action_id, False, None, exec_error)
             await self.audit.action_failed(action, exec_error)
-        
+
         return KernelResult(
             action=action,
             decision=decision,
@@ -228,7 +227,7 @@ class Kernel:
             result=result,
             error=exec_error
         )
-    
+
     async def _terminal_decision(
         self,
         action: Action,
@@ -273,10 +272,10 @@ class PrecedenceResult:
 class Precedence:
     """
     Evaluates governance precedence: kill switch -> capability -> policy.
-    
+
     No decision logic leaks outside this module.
     """
-    
+
     async def evaluate(
         self,
         action: Action,
@@ -287,7 +286,7 @@ class Precedence:
     ) -> PrecedenceResult:
         """
         Evaluate precedence chain.
-        
+
         Order: Kill Switch -> Capability -> Policy
         """
         # 1. Kill switch check (highest precedence)
@@ -301,12 +300,12 @@ class Precedence:
                 reason=kill_switch.reason,
                 path_taken="blocked"
             )
-        
+
         # 2. Capability check (if token provided)
         if capability_token:
             cap_check = await caps.validate(capability_token, action)
             await audit.capability_checked(action, cap_check)
-            
+
             if not cap_check.valid:
                 return PrecedenceResult(
                     blocked=True,
@@ -315,11 +314,11 @@ class Precedence:
                     reason=cap_check.reason,
                     path_taken="blocked"
                 )
-        
+
         # 3. Policy evaluation
         if snapshot:
             policy_result = self._evaluate_policy(snapshot, action)
-            
+
             if policy_result.effect == "BLOCK":
                 return PrecedenceResult(
                     blocked=True,
@@ -337,10 +336,10 @@ class Precedence:
                     reason=policy_result.reason,
                     path_taken="approval_required"
                 )
-        
+
         # 4. Path selection (from RUNTIME.md)
         path = self._select_path(action, snapshot)
-        
+
         return PrecedenceResult(
             blocked=False,
             status=None,
@@ -348,17 +347,17 @@ class Precedence:
             reason="All checks passed",
             path_taken=path
         )
-    
+
     async def _check_kill_switch(self, action: Action) -> Any:
         """Check if kill switch is active for action scope."""
         # Delegates to repository
         pass
-    
+
     def _evaluate_policy(self, snapshot: Any, action: Action) -> Any:
         """Evaluate policy rules against action."""
         # Returns PolicyEvaluationResult with effect
         pass
-    
+
     def _select_path(self, action: Action, snapshot: Any) -> str:
         """Select execution path: fast, standard, structured, high_risk."""
         # From RUNTIME.md path selection
@@ -369,15 +368,15 @@ class Precedence:
         elif self._is_structured(action):
             return "structured"
         return "standard"
-    
+
     def _is_fast_path(self, action: Action) -> bool:
         """Trusted actor + known action + no risk flags."""
         pass
-    
+
     def _is_high_risk(self, action: Action) -> bool:
         """Irreversible + high stakes + production."""
         pass
-    
+
     def _is_structured(self, action: Action) -> bool:
         """Multi-step + needs planning."""
         pass

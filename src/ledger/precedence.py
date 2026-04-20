@@ -180,8 +180,8 @@ class Precedence:
             return CapabilityStatus(valid=False, reason="Capability revoked")
         
         # Check expiry
-        from datetime import datetime
-        if cap['expires_at'] < datetime.utcnow():
+        from datetime import datetime, timezone
+        if cap['expires_at'] < datetime.now(timezone.utc):
             return CapabilityStatus(valid=False, reason="Capability expired")
         
         # Check uses
