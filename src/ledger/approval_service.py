@@ -115,6 +115,49 @@ class ApprovalService:
         
         return approval_id
     
+    async def resolve_approval(
+        self,
+        approval_id: uuid.UUID,
+        reviewed_by: str,
+        decision: str,  # 'approved' or 'rejected'
+        reason: Optional[str] = None,
+    ) -> ApprovalResult:
+        """
+        Resolve a pending approval to approved or rejected.
+        
+        Updates DB and returns the result.
+        """
+        approval = await self.repo.get_approval(approval_id)
+        if not approval:
+            raise ValueError(f"Approval {approval_id} not found")
+        
+        if approval['status'] != 'pending':
+            raise ValueError(f"Approval already {approval['status']}")
+        
+        # Update in database
+        async with self.repo.pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE approvals
+                SET status = $1,
+                    reviewed_by = $2,
+                    decided_at = NOW(),
+                    decision_reason = $3
+                WHERE approval_id = $4
+                """,
+                decision,
+                reviewed_by,
+                reason or f"Decision: {decision}",
+                approval_id,
+            )
+        
+        return ApprovalResult(
+            approval_id=approval_id,
+            status=decision,
+            reviewed_by=reviewed_by,
+            reason=reason or f"Decision: {decision}",
+        )
+
     async def approve(
         self,
         approval_id: uuid.UUID,
