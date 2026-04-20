@@ -41,6 +41,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "typing-extensions>=4.0",
     "prometheus-client>=0.17",
+    "httpx>=0.24",
 ]
 
 [project.optional-dependencies]

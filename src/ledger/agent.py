@@ -36,7 +36,10 @@ import asyncio
 
 from .identity import AgentIdentity, AgentRegistry, get_registry, register_agent
 from .core import Constitution, ConstitutionViolation, DEFAULT_CONSTITUTION
-from .sdk import Ledger
+from .sdk import LedgerClient
+
+# Backward compatibility alias
+Ledger = LedgerClient
 from .governor import get_governor, ActionState
 
 

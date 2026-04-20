@@ -31,7 +31,24 @@ from .core import (
 )
 
 # Public API (from sdk.py)
-from .sdk import Ledger, Denied
+from .sdk import (
+    LedgerClient,
+    LedgerResult,
+    ActionBlocked,
+    ApprovalRequired,
+    configure,
+    execute,
+    decide,
+    approve,
+    reject,
+    guard,
+    wrap,
+    verify_audit,
+)
+
+# Backward compatibility aliases
+Ledger = LedgerClient
+Denied = ActionBlocked
 
 # Identity & Agent (from root)
 from .identity import (
@@ -158,8 +175,20 @@ __all__ = [
     "Layer",
     "get_runtime",
     # Public API
+    "LedgerClient",
     "Ledger",
+    "LedgerResult",
+    "ActionBlocked",
     "Denied",
+    "ApprovalRequired",
+    "configure",
+    "execute",
+    "decide",
+    "approve",
+    "reject",
+    "guard",
+    "wrap",
+    "verify_audit",
     "Agent",
     "create_agent",
     # Identity

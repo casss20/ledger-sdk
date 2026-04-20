@@ -34,12 +34,24 @@ class SubmitActionRequest(BaseModel):
 
 class ActionResponse(BaseModel):
     action_id: str
-    status: str
+    status: str  # lowercase: executed, blocked, pending_approval, etc.
     winning_rule: str
     reason: str
     executed: bool
     result: Optional[Any] = None
     error: Optional[str] = None
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "action_id": "uuid",
+            "status": "blocked",
+            "winning_rule": "policy_hard_deny",
+            "reason": "amount exceeds policy",
+            "executed": False,
+            "result": None,
+            "error": None,
+        }
+    }}
 
 
 class ActionDetailResponse(BaseModel):
@@ -80,15 +92,33 @@ async def submit_action(
     
     result = await kernel.handle(action, capability_token=req.capability_token)
     
+    # Convert status to lowercase for API consistency
+    status_value = result.decision.status.value.lower()
+    
     return ActionResponse(
         action_id=str(result.action.action_id),
-        status=result.decision.status.value,
+        status=status_value,
         winning_rule=result.decision.winning_rule,
         reason=result.decision.reason,
         executed=result.executed,
         result=result.result,
         error=result.error,
     )
+
+
+@router.post("/actions/execute", response_model=ActionResponse, status_code=status.HTTP_202_ACCEPTED)
+async def execute_action(
+    req: SubmitActionRequest,
+    kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
+):
+    """
+    Execute an action under governance control.
+    
+    Universal entry point — the single primitive Ledger exposes.
+    Same as POST /actions, named explicitly for clarity.
+    """
+    return await submit_action(req, kernel, _)
 
 
 @router.get("/actions/{action_id}", response_model=ActionDetailResponse)

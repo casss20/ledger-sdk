@@ -1,257 +1,332 @@
 """
-Ledger SDK — Public API (Kernel-Integrated)
+Ledger SDK — Universal client for the governance kernel.
 
-Wraps the governance kernel for developer convenience.
+One primitive: execute an action under control.
+
+Usage:
+    import ledger
+    
+    result = await ledger.execute(
+        action="email.send",
+        resource="user:123",
+        payload={"to": "external@gmail.com"},
+        actor_id="agent-1",
+    )
+    
+    if result.status == "executed":
+        return result.result
+    elif result.status == "pending_approval":
+        return "Waiting for approval"
+    else:
+        return f"Blocked: {result.reason}"
 """
 
-from typing import Any, Callable, Optional, Awaitable, TypeVar
-import functools
-import uuid
-from datetime import datetime
+import os
+from typing import Optional, Dict, Any, Callable, Awaitable
+from dataclasses import dataclass
 
-# New kernel imports
-from ledger.kernel import Kernel, Action, KernelResult, KernelStatus
-from ledger.repository import Repository
-from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
-from ledger.precedence import Precedence
-from ledger.approval_service import ApprovalService
-from ledger.capability_service import CapabilityService
-from ledger.audit_service import AuditService
-from ledger.executor import Executor as KernelExecutor
-from ledger.status import ActorType
-
-# Legacy imports for backwards compatibility
-from ledger.core import Executor, ExecutionMode, Governor, Constitution, DEFAULT_CONSTITUTION
-from ledger.governance.alignment import Alignment, get_alignment
-
-T = TypeVar('T')
+import httpx
 
 
-class Denied(Exception):
-    """Action denied by governance."""
-    pass
+@dataclass
+class LedgerResult:
+    """Result of an action through Ledger governance."""
+    action_id: str
+    status: str  # executed, blocked, pending_approval, failed_execution, etc.
+    winning_rule: str
+    reason: str
+    executed: bool
+    result: Optional[Any] = None
+    error: Optional[str] = None
 
 
-class Ledger:
+class LedgerClient:
     """
-    Public API for Ledger SDK.
+    Universal SDK client for Ledger governance.
     
-    Uses the new governance kernel for all enforcement.
+    Works with:
+    - Python
+    - Any HTTP-capable language (via API)
+    - Agents and APIs
     """
     
     def __init__(
         self,
-        *,
-        audit_dsn: str,
-        agent: str = "default",
-        governor: Optional[Governor] = None,
-        constitution: Optional[Constitution] = None,
-        world_goals: Optional[dict] = None,
-        db_pool: Optional[Any] = None,
+        base_url: str = None,
+        api_key: str = None,
+        actor_id: str = None,
+        actor_type: str = "agent",
     ):
-        self.agent = agent
-        self.constitution = constitution or DEFAULT_CONSTITUTION
-        self.audit_dsn = audit_dsn
-        self._db_pool = db_pool
-        
-        # Legacy components
-        self._executor = Executor(
-            audit_dsn=audit_dsn,
-            agent=agent,
-            governor=governor or get_governor()
-        )
-        self._alignment = get_alignment(world_goals=world_goals)
-        self._governor = governor or get_governor()
-        
-        # New kernel (initialized on first use if db_pool not provided)
-        self._kernel: Optional[Kernel] = None
-        self._repository: Optional[Repository] = None
-    
-    async def initialize(self):
-        """Initialize database pool and kernel."""
-        if self._db_pool is None:
-            import asyncpg
-            self._db_pool = await asyncpg.create_pool(self.audit_dsn)
-        
-        self._repository = Repository(self._db_pool)
-        
-        # Build kernel with all services
-        policy_resolver = PolicyResolver(self._repository)
-        policy_evaluator = PolicyEvaluator()
-        precedence = Precedence(self._repository, policy_evaluator)
-        approval_service = ApprovalService(self._repository)
-        capability_service = CapabilityService(self._repository)
-        audit_service = AuditService(self._repository)
-        executor = KernelExecutor()
-        
-        self._kernel = Kernel(
-            repository=self._repository,
-            policy_resolver=policy_resolver,
-            precedence=precedence,
-            approval_service=approval_service,
-            capability_service=capability_service,
-            audit_service=audit_service,
-            executor=executor,
-        )
-        
-        # Ensure agent actor exists
-        await self._repository.ensure_actor(
-            actor_id=self.agent,
-            actor_type=ActorType.AGENT.value
+        self.base_url = (base_url or os.getenv("LEDGER_URL", "http://localhost:8000")).rstrip("/")
+        self.api_key = api_key or os.getenv("LEDGER_API_KEY", "")
+        self.actor_id = actor_id or os.getenv("LEDGER_ACTOR_ID", "default")
+        self.actor_type = actor_type
+        self._client = httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={"X-API-Key": self.api_key} if self.api_key else {},
+            timeout=30.0,
         )
     
-    async def shutdown(self):
-        """Cleanup resources."""
-        if self._db_pool:
-            await self._db_pool.close()
+    # =====================================================================
+    # CORE PRIMITIVE: execute
+    # =====================================================================
     
-    def governed(
+    async def execute(
         self,
-        *,
         action: str,
         resource: str,
-        flag: Optional[str] = None,
-        context: Optional[dict] = None,
-        capability_required: bool = False,
-        idempotent: bool = False,
-        risk: Optional[str] = None,
+        payload: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
+        actor_id: str = None,
+        actor_type: str = None,
+        idempotency_key: str = None,
+        capability_token: str = None,
+    ) -> LedgerResult:
+        """
+        Execute an action under governance control.
+        
+        The ONE entry point. Everything funnels through here.
+        """
+        request = {
+            "actor_id": actor_id or self.actor_id,
+            "actor_type": actor_type or self.actor_type,
+            "action_name": action,
+            "resource": resource,
+            "payload": payload or {},
+            "context": context or {},
+        }
+        
+        if idempotency_key:
+            request["idempotency_key"] = idempotency_key
+        if capability_token:
+            request["capability_token"] = capability_token
+        
+        response = await self._client.post("/v1/actions/execute", json=request)
+        response.raise_for_status()
+        
+        data = response.json()
+        return LedgerResult(
+            action_id=data["action_id"],
+            status=data["status"],
+            winning_rule=data["winning_rule"],
+            reason=data["reason"],
+            executed=data["executed"],
+            result=data.get("result"),
+            error=data.get("error"),
+        )
+    
+    # =====================================================================
+    # DECISION (no execution)
+    # =====================================================================
+    
+    async def decide(
+        self,
+        action: str,
+        resource: str,
+        payload: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
+        actor_id: str = None,
+        actor_type: str = None,
+    ) -> LedgerResult:
+        """
+        Get a decision without executing the action.
+        
+        Useful for: pre-flight checks, dry runs, policy debugging.
+        """
+        return await self.execute(
+            action=action,
+            resource=resource,
+            payload=payload,
+            context=context,
+            actor_id=actor_id,
+            actor_type=actor_type,
+        )
+    
+    # =====================================================================
+    # GUARD (decorator / wrapper)
+    # =====================================================================
+    
+    def guard(
+        self,
+        action: str = None,
+        resource: str = None,
     ) -> Callable:
         """
-        Decorator for governed actions.
+        Decorator: wrap an async function with governance.
         
-        Uses the kernel for full governance lifecycle.
+        Usage:
+            @ledger.guard(action="email.send", resource="user:{user_id}")
+            async def send_email(user_id: str, body: str):
+                ...
         """
-        def decorator(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
-            @functools.wraps(fn)
+        def decorator(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
             async def wrapper(*args, **kwargs):
-                if self._kernel is None:
-                    await self.initialize()
+                # Resolve action/resource with optional formatting
+                resolved_action = action or fn.__name__
+                resolved_resource = resource or resolved_action
                 
-                # Build action from decorator params
-                action_obj = Action(
-                    action_id=uuid.uuid4(),
-                    actor_id=self.agent,
-                    actor_type=ActorType.AGENT.value,
-                    action_name=action,
-                    resource=resource,
-                    tenant_id=None,
-                    payload={
-                        "args": str(args),
-                        "kwargs": str(kwargs),
-                        "flag": flag,
-                    },
-                    context={
-                        "risk": risk,
-                        **(context or {})
-                    },
-                    session_id=None,
-                    request_id=str(uuid.uuid4()),
-                    idempotency_key=f"{self.agent}:{action}:{resource}:{hash(str(args))}" if idempotent else None,
-                    created_at=datetime.utcnow(),
+                # Try to format resource with kwargs
+                try:
+                    resolved_resource = resolved_resource.format(**kwargs)
+                except (KeyError, IndexError):
+                    pass
+                
+                result = await self.execute(
+                    action=resolved_action,
+                    resource=resolved_resource,
+                    payload={"args": args, "kwargs": kwargs},
                 )
                 
-                # Run through kernel
-                result: KernelResult = await self._kernel.handle(
-                    action=action_obj,
-                    capability_token=None,  # Could be extracted from kwargs
-                )
-                
-                # Handle outcomes
-                if result.decision.status == KernelStatus.BLOCKED_EMERGENCY:
-                    raise Denied(f"Blocked by kill switch: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.BLOCKED_POLICY:
-                    raise Denied(f"Blocked by policy: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.BLOCKED_CAPABILITY:
-                    raise Denied(f"Blocked: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.PENDING_APPROVAL:
-                    raise Denied(f"Pending approval: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.REJECTED_APPROVAL:
-                    raise Denied(f"Approval rejected: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.EXPIRED_APPROVAL:
-                    raise Denied(f"Approval expired: {result.decision.reason}")
-                
-                if result.decision.status == KernelStatus.ALLOWED:
-                    # Execute the actual function
-                    exec_result = await fn(*args, **kwargs)
-                    
-                    # Record execution
-                    await self._repository.save_execution_result(
-                        action_id=action_obj.action_id,
-                        success=True,
-                        result={"result": str(exec_result)[:1000]}
-                    )
-                    
-                    # Update decision to EXECUTED
-                    # (In real implementation, kernel would do this)
-                    
-                    return exec_result
-                
-                if result.decision.status == KernelStatus.EXECUTED:
-                    return result.result
-                
-                if result.decision.status == KernelStatus.FAILED_EXECUTION:
-                    raise RuntimeError(f"Execution failed: {result.error}")
-                
-                # Fallback for unknown states
-                raise Denied(f"Unexpected status: {result.decision.status}")
+                if result.status == "executed":
+                    return await fn(*args, **kwargs)
+                elif result.status == "pending_approval":
+                    raise ApprovalRequired(f"Action pending approval: {result.reason}")
+                else:
+                    raise ActionBlocked(f"Action blocked: {result.reason} (rule: {result.winning_rule})")
             
             return wrapper
         return decorator
     
-    # Legacy API compatibility
-    def set_approval_hook(self, hook):
-        """Register hook for HARD approval decisions."""
-        self._executor.set_approval_hook(hook)
+    def wrap(self, fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        """
+        Wrap an existing function with governance.
+        
+        Usage:
+            governed_send = ledger.wrap(send_email)
+        """
+        return self.guard()(fn)
     
-    @property
-    def executor(self) -> Executor:
-        """Access EXECUTOR component."""
-        return self._executor
+    # =====================================================================
+    # APPROVALS
+    # =====================================================================
     
-    @property
-    def governor(self) -> Governor:
-        """Access GOVERNOR component."""
-        return self._governor
-    
-    @property
-    def alignment(self) -> Alignment:
-        """Access ALIGNMENT component."""
-        return self._alignment
-    
-    def set_mode(self, mode: ExecutionMode):
-        """Set execution mode (FLOW, CONTROLLED, STRICT)."""
-        self._executor.set_mode(mode)
-    
-    def enter_autonomy(self, goal: str, constraints: list, allowed_actions: list, 
-                       disallowed_actions: list, timeout_minutes: int = 60):
-        """Enter guided autonomy mode."""
-        return self._executor.enter_autonomy(
-            goal=goal, constraints=constraints,
-            allowed_actions=allowed_actions, disallowed_actions=disallowed_actions,
-            timeout_minutes=timeout_minutes
+    async def approve(self, approval_id: str, reviewed_by: str, reason: str = "Approved") -> Dict:
+        """Approve a pending request."""
+        response = await self._client.post(
+            f"/v1/approvals/{approval_id}/approve",
+            json={"reviewed_by": reviewed_by, "reason": reason},
         )
+        response.raise_for_status()
+        return response.json()
     
-    def exit_autonomy(self, reason: str):
-        """Exit autonomy mode."""
-        return self._executor.exit_autonomy(reason)
+    async def reject(self, approval_id: str, reviewed_by: str, reason: str = "Rejected") -> Dict:
+        """Reject a pending request."""
+        response = await self._client.post(
+            f"/v1/approvals/{approval_id}/reject",
+            json={"reviewed_by": reviewed_by, "reason": reason},
+        )
+        response.raise_for_status()
+        return response.json()
     
-    # New kernel API
-    @property
-    def kernel(self) -> Optional[Kernel]:
-        """Access governance kernel."""
-        return self._kernel
+    # =====================================================================
+    # AUDIT
+    # =====================================================================
     
-    async def verify_audit_chain(self) -> dict:
+    async def verify_audit(self) -> Dict:
         """Verify audit chain integrity."""
-        if self._kernel is None:
-            await self.initialize()
-        return await self._kernel.audit.verify_chain()
+        response = await self._client.get("/v1/audit/verify")
+        response.raise_for_status()
+        return response.json()
+    
+    async def close(self):
+        """Close the HTTP client."""
+        await self._client.aclose()
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, *args):
+        await self.close()
 
 
-# Backwards compatibility
-GovernedLedger = Ledger
+# =====================================================================
+# Exceptions
+# =====================================================================
+
+class ActionBlocked(Exception):
+    """Raised when an action is blocked by governance."""
+    pass
+
+
+class ApprovalRequired(Exception):
+    """Raised when an action requires human approval."""
+    pass
+
+
+# =====================================================================
+# Module-level convenience
+# =====================================================================
+
+_default_client: Optional[LedgerClient] = None
+
+
+def configure(
+    base_url: str = None,
+    api_key: str = None,
+    actor_id: str = None,
+    actor_type: str = "agent",
+):
+    """Configure the default Ledger client."""
+    global _default_client
+    _default_client = LedgerClient(
+        base_url=base_url,
+        api_key=api_key,
+        actor_id=actor_id,
+        actor_type=actor_type,
+    )
+
+
+async def execute(*args, **kwargs) -> LedgerResult:
+    """Execute an action using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.execute(*args, **kwargs)
+
+
+async def decide(*args, **kwargs) -> LedgerResult:
+    """Get a decision using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.decide(*args, **kwargs)
+
+
+async def approve(*args, **kwargs) -> Dict:
+    """Approve a request using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.approve(*args, **kwargs)
+
+
+async def reject(*args, **kwargs) -> Dict:
+    """Reject a request using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.reject(*args, **kwargs)
+
+
+def guard(*args, **kwargs) -> Callable:
+    """Guard decorator using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return _default_client.guard(*args, **kwargs)
+
+
+def wrap(fn: Callable) -> Callable:
+    """Wrap a function using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return _default_client.wrap(fn)
+
+
+async def verify_audit() -> Dict:
+    """Verify audit chain using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.verify_audit()
