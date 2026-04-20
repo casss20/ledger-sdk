@@ -28,7 +28,7 @@ from ledger.executor import Executor as ActionExecutor
 from ledger.status import ActorType
 
 
-DEMO_DSN = "postgresql://ledger:ledger@127.0.0.1:5432/ledger"
+DEMO_DSN = "postgresql://ledger:ledger@127.0.0.1:5432/ledger_test"
 
 
 async def setup_demo_data(pool: asyncpg.Pool):
