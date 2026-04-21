@@ -65,7 +65,7 @@ class ApprovalService:
         # Check policy for explicit approval requirement
         if snapshot:
             for rule in snapshot.get_rules():
-                if rule.get('requires_approval', False):
+                if rule.get('requires_approval', False) or rule.get('effect') == 'PENDING_APPROVAL':
                     return ApprovalCheck(
                         required=True,
                         priority=rule.get('approval_priority', 'high'),
