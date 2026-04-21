@@ -300,27 +300,38 @@ class Repository:
         actor_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> int:
-        """Append audit event with hash chain."""
+        """Append audit event with hash chain.
+
+        Uses PostgreSQL advisory lock to serialize concurrent appends and
+        guarantee correct prev_hash linkage. The lock is transaction-scoped
+        (pg_advisory_xact_lock) and auto-releases on commit.
+        """
         async with self.pool.acquire() as conn:
-            # Get previous hash
-            prev_row = await conn.fetchrow("""
-                SELECT event_hash FROM audit_events
-                ORDER BY event_id DESC LIMIT 1
-            """)
-            prev_hash = prev_row['event_hash'] if prev_row else '0' * 64
-            
-            # Compute event hash with nonce to avoid collisions
-            import hashlib
-            nonce = uuid.uuid4().hex
-            event_data = f"{action_id}{event_type}{datetime.utcnow().isoformat()}{json.dumps(payload)}{prev_hash}{actor_id or ''}{nonce}"
-            event_hash = hashlib.sha256(event_data.encode()).hexdigest()
-            
-            row = await conn.fetchrow("""
-                INSERT INTO audit_events (action_id, event_type, payload_json, prev_hash, event_hash, actor_id, tenant_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING event_id
-            """, action_id, event_type, json.dumps(payload) if payload else '{}', prev_hash, event_hash, actor_id, tenant_id)
-            return row['event_id']
+            async with conn.transaction():
+                # Serialize all audit chain appends via advisory lock.
+                # Lock key 1 = global audit chain. Transaction-scoped so it
+                # auto-releases when the INSERT commits.
+                await conn.execute("SELECT pg_advisory_xact_lock(1)")
+
+                # Get previous hash (now safe: no concurrent appends in flight)
+                prev_row = await conn.fetchrow("""
+                    SELECT event_hash FROM audit_events
+                    ORDER BY event_id DESC LIMIT 1
+                """)
+                prev_hash = prev_row['event_hash'] if prev_row else '0' * 64
+                
+                # Compute event hash with nonce to avoid collisions
+                import hashlib
+                nonce = uuid.uuid4().hex
+                event_data = f"{action_id}{event_type}{datetime.utcnow().isoformat()}{json.dumps(payload)}{prev_hash}{actor_id or ''}{nonce}"
+                event_hash = hashlib.sha256(event_data.encode()).hexdigest()
+                
+                row = await conn.fetchrow("""
+                    INSERT INTO audit_events (action_id, event_type, payload_json, prev_hash, event_hash, actor_id, tenant_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING event_id
+                """, action_id, event_type, json.dumps(payload) if payload else '{}', prev_hash, event_hash, actor_id, tenant_id)
+                return row['event_id']
     
     async def verify_audit_chain(self) -> Dict:
         """Verify hash chain integrity."""
