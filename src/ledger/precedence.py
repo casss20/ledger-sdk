@@ -208,7 +208,7 @@ class Precedence:
         # Action scope matching (supports wildcards)
         if action_scope == '*':
             action_match = True
-        elif action_scope.endswith(':*'):
+        elif action_scope.endswith(':*') or action_scope.endswith('.*'):
             prefix = action_scope[:-2]
             action_match = action.action_name.startswith(prefix + '.')
         else:
