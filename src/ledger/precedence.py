@@ -167,37 +167,40 @@ class Precedence:
         action: Action,
         token: str,
     ) -> CapabilityStatus:
-        """Validate capability token for action."""
+        """Validate and atomically consume capability token for action.
+
+        Semantic choice: consumption happens BEFORE execution.
+        Even if the executor later fails, the use is spent. This prevents
+        DoS where an attacker repeatedly requests with a limited-use cap
+        and relies on executor failures to retry. The tradeoff: transient
+        failures waste uses, but that's acceptable for safety.
+        """
+        # First, fetch capability to check scope (scope check is not in SQL function)
         cap = await self.repo.get_capability(token)
-        
         if not cap:
             return CapabilityStatus(valid=False, reason="Capability not found")
-        
-        if cap['actor_id'] != action.actor_id:
-            return CapabilityStatus(valid=False, reason="Capability not issued to this actor")
-        
-        if cap['revoked']:
-            return CapabilityStatus(valid=False, reason="Capability revoked")
-        
-        # Check expiry
-        from datetime import datetime, timezone
-        if cap['expires_at'] < datetime.now(timezone.utc):
-            return CapabilityStatus(valid=False, reason="Capability expired")
-        
-        # Check uses
-        if cap['uses'] >= cap['max_uses']:
-            return CapabilityStatus(valid=False, reason="Capability exhausted")
-        
-        # Check scope match
+
+        # Check scope match before attempting consumption
         if not self._capability_matches_scope(cap, action):
             return CapabilityStatus(
                 valid=False,
                 reason=f"Capability scope {cap['action_scope']} doesn't match action {action.action_name}"
             )
-        
+
+        # Atomic validation + consumption via DB function with FOR UPDATE.
+        # All remaining checks (actor match, expiry, exhaustion) happen inside
+        # the locked transaction. Two concurrent callers serialize here.
+        consume_result = await self.repo.consume_capability(token, action.actor_id)
+
+        if not consume_result['success']:
+            return CapabilityStatus(
+                valid=False,
+                reason=consume_result['error']
+            )
+
         return CapabilityStatus(
             valid=True,
-            remaining_uses=cap['max_uses'] - cap['uses']
+            remaining_uses=consume_result['remaining_uses']
         )
     
     def _capability_matches_scope(self, cap: Dict, action: Action) -> bool:
