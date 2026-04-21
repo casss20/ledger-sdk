@@ -12,6 +12,7 @@ The kernel is the governance enforcement engine. It orchestrates:
 Rule: No decision logic leaks across modules. Each module has one job.
 """
 
+import asyncio
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any, Callable, Awaitable
@@ -80,8 +81,35 @@ class Kernel:
                     error=None
                 )
 
-        # 2. Persist action
-        await self.repo.save_action(action)
+        # 2. Persist action (idempotent: ON CONFLICT returns False)
+        inserted = await self.repo.save_action(action)
+        if not inserted and action.idempotency_key:
+            # Another concurrent request with the same idempotency key won the race.
+            # Poll briefly for the winning request's decision (max ~500ms).
+            for _ in range(50):
+                cached = await self.repo.find_decision_by_idempotency(
+                    action.actor_id, action.idempotency_key
+                )
+                if cached:
+                    await self.audit.idempotent_return(action, cached)
+                    return KernelResult(
+                        action=action,
+                        decision=cached,
+                        executed=False,
+                        result=None,
+                        error=None
+                    )
+                await asyncio.sleep(0.01)
+            # If decision still not found, the winning request may have failed.
+            # Return a graceful error instead of crashing.
+            return KernelResult(
+                action=action,
+                decision=None,
+                executed=False,
+                result=None,
+                error="Idempotency conflict: duplicate action in flight, decision not yet available"
+            )
+
         await self.audit.action_received(action)
 
         # 3. Resolve policy snapshot

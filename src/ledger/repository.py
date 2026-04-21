@@ -38,14 +38,17 @@ class Repository:
     # ACTIONS
     # =========================================================================
     
-    async def save_action(self, action: Action) -> None:
-        """Persist canonical action record."""
+    async def save_action(self, action: Action) -> bool:
+        """Persist canonical action record. Returns True if inserted, False if conflict."""
         async with self.pool.acquire() as conn:
-            await conn.execute("""
+            row = await conn.fetchrow("""
                 INSERT INTO actions (
                     action_id, actor_id, actor_type, action_name, resource, tenant_id,
                     payload_json, context_json, session_id, request_id, idempotency_key, created_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ON CONFLICT (actor_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+                DO NOTHING
+                RETURNING action_id
             """,
                 action.action_id,
                 action.actor_id,
@@ -60,6 +63,7 @@ class Repository:
                 action.idempotency_key,
                 action.created_at
             )
+            return row is not None
     
     async def get_action(self, action_id: uuid.UUID) -> Optional[Dict]:
         """Fetch action by ID."""
