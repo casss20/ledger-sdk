@@ -69,7 +69,7 @@ class Kernel:
         # 1. Check idempotency FIRST (before persisting duplicate action)
         if action.idempotency_key:
             cached = await self.repo.find_decision_by_idempotency(
-                action.actor_id, action.idempotency_key
+                action.actor_id, action.idempotency_key, tenant_id=action.tenant_id
             )
             if cached:
                 await self.audit.idempotent_return(action, cached)
@@ -88,7 +88,7 @@ class Kernel:
             # Poll briefly for the winning request's decision (max ~500ms).
             for _ in range(50):
                 cached = await self.repo.find_decision_by_idempotency(
-                    action.actor_id, action.idempotency_key
+                    action.actor_id, action.idempotency_key, tenant_id=action.tenant_id
                 )
                 if cached:
                     await self.audit.idempotent_return(action, cached)
@@ -184,10 +184,10 @@ class Kernel:
 
         # 8. Log execution result
         if executed:
-            await self.repo.save_execution_result(action.action_id, True, result)
+            await self.repo.save_execution_result(action.action_id, True, result, tenant_id=action.tenant_id)
             await self.audit.action_executed(action, result)
         else:
-            await self.repo.save_execution_result(action.action_id, False, None, exec_error)
+            await self.repo.save_execution_result(action.action_id, False, None, exec_error, tenant_id=action.tenant_id)
             await self.audit.action_failed(action, exec_error)
 
         return KernelResult(
@@ -223,6 +223,7 @@ class Kernel:
             risk_score=risk_score,
             path_taken=path_taken,
             created_at=datetime.utcnow(),
+            tenant_id=action.tenant_id,
         )
         await self.repo.save_decision(decision)
         await self.audit.decision_made(action, decision)

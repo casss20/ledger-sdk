@@ -65,6 +65,7 @@ class Decision:
     risk_score: Optional[int]
     path_taken: Optional[str]
     created_at: datetime
+    tenant_id: Optional[str] = None
 
 
 @dataclass

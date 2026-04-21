@@ -111,6 +111,7 @@ class ApprovalService:
             reason=check.reason,
             requested_by=action.actor_id,
             expires_at=expires_at,
+            tenant_id=action.tenant_id,
         )
         
         return approval_id
@@ -235,9 +236,10 @@ class ApprovalService:
     async def get_pending_queue(
         self,
         limit: int = 100,
+        tenant_id: Optional[str] = None,
     ) -> list:
         """Get pending approvals queue (for dashboards)."""
-        return await self.repo.get_pending_approvals(limit)
+        return await self.repo.get_pending_approvals(limit, tenant_id=tenant_id)
     
     async def resolve_approval_to_decision(
         self,

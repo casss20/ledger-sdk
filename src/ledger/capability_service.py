@@ -6,6 +6,8 @@ Atomic operations only. All capability state changes go through here.
 
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
+import uuid
+from datetime import datetime
 
 from ledger.actions import Action
 from ledger.repository import Repository
@@ -37,10 +39,10 @@ class CapabilityService:
     ) -> CapabilityCheck:
         """
         Validate capability without consuming.
-        
+
         Use for pre-checks. Use consume() for actual execution.
         """
-        cap = await self.repo.get_capability(token)
+        cap = await self.repo.get_capability(token, tenant_id=action.tenant_id)
         
         if not cap:
             return CapabilityCheck(valid=False, reason="Capability not found")
@@ -55,7 +57,6 @@ class CapabilityService:
             return CapabilityCheck(valid=False, reason="Capability revoked")
         
         # Check expiry
-        from datetime import datetime
         if cap['expires_at'] < datetime.utcnow():
             return CapabilityCheck(valid=False, reason="Capability expired")
         
@@ -127,21 +128,22 @@ class CapabilityService:
         
         return action_match and resource_match
     
-    async def get_remaining_uses(self, token: str) -> int:
+    async def get_remaining_uses(self, token: str, tenant_id: Optional[str] = None) -> int:
         """Get remaining uses without consuming."""
-        cap = await self.repo.get_capability(token)
+        cap = await self.repo.get_capability(token, tenant_id=tenant_id)
         if not cap:
             return 0
         return cap['max_uses'] - cap['uses']
-    
+
     async def is_valid_for_action(
         self,
         token: str,
         action_name: str,
         resource: str,
+        tenant_id: Optional[str] = None,
     ) -> bool:
         """Check if capability valid for specific action/resource."""
-        cap = await self.repo.get_capability(token)
+        cap = await self.repo.get_capability(token, tenant_id=tenant_id)
         if not cap:
             return False
         
@@ -153,7 +155,7 @@ class CapabilityService:
             actor_type='agent',
             action_name=action_name,
             resource=resource,
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={},
             context={},
             session_id=None,

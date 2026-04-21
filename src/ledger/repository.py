@@ -65,12 +65,13 @@ class Repository:
             )
             return row is not None
     
-    async def get_action(self, action_id: uuid.UUID) -> Optional[Dict]:
-        """Fetch action by ID."""
+    async def get_action(self, action_id: uuid.UUID, tenant_id: Optional[str] = None) -> Optional[Dict]:
+        """Fetch action by ID. If tenant_id provided, enforce tenant isolation."""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT * FROM actions WHERE action_id = $1",
-                action_id
+                "SELECT * FROM actions WHERE action_id = $1 AND ($2::text IS NULL OR tenant_id = $2)",
+                action_id,
+                tenant_id,
             )
             return dict(row) if row else None
     
@@ -79,13 +80,13 @@ class Repository:
     # =========================================================================
     
     async def save_decision(self, decision: Decision) -> None:
-        """Persist terminal decision."""
+        """Persist terminal decision with tenant isolation."""
         async with self.pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO decisions (
                     decision_id, action_id, policy_snapshot_id, status, winning_rule, reason,
-                    capability_token, risk_level, risk_score, path_taken, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    capability_token, risk_level, risk_score, path_taken, created_at, tenant_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             """,
                 decision.decision_id,
                 decision.action_id,
@@ -97,13 +98,15 @@ class Repository:
                 decision.risk_level,
                 decision.risk_score,
                 decision.path_taken,
-                decision.created_at
+                decision.created_at,
+                decision.tenant_id,
             )
     
     async def find_decision_by_idempotency(
         self,
         actor_id: str,
-        idempotency_key: str
+        idempotency_key: str,
+        tenant_id: Optional[str] = None,
     ) -> Optional[Decision]:
         """Find existing decision for idempotent request."""
         async with self.pool.acquire() as conn:
@@ -111,21 +114,23 @@ class Repository:
                 SELECT d.* FROM decisions d
                 JOIN actions a ON d.action_id = a.action_id
                 WHERE a.actor_id = $1 AND a.idempotency_key = $2
+                AND ($3::text IS NULL OR a.tenant_id = $3)
                 ORDER BY d.created_at DESC
                 LIMIT 1
-            """, actor_id, idempotency_key)
+            """, actor_id, idempotency_key, tenant_id)
             
             if row:
                 return self._row_to_decision(row)
             return None
     
-    async def get_decision(self, action_id: uuid.UUID) -> Optional[Decision]:
-        """Fetch decision for action."""
+    async def get_decision(self, action_id: uuid.UUID, tenant_id: Optional[str] = None) -> Optional[Decision]:
+        """Fetch decision for action with tenant isolation."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM decisions WHERE action_id = $1",
-                action_id
-            )
+            row = await conn.fetchrow("""
+                SELECT d.* FROM decisions d
+                JOIN actions a ON d.action_id = a.action_id
+                WHERE d.action_id = $1 AND ($2::text IS NULL OR a.tenant_id = $2)
+            """, action_id, tenant_id)
             return self._row_to_decision(row) if row else None
     
     def _row_to_decision(self, row: asyncpg.Record) -> Decision:
@@ -141,7 +146,8 @@ class Repository:
             risk_level=row['risk_level'],
             risk_score=row['risk_score'],
             path_taken=row['path_taken'],
-            created_at=row['created_at']
+            created_at=row['created_at'],
+            tenant_id=row.get('tenant_id'),
         )
     
     # =========================================================================
@@ -155,46 +161,71 @@ class Repository:
         reason: str,
         requested_by: str,
         expires_at: datetime,
+        tenant_id: Optional[str] = None,
     ) -> uuid.UUID:
-        """Create pending approval."""
+        """Create pending approval with tenant isolation."""
         approval_id = uuid.uuid4()
         async with self.pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO approvals (
-                    approval_id, action_id, status, priority, requested_by, reason, expires_at, created_at
-                ) VALUES ($1, $2, 'pending', $3, $4, $5, $6, NOW())
-            """, approval_id, action_id, priority, requested_by, reason, expires_at)
+                    approval_id, action_id, status, priority, requested_by, reason, expires_at, created_at, tenant_id
+                ) VALUES ($1, $2, 'pending', $3, $4, $5, $6, NOW(), $7)
+            """, approval_id, action_id, priority, requested_by, reason, expires_at, tenant_id)
         return approval_id
     
-    async def get_approval(self, approval_id: uuid.UUID) -> Optional[Dict]:
-        """Fetch approval by ID."""
+    async def get_approval(self, approval_id: uuid.UUID, tenant_id: Optional[str] = None) -> Optional[Dict]:
+        """Fetch approval by ID with tenant isolation."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM approvals WHERE approval_id = $1",
-                approval_id
-            )
+            row = await conn.fetchrow("""
+                SELECT ap.* FROM approvals ap
+                JOIN actions a ON ap.action_id = a.action_id
+                WHERE ap.approval_id = $1 AND ($2::text IS NULL OR a.tenant_id = $2)
+            """, approval_id, tenant_id)
             return dict(row) if row else None
     
-    async def get_pending_approvals(self, limit: int = 100) -> List[Dict]:
-        """Get pending approvals queue."""
+    async def get_pending_approvals(self, limit: int = 100, tenant_id: Optional[str] = None) -> List[Dict]:
+        """Get pending approvals queue with tenant isolation."""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT * FROM pending_approvals_queue
-                LIMIT $1
-            """, limit)
+                SELECT 
+                    ap.approval_id,
+                    ap.action_id,
+                    ap.priority,
+                    ap.reason,
+                    ap.requested_by,
+                    ap.created_at,
+                    ap.expires_at,
+                    a.action_name,
+                    a.resource,
+                    a.payload_json
+                FROM approvals ap
+                JOIN actions a ON ap.action_id = a.action_id
+                WHERE ap.status = 'pending'
+                AND ($1::text IS NULL OR a.tenant_id = $1)
+                ORDER BY 
+                    CASE ap.priority 
+                        WHEN 'critical' THEN 1 
+                        WHEN 'high' THEN 2 
+                        WHEN 'medium' THEN 3 
+                        ELSE 4 
+                    END,
+                    ap.created_at
+                LIMIT $2
+            """, tenant_id, limit)
             return [dict(r) for r in rows]
     
     # =========================================================================
     # CAPABILITIES
     # =========================================================================
     
-    async def get_capability(self, token_id: str) -> Optional[Dict]:
-        """Fetch capability by token."""
+    async def get_capability(self, token_id: str, tenant_id: Optional[str] = None) -> Optional[Dict]:
+        """Fetch capability by token with tenant isolation."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM capabilities WHERE token_id = $1",
-                token_id
-            )
+            row = await conn.fetchrow("""
+                SELECT c.* FROM capabilities c
+                JOIN actors act ON c.actor_id = act.actor_id
+                WHERE c.token_id = $1 AND ($2::text IS NULL OR act.tenant_id = $2)
+            """, token_id, tenant_id)
             return dict(row) if row else None
     
     async def consume_capability(
@@ -355,13 +386,14 @@ class Repository:
         success: bool,
         result: Optional[Dict] = None,
         error: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> None:
-        """Persist execution outcome."""
+        """Persist execution outcome with tenant isolation."""
         async with self.pool.acquire() as conn:
             await conn.execute("""
-                INSERT INTO execution_results (action_id, success, result_json, error_message)
-                VALUES ($1, $2, $3, $4)
-            """, action_id, success, json.dumps(result) if result else '{}', error)
+                INSERT INTO execution_results (action_id, success, result_json, error_message, tenant_id)
+                VALUES ($1, $2, $3, $4, $5)
+            """, action_id, success, json.dumps(result) if result else '{}', error, tenant_id)
     
     # =========================================================================
     # ACTORS
