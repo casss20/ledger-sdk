@@ -416,3 +416,61 @@ class Repository:
                 VALUES ($1, $2, $3, 'active')
                 ON CONFLICT (actor_id) DO NOTHING
             """, actor_id, actor_type, tenant_id)
+
+    # =========================================================================
+    # API KEYS
+    # =========================================================================
+    
+    async def create_api_key(
+        self,
+        key_hash: str,
+        tenant_id: str,
+        name: Optional[str] = None,
+        scopes: Optional[list] = None,
+        expires_at: Optional[datetime] = None,
+    ) -> Dict:
+        """Create a new API key record. Returns the key metadata (not the plaintext)."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO api_keys (key_hash, tenant_id, name, scopes, expires_at)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING key_id, tenant_id, name, scopes, expires_at, revoked, created_at
+            """, key_hash, tenant_id, name, json.dumps(scopes or []), expires_at)
+            return dict(row)
+    
+    async def get_api_key_by_hash(self, key_hash: str) -> Optional[Dict]:
+        """Lookup API key by hash. Returns None if not found or revoked/expired."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM api_keys
+                WHERE key_hash = $1 AND revoked = FALSE
+                AND (expires_at IS NULL OR expires_at > NOW())
+            """, key_hash)
+            return dict(row) if row else None
+    
+    async def list_api_keys(self, tenant_id: str) -> List[Dict]:
+        """List all non-revoked API keys for a tenant."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT key_id, tenant_id, name, scopes, expires_at, last_used_at, revoked, created_at
+                FROM api_keys
+                WHERE tenant_id = $1 AND revoked = FALSE
+            """, tenant_id)
+            return [dict(r) for r in rows]
+    
+    async def revoke_api_key(self, key_id: uuid.UUID) -> bool:
+        """Revoke an API key. Returns True if key was found and revoked."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute("""
+                UPDATE api_keys SET revoked = TRUE
+                WHERE key_id = $1
+            """, key_id)
+            return 'UPDATE 1' in result
+    
+    async def update_api_key_last_used(self, key_hash: str) -> None:
+        """Update last_used_at timestamp for an API key."""
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE api_keys SET last_used_at = NOW()
+                WHERE key_hash = $1
+            """, key_hash)
