@@ -12,6 +12,7 @@ import asyncio
 import uuid
 from datetime import datetime
 
+import asyncpg
 from ledger.actions import Action, KernelStatus, KernelResult
 from ledger.execution.kernel import Kernel
 from ledger.repository import Repository
@@ -21,37 +22,24 @@ from ledger.approval_service import ApprovalService
 from ledger.capability_service import CapabilityService
 from ledger.audit_service import AuditService
 from ledger.execution.executor import Executor
-import asyncpg
 
 
 @pytest.fixture
-async def postgres_dsn():
-    return "postgresql://ledger:ledger@localhost:5432/ledger_test"
-
-
-@pytest.fixture
-async def db(postgres_dsn):
+async def db(postgres_dsn, tenant_id):
+    """Database connection with tenant context set."""
     conn = await asyncpg.connect(postgres_dsn)
+    await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     yield conn
     await conn.close()
 
 
-@pytest.fixture(autouse=True)
-async def clean_database(postgres_dsn):
-    conn = await asyncpg.connect(postgres_dsn)
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities,
-                    kill_switches, approvals, actions, decisions,
-                    audit_events, execution_results
-        CASCADE
-    """)
-    await conn.close()
-    yield
-
-
 @pytest.fixture
-async def kernel(postgres_dsn):
-    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10)
+async def kernel(postgres_dsn, tenant_id):
+    """Fresh kernel instance with tenant-scoped pool."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10, setup=setup_tenant)
 
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
@@ -77,7 +65,7 @@ async def kernel(postgres_dsn):
     await pool.close()
 
 
-async def test_racing_idempotency_basic(kernel, db):
+async def test_racing_idempotency_basic(kernel, db, tenant_id):
     """Given: 10 concurrent requests with same idempotency key. When: All execute.
     Then: Exactly 1 action persisted, all return same decision, zero exceptions."""
     kernel, repo = kernel
@@ -86,8 +74,8 @@ async def test_racing_idempotency_basic(kernel, db):
     idempotency_key = f"concurrent_{uuid.uuid4().hex}"
 
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
 
     async def submit_action(idx: int) -> KernelResult:
@@ -97,7 +85,7 @@ async def test_racing_idempotency_basic(kernel, db):
             actor_type='agent',
             action_name="test.idempotent_race",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -125,7 +113,7 @@ async def test_racing_idempotency_basic(kernel, db):
     assert len(actions) == 1, f"Expected 1 action, got {len(actions)}"
 
 
-async def test_idempotency_without_key_allows_duplicates(kernel, db):
+async def test_idempotency_without_key_allows_duplicates(kernel, db, tenant_id):
     """Given: 5 concurrent requests with NO idempotency key. When: All execute.
     Then: All 5 actions persisted (no constraint on NULL keys)."""
     kernel, repo = kernel
@@ -133,8 +121,8 @@ async def test_idempotency_without_key_allows_duplicates(kernel, db):
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
 
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
 
     async def submit_action(idx: int) -> KernelResult:
@@ -144,7 +132,7 @@ async def test_idempotency_without_key_allows_duplicates(kernel, db):
             actor_type='agent',
             action_name="test.no_idempotency",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -166,7 +154,7 @@ async def test_idempotency_without_key_allows_duplicates(kernel, db):
     assert len(actions) == 5, f"Expected 5 actions without idempotency, got {len(actions)}"
 
 
-async def test_idempotency_different_actors_same_key(kernel, db):
+async def test_idempotency_different_actors_same_key(kernel, db, tenant_id):
     """Given: Different actors with same idempotency key. When: Both execute.
     Then: Both succeed (idempotency scoped to actor, not global)."""
     kernel, repo = kernel
@@ -176,12 +164,12 @@ async def test_idempotency_different_actors_same_key(kernel, db):
     shared_key = "shared_key"
 
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_1
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_1, tenant_id
     )
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_2
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_2, tenant_id
     )
 
     action_1 = Action(
@@ -190,7 +178,7 @@ async def test_idempotency_different_actors_same_key(kernel, db):
         actor_type='agent',
         action_name="test.shared_key",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -204,7 +192,7 @@ async def test_idempotency_different_actors_same_key(kernel, db):
         actor_type='agent',
         action_name="test.shared_key",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,

@@ -36,17 +36,21 @@ from ledger.status import ActorType
 
 
 @pytest.fixture
-async def db(postgres_dsn):
-    """Database connection for the test."""
+async def db(postgres_dsn, tenant_id):
+    """Database connection with tenant context set."""
     conn = await asyncpg.connect(postgres_dsn)
+    await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     yield conn
     await conn.close()
 
 
 @pytest.fixture
-async def kernel(postgres_dsn):
-    """Fresh kernel instance for each test."""
-    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=5)
+async def kernel(postgres_dsn, tenant_id):
+    """Fresh kernel instance with tenant-scoped pool."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+    
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=5, setup=setup_tenant)
     
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
@@ -72,38 +76,24 @@ async def kernel(postgres_dsn):
     await pool.close()
 
 
-@pytest.fixture(autouse=True)
-async def clean_database(postgres_dsn):
-    """Clean database before each test."""
-    conn = await asyncpg.connect(postgres_dsn)
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities, 
-                    kill_switches, approvals, actions, decisions, 
-                    audit_events, execution_results
-        CASCADE
-    """)
-    await conn.close()
-    yield
-
-
 # ============================================================================
 # SCENARIO 1: Blocked by Kill Switch
 # ============================================================================
-async def test_01_blocked_by_kill_switch(kernel, db):
+async def test_01_blocked_by_kill_switch(kernel, db, tenant_id):
     """Given: Kill switch enabled. When: Action attempted. Then: BLOCKED_EMERGENCY."""
     kernel, repo = kernel
     
     # Setup: Enable kill switch
     await db.execute("""
-        INSERT INTO kill_switches (scope_type, scope_value, enabled, reason)
-        VALUES ('action', 'test.dangerous', TRUE, 'Emergency stop')
-    """)
+        INSERT INTO kill_switches (scope_type, scope_value, tenant_id, enabled, reason)
+        VALUES ('action', 'test.dangerous', $1, TRUE, 'Emergency stop')
+    """, tenant_id)
     
     # Setup: Actor
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     # Execute
@@ -113,7 +103,7 @@ async def test_01_blocked_by_kill_switch(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.dangerous",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -140,24 +130,24 @@ async def test_01_blocked_by_kill_switch(kernel, db):
 # ============================================================================
 # SCENARIO 2: Blocked by Policy
 # ============================================================================
-async def test_02_blocked_by_policy(kernel, db):
+async def test_02_blocked_by_policy(kernel, db, tenant_id):
     """Given: Policy blocks action. When: Action attempted. Then: BLOCKED_POLICY."""
     kernel, repo = kernel
     
     # Setup: Policy that blocks
     await db.execute("""
-        INSERT INTO policies (name, version, scope_type, scope_value, rules_json, status)
+        INSERT INTO policies (name, version, scope_type, scope_value, tenant_id, rules_json, status)
         VALUES (
-            'block_test', '1.0', 'action', 'test.forbidden',
+            'block_test', '1.0', 'action', 'test.forbidden', $1,
             '{"rules": [{"name": "block_rule", "condition": "true", "effect": "BLOCK", "reason": "Test block"}]}',
             'active'
         )
-    """)
+    """, tenant_id)
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     action = Action(
@@ -166,7 +156,7 @@ async def test_02_blocked_by_policy(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.forbidden",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -191,7 +181,7 @@ async def test_02_blocked_by_policy(kernel, db):
 # ============================================================================
 # SCENARIO 3: Blocked by Capability Expiry
 # ============================================================================
-async def test_03_blocked_by_capability_expiry(kernel, db):
+async def test_03_blocked_by_capability_expiry(kernel, db, tenant_id):
     """Given: Expired capability. When: Action attempted. Then: BLOCKED_CAPABILITY."""
     kernel, repo = kernel
     
@@ -199,15 +189,15 @@ async def test_03_blocked_by_capability_expiry(kernel, db):
     token_id = f"cap_{uuid.uuid4().hex}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     await db.execute("""
-        INSERT INTO capabilities (token_id, actor_id, action_scope, resource_scope, 
+        INSERT INTO capabilities (token_id, actor_id, tenant_id, action_scope, resource_scope, 
                                  issued_at, expires_at, max_uses, uses, revoked)
-        VALUES ($1, $2, 'test.expiring', 'test', NOW() - INTERVAL '2 hours', 
+        VALUES ($1, $2, $3, 'test.expiring', 'test', NOW() - INTERVAL '2 hours', 
                 NOW() - INTERVAL '1 hour', 10, 0, FALSE)
-    """, token_id, actor_id)
+    """, token_id, actor_id, tenant_id)
     
     action = Action(
         action_id=uuid.uuid4(),
@@ -215,7 +205,7 @@ async def test_03_blocked_by_capability_expiry(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.expiring",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -232,25 +222,25 @@ async def test_03_blocked_by_capability_expiry(kernel, db):
 # ============================================================================
 # SCENARIO 4: Pending Approval
 # ============================================================================
-async def test_04_pending_approval(kernel, db):
+async def test_04_pending_approval(kernel, db, tenant_id):
     """Given: High risk action. When: Action attempted. Then: PENDING_APPROVAL."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     # Policy requiring approval
     await db.execute("""
-        INSERT INTO policies (name, version, scope_type, scope_value, rules_json, status)
+        INSERT INTO policies (name, version, scope_type, scope_value, tenant_id, rules_json, status)
         VALUES (
-            'approve_high_risk', '1.0', 'action', 'test.highrisk',
+            'approve_high_risk', '1.0', 'action', 'test.highrisk', $1,
             '{"rules": [{"name": "high_risk", "condition": "true", "effect": "PENDING_APPROVAL", "requires_approval": true, "reason": "High risk"}]}',
             'active'
         )
-    """)
+    """, tenant_id)
     
     action = Action(
         action_id=uuid.uuid4(),
@@ -258,7 +248,7 @@ async def test_04_pending_approval(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.highrisk",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -280,30 +270,32 @@ async def test_04_pending_approval(kernel, db):
 # ============================================================================
 # SCENARIO 5: Approval Rejected
 # ============================================================================
-async def test_05_approval_rejected(kernel, db):
+async def test_05_approval_rejected(kernel, db, tenant_id):
     """Given: Pending approval. When: Human rejects. Then: REJECTED_APPROVAL."""
     kernel, repo = kernel
     
     # Setup: Actor first
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ('agent_1', 'agent', 'active')"
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ('agent_1', 'agent', $1, 'active')",
+        tenant_id
     )
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ('admin_1', 'user_proxy', 'active')"
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ('admin_1', 'user_proxy', $1, 'active')",
+        tenant_id
     )
 
     action_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO actions (action_id, actor_id, actor_type, action_name, resource) VALUES ($1, $2, 'agent', 'test.reject', 'test')",
-        action_id, "agent_1"
+        "INSERT INTO actions (action_id, actor_id, actor_type, tenant_id, action_name, resource) VALUES ($1, $2, 'agent', $3, 'test.reject', 'test')",
+        action_id, "agent_1", tenant_id
     )
     await db.execute(
-        "INSERT INTO decisions (action_id, status, winning_rule, reason) VALUES ($1, 'PENDING_APPROVAL', 'approval_required', 'Needs review')",
-        action_id
+        "INSERT INTO decisions (action_id, tenant_id, status, winning_rule, reason) VALUES ($1, $2, 'PENDING_APPROVAL', 'approval_required', 'Needs review')",
+        action_id, tenant_id
     )
     await db.execute(
-        "INSERT INTO approvals (action_id, status, requested_by, reason, expires_at) VALUES ($1, 'pending', 'agent_1', 'Review', NOW() + INTERVAL '1 hour')",
-        action_id
+        "INSERT INTO approvals (action_id, tenant_id, status, requested_by, reason, expires_at) VALUES ($1, $2, 'pending', 'agent_1', 'Review', NOW() + INTERVAL '1 hour')",
+        action_id, tenant_id
     )
     
     # Simulate rejection
@@ -326,27 +318,28 @@ async def test_05_approval_rejected(kernel, db):
 # ============================================================================
 # SCENARIO 6: Approval Expired
 # ============================================================================
-async def test_06_approval_expired(kernel, db):
+async def test_06_approval_expired(kernel, db, tenant_id):
     """Given: Approval past expiry. When: Checked. Then: EXPIRED_APPROVAL."""
     kernel, repo = kernel
     
     # Setup: Actor first
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ('agent_1', 'agent', 'active')"
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ('agent_1', 'agent', $1, 'active')",
+        tenant_id
     )
 
     action_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO actions (action_id, actor_id, actor_type, action_name, resource) VALUES ($1, $2, 'agent', 'test.expire', 'test')",
-        action_id, "agent_1"
+        "INSERT INTO actions (action_id, actor_id, actor_type, tenant_id, action_name, resource) VALUES ($1, $2, 'agent', $3, 'test.expire', 'test')",
+        action_id, "agent_1", tenant_id
     )
     await db.execute(
-        "INSERT INTO decisions (action_id, status, winning_rule, reason) VALUES ($1, 'PENDING_APPROVAL', 'approval_required', 'Needs review')",
-        action_id
+        "INSERT INTO decisions (action_id, tenant_id, status, winning_rule, reason) VALUES ($1, $2, 'PENDING_APPROVAL', 'approval_required', 'Needs review')",
+        action_id, tenant_id
     )
     await db.execute(
-        "INSERT INTO approvals (action_id, status, requested_by, reason, expires_at) VALUES ($1, 'pending', 'agent_1', 'Review', NOW() - INTERVAL '1 minute')",
-        action_id
+        "INSERT INTO approvals (action_id, tenant_id, status, requested_by, reason, expires_at) VALUES ($1, $2, 'pending', 'agent_1', 'Review', NOW() - INTERVAL '1 minute')",
+        action_id, tenant_id
     )
     
     # Process expiry
@@ -366,14 +359,14 @@ async def test_06_approval_expired(kernel, db):
 # ============================================================================
 # SCENARIO 7: Allowed + Executed
 # ============================================================================
-async def test_07_allowed_and_executed(kernel, db):
+async def test_07_allowed_and_executed(kernel, db, tenant_id):
     """Given: Action passes all checks. When: Executed. Then: ALLOWED/EXECUTED."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     action = Action(
@@ -382,7 +375,7 @@ async def test_07_allowed_and_executed(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.safe",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -405,14 +398,14 @@ async def test_07_allowed_and_executed(kernel, db):
 # ============================================================================
 # SCENARIO 8: Execution Failed
 # ============================================================================
-async def test_08_execution_failed(kernel, db):
+async def test_08_execution_failed(kernel, db, tenant_id):
     """Given: Action allowed. When: Execution throws. Then: FAILED_EXECUTION."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     action = Action(
@@ -421,7 +414,7 @@ async def test_08_execution_failed(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.failing",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -453,7 +446,7 @@ async def test_08_execution_failed(kernel, db):
 # ============================================================================
 # SCENARIO 9: Duplicate Idempotency Key
 # ============================================================================
-async def test_09_idempotency_duplicate(kernel, db):
+async def test_09_idempotency_duplicate(kernel, db, tenant_id):
     """Given: Duplicate idempotency key. When: Second request. Then: Cached result."""
     kernel, repo = kernel
     
@@ -461,8 +454,8 @@ async def test_09_idempotency_duplicate(kernel, db):
     idempotency_key = f"req_{uuid.uuid4().hex}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     # First request
@@ -472,7 +465,7 @@ async def test_09_idempotency_duplicate(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.idempotent",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -490,7 +483,7 @@ async def test_09_idempotency_duplicate(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.idempotent",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -515,14 +508,14 @@ async def test_09_idempotency_duplicate(kernel, db):
 # ============================================================================
 # SCENARIO 10: Audit Chain Integrity
 # ============================================================================
-async def test_10_audit_chain_integrity(kernel, db):
+async def test_10_audit_chain_integrity(kernel, db, tenant_id):
     """Given: Multiple actions. When: verify_audit_chain. Then: Valid."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     # Execute multiple actions
@@ -533,7 +526,7 @@ async def test_10_audit_chain_integrity(kernel, db):
             actor_type=ActorType.AGENT.value,
             action_name=f"test.chain{i}",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={},
             context={},
             session_id=None,
@@ -560,12 +553,6 @@ async def test_10_audit_chain_integrity(kernel, db):
 # ============================================================================
 # FIXTURES
 # ============================================================================
-
-@pytest.fixture(scope="session")
-def postgres_dsn():
-    """Database connection string."""
-    return "postgresql://ledger:ledger@127.0.0.1:5432/ledger_test"
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

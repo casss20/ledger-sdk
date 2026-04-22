@@ -12,6 +12,7 @@ import asyncio
 import uuid
 from datetime import datetime
 
+import asyncpg
 from ledger.actions import Action, KernelStatus, KernelResult
 from ledger.execution.kernel import Kernel
 from ledger.repository import Repository
@@ -21,37 +22,24 @@ from ledger.approval_service import ApprovalService
 from ledger.capability_service import CapabilityService
 from ledger.audit_service import AuditService
 from ledger.execution.executor import Executor
-import asyncpg
 
 
 @pytest.fixture
-async def postgres_dsn():
-    return "postgresql://ledger:ledger@localhost:5432/ledger_test"
-
-
-@pytest.fixture
-async def db(postgres_dsn):
+async def db(postgres_dsn, tenant_id):
+    """Database connection with tenant context set."""
     conn = await asyncpg.connect(postgres_dsn)
+    await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     yield conn
     await conn.close()
 
 
-@pytest.fixture(autouse=True)
-async def clean_database(postgres_dsn):
-    conn = await asyncpg.connect(postgres_dsn)
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities,
-                    kill_switches, approvals, actions, decisions,
-                    audit_events, execution_results
-        CASCADE
-    """)
-    await conn.close()
-    yield
-
-
 @pytest.fixture
-async def kernel(postgres_dsn):
-    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10)
+async def kernel(postgres_dsn, tenant_id):
+    """Fresh kernel instance with tenant-scoped pool."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10, setup=setup_tenant)
 
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
@@ -77,15 +65,15 @@ async def kernel(postgres_dsn):
     await pool.close()
 
 
-async def test_audit_chain_integrity_under_load(kernel, db):
+async def test_audit_chain_integrity_under_load(kernel, db, tenant_id):
     """Given: 50 concurrent actions. When: All execute. Then: Audit chain valid."""
     kernel, repo = kernel
 
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
 
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
 
     async def submit_action(idx: int) -> KernelResult:
@@ -95,7 +83,7 @@ async def test_audit_chain_integrity_under_load(kernel, db):
             actor_type='agent',
             action_name=f"test.load{idx % 5}",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -114,15 +102,15 @@ async def test_audit_chain_integrity_under_load(kernel, db):
     assert chain_check['valid'] is True, f"Audit chain broken at event {chain_check.get('broken_at_event_id')}"
 
 
-async def test_audit_chain_stress_iterations(kernel, db):
+async def test_audit_chain_stress_iterations(kernel, db, tenant_id):
     """Stress: 10 iterations × 20 concurrent actions. Audit chain must stay valid."""
     kernel, repo = kernel
 
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
 
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
 
     for iteration in range(10):
@@ -133,7 +121,7 @@ async def test_audit_chain_stress_iterations(kernel, db):
                 actor_type='agent',
                 action_name="test.stress_audit",
                 resource="test",
-                tenant_id=None,
+                tenant_id=tenant_id,
                 payload={"iteration": iteration, "idx": idx},
                 context={},
                 session_id=None,

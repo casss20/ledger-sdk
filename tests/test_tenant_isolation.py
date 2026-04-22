@@ -10,6 +10,7 @@ Covers:
 - Cross-tenant kill switch read blocked
 - Cross-tenant policy read blocked
 - Same-tenant access allowed
+- Kernel action carries tenant downstream
 """
 
 import pytest
@@ -17,6 +18,7 @@ import asyncio
 import uuid
 from datetime import datetime, timedelta
 
+import asyncpg
 from ledger.actions import Action, KernelStatus
 from ledger.execution.kernel import Kernel
 from ledger.repository import Repository
@@ -26,37 +28,32 @@ from ledger.approval_service import ApprovalService
 from ledger.capability_service import CapabilityService
 from ledger.audit_service import AuditService
 from ledger.execution.executor import Executor
-import asyncpg
 
 
-@pytest.fixture
-async def postgres_dsn():
-    return "postgresql://ledger:ledger@localhost:5432/ledger_test"
+async def _repo_for_tenant(postgres_dsn: str, tenant_id: str):
+    """Create a repository with a pool scoped to a specific tenant."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=2, setup=setup_tenant)
+    return Repository(pool), pool
 
 
 @pytest.fixture
 async def db(postgres_dsn):
+    """Admin connection for test setup (no tenant context = admin bypass not set)."""
     conn = await asyncpg.connect(postgres_dsn)
     yield conn
     await conn.close()
 
 
-@pytest.fixture(autouse=True)
-async def clean_database(postgres_dsn):
-    conn = await asyncpg.connect(postgres_dsn)
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities,
-                    kill_switches, approvals, actions, decisions,
-                    audit_events, execution_results
-        CASCADE
-    """)
-    await conn.close()
-    yield
-
-
 @pytest.fixture
-async def kernel(postgres_dsn):
-    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10)
+async def kernel(postgres_dsn, tenant_id):
+    """Fresh kernel instance with tenant-scoped pool."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10, setup=setup_tenant)
 
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
@@ -83,7 +80,10 @@ async def kernel(postgres_dsn):
 
 
 async def _setup_tenant_data(db, tenant_id: str, actor_id: str, action_name: str = "test.action"):
-    """Create actor, action, decision, approval, capability for a tenant."""
+    """Create actor, action, decision, approval, capability for a tenant using admin bypass."""
+    # Use admin bypass to insert data for any tenant
+    await db.execute("SET app.admin_bypass = 'true'")
+
     await db.execute(
         "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
         actor_id, tenant_id
@@ -101,28 +101,28 @@ async def _setup_tenant_data(db, tenant_id: str, actor_id: str, action_name: str
     decision_id = uuid.uuid4()
     await db.execute(
         """
-        INSERT INTO decisions (decision_id, action_id, status, winning_rule, reason, created_at)
-        VALUES ($1, $2, 'EXECUTED', 'execution_complete', 'ok', NOW())
+        INSERT INTO decisions (decision_id, action_id, tenant_id, status, winning_rule, reason, created_at)
+        VALUES ($1, $2, $3, 'EXECUTED', 'execution_complete', 'ok', NOW())
         """,
-        decision_id, action_id
+        decision_id, action_id, tenant_id
     )
 
     approval_id = uuid.uuid4()
     await db.execute(
         """
-        INSERT INTO approvals (approval_id, action_id, status, priority, requested_by, reason, created_at)
-        VALUES ($1, $2, 'pending', 'medium', $3, 'test', NOW())
+        INSERT INTO approvals (approval_id, action_id, tenant_id, status, priority, requested_by, reason, created_at)
+        VALUES ($1, $2, $3, 'pending', 'medium', $4, 'test', NOW())
         """,
-        approval_id, action_id, actor_id
+        approval_id, action_id, tenant_id, actor_id
     )
 
     cap_token = f"cap_{tenant_id}_{uuid.uuid4().hex[:6]}"
     await db.execute(
         """
-        INSERT INTO capabilities (token_id, actor_id, action_scope, resource_scope, expires_at, max_uses)
-        VALUES ($1, $2, 'test.*', 'test', NOW() + interval '1 hour', 5)
+        INSERT INTO capabilities (token_id, actor_id, tenant_id, action_scope, resource_scope, expires_at, max_uses)
+        VALUES ($1, $2, $3, 'test.*', 'test', NOW() + interval '1 hour', 5)
         """,
-        cap_token, actor_id
+        cap_token, actor_id, tenant_id
     )
 
     await db.execute(
@@ -145,10 +145,13 @@ async def _setup_tenant_data(db, tenant_id: str, actor_id: str, action_name: str
     await db.execute(
         """
         INSERT INTO policies (policy_id, tenant_id, name, version, scope_type, scope_value, rules_json, status)
-        VALUES ($1, $2, 'test_policy', '1.0', 'global', '*', '{\"rules\":[]}'::jsonb, 'active')
+        VALUES ($1, $2, 'test_policy', '1.0', 'global', '*', '{"rules":[]}'::jsonb, 'active')
         """,
         policy_id, tenant_id
     )
+
+    # Clear admin bypass after setup
+    await db.execute("SET app.admin_bypass = 'false'")
 
     return {
         'action_id': action_id,
@@ -159,10 +162,11 @@ async def _setup_tenant_data(db, tenant_id: str, actor_id: str, action_name: str
     }
 
 
-async def test_cross_tenant_action_read_blocked(kernel, db):
+# ============================================================================
+# Cross-tenant read blocking tests
+# ============================================================================
+async def test_cross_tenant_action_read_blocked(postgres_dsn, db):
     """Tenant A's actor should not read Tenant B's action."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -172,19 +176,21 @@ async def test_cross_tenant_action_read_blocked(kernel, db):
     data_b = await _setup_tenant_data(db, tenant_b, actor_b)
 
     # Tenant A tries to read Tenant B's action — must fail
-    action_b = await repo.get_action(data_b['action_id'], tenant_id=tenant_a)
-    assert action_b is None, "Tenant A should not see Tenant B's action"
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        action_b = await repo_a.get_action(data_b['action_id'], tenant_id=tenant_a)
+        assert action_b is None, "Tenant A should not see Tenant B's action"
 
-    # Tenant A reading own action should succeed
-    action_a = await repo.get_action(data_a['action_id'], tenant_id=tenant_a)
-    assert action_a is not None
-    assert action_a['tenant_id'] == tenant_a
+        # Tenant A reading own action should succeed
+        action_a = await repo_a.get_action(data_a['action_id'], tenant_id=tenant_a)
+        assert action_a is not None
+        assert action_a['tenant_id'] == tenant_a
+    finally:
+        await pool_a.close()
 
 
-async def test_cross_tenant_decision_read_blocked(kernel, db):
+async def test_cross_tenant_decision_read_blocked(postgres_dsn, db):
     """Tenant A should not read Tenant B's decision."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -193,17 +199,19 @@ async def test_cross_tenant_decision_read_blocked(kernel, db):
     data_a = await _setup_tenant_data(db, tenant_a, actor_a)
     data_b = await _setup_tenant_data(db, tenant_b, actor_b)
 
-    decision_b = await repo.get_decision(data_b['action_id'], tenant_id=tenant_a)
-    assert decision_b is None, "Tenant A should not see Tenant B's decision"
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        decision_b = await repo_a.get_decision(data_b['action_id'], tenant_id=tenant_a)
+        assert decision_b is None, "Tenant A should not see Tenant B's decision"
 
-    decision_a = await repo.get_decision(data_a['action_id'], tenant_id=tenant_a)
-    assert decision_a is not None
+        decision_a = await repo_a.get_decision(data_a['action_id'], tenant_id=tenant_a)
+        assert decision_a is not None
+    finally:
+        await pool_a.close()
 
 
-async def test_cross_tenant_approval_read_blocked(kernel, db):
+async def test_cross_tenant_approval_read_blocked(postgres_dsn, db):
     """Tenant A should not read Tenant B's approval."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -212,17 +220,19 @@ async def test_cross_tenant_approval_read_blocked(kernel, db):
     data_a = await _setup_tenant_data(db, tenant_a, actor_a)
     data_b = await _setup_tenant_data(db, tenant_b, actor_b)
 
-    approval_b = await repo.get_approval(data_b['approval_id'], tenant_id=tenant_a)
-    assert approval_b is None, "Tenant A should not see Tenant B's approval"
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        approval_b = await repo_a.get_approval(data_b['approval_id'], tenant_id=tenant_a)
+        assert approval_b is None, "Tenant A should not see Tenant B's approval"
 
-    approval_a = await repo.get_approval(data_a['approval_id'], tenant_id=tenant_a)
-    assert approval_a is not None
+        approval_a = await repo_a.get_approval(data_a['approval_id'], tenant_id=tenant_a)
+        assert approval_a is not None
+    finally:
+        await pool_a.close()
 
 
-async def test_cross_tenant_capability_read_blocked(kernel, db):
+async def test_cross_tenant_capability_read_blocked(postgres_dsn, db):
     """Tenant A should not read Tenant B's capability."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -231,17 +241,19 @@ async def test_cross_tenant_capability_read_blocked(kernel, db):
     data_a = await _setup_tenant_data(db, tenant_a, actor_a)
     data_b = await _setup_tenant_data(db, tenant_b, actor_b)
 
-    cap_b = await repo.get_capability(data_b['cap_token'], tenant_id=tenant_a)
-    assert cap_b is None, "Tenant A should not see Tenant B's capability"
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        cap_b = await repo_a.get_capability(data_b['cap_token'], tenant_id=tenant_a)
+        assert cap_b is None, "Tenant A should not see Tenant B's capability"
 
-    cap_a = await repo.get_capability(data_a['cap_token'], tenant_id=tenant_a)
-    assert cap_a is not None
+        cap_a = await repo_a.get_capability(data_a['cap_token'], tenant_id=tenant_a)
+        assert cap_a is not None
+    finally:
+        await pool_a.close()
 
 
-async def test_cross_tenant_kill_switch_blocked(kernel, db):
+async def test_cross_tenant_kill_switch_blocked(postgres_dsn, db):
     """Tenant A should not read Tenant B's kill switch."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -250,16 +262,16 @@ async def test_cross_tenant_kill_switch_blocked(kernel, db):
     await _setup_tenant_data(db, tenant_a, actor_a)
     await _setup_tenant_data(db, tenant_b, actor_b)
 
-    # Tenant A checking kill switch for action scope
-    ks = await repo.check_kill_switch('action', 'test.kill', tenant_id=tenant_a)
-    # Tenant A should see their OWN kill switch, not B's
-    assert ks is not None
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        ks = await repo_a.check_kill_switch('action', 'test.kill', tenant_id=tenant_a)
+        assert ks is not None
+    finally:
+        await pool_a.close()
 
 
-async def test_cross_tenant_policy_blocked(kernel, db):
+async def test_cross_tenant_policy_blocked(postgres_dsn, db):
     """Tenant A should not resolve Tenant B's policy."""
-    kernel, repo = kernel
-
     tenant_a = "tenant_a"
     tenant_b = "tenant_b"
     actor_a = f"agent_a_{uuid.uuid4().hex[:6]}"
@@ -268,23 +280,30 @@ async def test_cross_tenant_policy_blocked(kernel, db):
     await _setup_tenant_data(db, tenant_a, actor_a)
     await _setup_tenant_data(db, tenant_b, actor_b)
 
-    # Tenant A resolving global policy
-    policy = await repo.get_active_policy('global', '*', tenant_id=tenant_a)
-    assert policy is not None
-    assert policy['tenant_id'] == tenant_a
+    repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
+    try:
+        policy = await repo_a.get_active_policy('global', '*', tenant_id=tenant_a)
+        assert policy is not None
+        assert policy['tenant_id'] == tenant_a
+    finally:
+        await pool_a.close()
 
 
-async def test_kernel_action_carries_tenant(kernel, db):
+# ============================================================================
+# Same-tenant kernel flow test
+# ============================================================================
+async def test_kernel_action_carries_tenant(kernel, db, tenant_id):
     """Action submitted with tenant_id should have tenant_id in all downstream records."""
     kernel, repo = kernel
 
-    tenant_id = "tenant_x"
     actor_id = f"agent_{uuid.uuid4().hex[:6]}"
 
+    await db.execute("SET app.admin_bypass = 'true'")
     await db.execute(
         "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
         actor_id, tenant_id
     )
+    await db.execute("SET app.admin_bypass = 'false'")
 
     action = Action(
         action_id=uuid.uuid4(),
@@ -305,6 +324,7 @@ async def test_kernel_action_carries_tenant(kernel, db):
     assert result.decision.status == KernelStatus.EXECUTED
 
     # Verify action has tenant_id
+    await db.execute("SELECT set_tenant_context($1)", tenant_id)
     row = await db.fetchrow("SELECT tenant_id FROM actions WHERE action_id = $1", action.action_id)
     assert row['tenant_id'] == tenant_id
 
@@ -315,6 +335,7 @@ async def test_kernel_action_carries_tenant(kernel, db):
         WHERE d.action_id = $1
     """, action.action_id)
     assert row is not None
+    assert row['tenant_id'] == tenant_id
 
     # Verify audit has tenant_id
     row = await db.fetchrow("SELECT tenant_id FROM audit_events WHERE action_id = $1", action.action_id)

@@ -13,16 +13,19 @@ import asyncpg
 
 
 async def main():
+    tenant_id = "sdk_test_tenant"
     # Setup: create actor in DB
     conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+    await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     await conn.execute(
         """
-        INSERT INTO actors (actor_id, actor_type, metadata_json, status)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO actors (actor_id, actor_type, tenant_id, metadata_json, status)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (actor_id) DO NOTHING
         """,
         "sdk_test_agent",
         "agent",
+        tenant_id,
         '{"verified": true}',
         "active",
     )

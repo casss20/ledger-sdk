@@ -32,17 +32,21 @@ from ledger.status import ActorType
 
 
 @pytest.fixture
-async def db(postgres_dsn):
-    """Database connection for the test."""
+async def db(postgres_dsn, tenant_id):
+    """Database connection with tenant context set."""
     conn = await asyncpg.connect(postgres_dsn)
+    await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     yield conn
     await conn.close()
 
 
 @pytest.fixture
-async def kernel(postgres_dsn):
-    """Fresh kernel instance for each test."""
-    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10)
+async def kernel(postgres_dsn, tenant_id):
+    """Fresh kernel instance with tenant-scoped pool."""
+    async def setup_tenant(conn):
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+    
+    pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10, setup=setup_tenant)
     
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
@@ -68,24 +72,10 @@ async def kernel(postgres_dsn):
     await pool.close()
 
 
-@pytest.fixture(autouse=True)
-async def clean_database(postgres_dsn):
-    """Clean database before each test."""
-    conn = await asyncpg.connect(postgres_dsn)
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities, 
-                    kill_switches, approvals, actions, decisions, 
-                    audit_events, execution_results 
-        CASCADE
-    """)
-    await conn.close()
-    yield
-
-
 # ============================================================================
 # SCENARIO 11: Racing Capability Consumption
 # ============================================================================
-async def test_11_racing_capability_consumption(kernel, db):
+async def test_11_racing_capability_consumption(kernel, db, tenant_id):
     """Given: 5 concurrent requests with same capability. When: All execute. Then: Only max_uses succeed."""
     kernel, repo = kernel
     
@@ -94,16 +84,16 @@ async def test_11_racing_capability_consumption(kernel, db):
     max_uses = 3
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     await db.execute(
         """
-        INSERT INTO capabilities (token_id, actor_id, action_scope, resource_scope, expires_at, max_uses)
-        VALUES ($1, $2, 'test.*', 'test', NOW() + interval '1 hour', $3)
+        INSERT INTO capabilities (token_id, actor_id, tenant_id, action_scope, resource_scope, expires_at, max_uses)
+        VALUES ($1, $2, $3, 'test.*', 'test', NOW() + interval '1 hour', $4)
         """,
-        token_id, actor_id, max_uses
+        token_id, actor_id, tenant_id, max_uses
     )
     
     async def submit_action(idx: int) -> KernelResult:
@@ -113,7 +103,7 @@ async def test_11_racing_capability_consumption(kernel, db):
             actor_type=ActorType.AGENT.value,
             action_name="test.race",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -143,7 +133,7 @@ async def test_11_racing_capability_consumption(kernel, db):
 # ============================================================================
 # SCENARIO 12: Concurrent Duplicate Idempotency
 # ============================================================================
-async def test_12_concurrent_idempotency_duplicate(kernel, db):
+async def test_12_concurrent_idempotency_duplicate(kernel, db, tenant_id):
     """Given: 10 concurrent requests with same idempotency key. When: All execute. Then: Exactly 1 action inserted."""
     kernel, repo = kernel
     
@@ -151,8 +141,8 @@ async def test_12_concurrent_idempotency_duplicate(kernel, db):
     idempotency_key = f"concurrent_{uuid.uuid4().hex}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     async def submit_action(idx: int) -> KernelResult:
@@ -162,7 +152,7 @@ async def test_12_concurrent_idempotency_duplicate(kernel, db):
             actor_type=ActorType.AGENT.value,
             action_name="test.idempotent_race",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -194,7 +184,7 @@ async def test_12_concurrent_idempotency_duplicate(kernel, db):
 # ============================================================================
 # SCENARIO 13: Approval State Change Mid-Flight
 # ============================================================================
-async def test_13_approval_state_change_mid_flight(kernel, db):
+async def test_13_approval_state_change_mid_flight(kernel, db, tenant_id):
     """Given: Action pending approval. When: Approved while another checks. Then: Consistent state."""
     kernel, repo = kernel
     
@@ -202,22 +192,22 @@ async def test_13_approval_state_change_mid_flight(kernel, db):
     admin_id = f"admin_{uuid.uuid4().hex[:8]}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'user_proxy', 'active')",
-        admin_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'user_proxy', $2, 'active')",
+        admin_id, tenant_id
     )
     
     # Insert a policy requiring approval
     policy_id = uuid.uuid4()
     await db.execute(
         """
-        INSERT INTO policies (policy_id, name, version, scope_type, scope_value, rules_json, status)
-        VALUES ($1, 'approval_test', '1.0', 'action', 'test.approve', $2, 'active')
+        INSERT INTO policies (policy_id, tenant_id, name, version, scope_type, scope_value, rules_json, status)
+        VALUES ($1, $2, 'approval_test', '1.0', 'action', 'test.approve', $3, 'active')
         """,
-        policy_id,
+        policy_id, tenant_id,
         '{"rules": [{"name": "needs_approval", "effect": "PENDING_APPROVAL", "condition": {"always": true}}]}'
     )
     
@@ -227,7 +217,7 @@ async def test_13_approval_state_change_mid_flight(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.approve",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -283,15 +273,15 @@ async def test_13_approval_state_change_mid_flight(kernel, db):
 # ============================================================================
 # SCENARIO 14: Parallel Audit Writes Under Load
 # ============================================================================
-async def test_14_parallel_audit_load(kernel, db):
+async def test_14_parallel_audit_load(kernel, db, tenant_id):
     """Given: 50 concurrent actions. When: All execute. Then: Audit chain valid."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     async def submit_action(idx: int) -> KernelResult:
@@ -301,7 +291,7 @@ async def test_14_parallel_audit_load(kernel, db):
             actor_type=ActorType.AGENT.value,
             action_name=f"test.load{idx % 5}",
             resource="test",
-            tenant_id=None,
+            tenant_id=tenant_id,
             payload={"idx": idx},
             context={},
             session_id=None,
@@ -328,25 +318,25 @@ async def test_14_parallel_audit_load(kernel, db):
 # ============================================================================
 # SCENARIO 15: Kill Switch Toggled Mid-Flight
 # ============================================================================
-async def test_15_kill_switch_toggle_mid_flight(kernel, db):
+async def test_15_kill_switch_toggle_mid_flight(kernel, db, tenant_id):
     """Given: Kill switch toggled during execution. When: New actions submitted. Then: Blocked after toggle."""
     kernel, repo = kernel
     
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"
     
     await db.execute(
-        "INSERT INTO actors (actor_id, actor_type, status) VALUES ($1, 'agent', 'active')",
-        actor_id
+        "INSERT INTO actors (actor_id, actor_type, tenant_id, status) VALUES ($1, 'agent', $2, 'active')",
+        actor_id, tenant_id
     )
     
     # Insert an active kill switch
     switch_id = uuid.uuid4()
     await db.execute(
         """
-        INSERT INTO kill_switches (switch_id, scope_type, scope_value, enabled, reason)
-        VALUES ($1, 'action', 'test.toggle', true, 'emergency_stop')
+        INSERT INTO kill_switches (switch_id, tenant_id, scope_type, scope_value, enabled, reason)
+        VALUES ($1, $2, 'action', 'test.toggle', true, 'emergency_stop')
         """,
-        switch_id
+        switch_id, tenant_id
     )
     
     action = Action(
@@ -355,7 +345,7 @@ async def test_15_kill_switch_toggle_mid_flight(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.toggle",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -381,7 +371,7 @@ async def test_15_kill_switch_toggle_mid_flight(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.toggle",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -406,7 +396,7 @@ async def test_15_kill_switch_toggle_mid_flight(kernel, db):
         actor_type=ActorType.AGENT.value,
         action_name="test.toggle",
         resource="test",
-        tenant_id=None,
+        tenant_id=tenant_id,
         payload={},
         context={},
         session_id=None,
@@ -417,16 +407,6 @@ async def test_15_kill_switch_toggle_mid_flight(kernel, db):
     
     result3 = await kernel.handle(action3)
     assert result3.decision.status == KernelStatus.BLOCKED_EMERGENCY
-
-
-# ============================================================================
-# FIXTURES
-# ============================================================================
-
-@pytest.fixture(scope="session")
-def postgres_dsn():
-    """Database connection string."""
-    return "postgresql://ledger:ledger@127.0.0.1:5432/ledger_test"
 
 
 if __name__ == "__main__":
