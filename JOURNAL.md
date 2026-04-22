@@ -51,3 +51,65 @@ Implemented defense-in-depth tenant isolation using both application-level filte
 - KernelResult interface unchanged ✅
 - No experimental/ imports in src/ledger/ ✅
 - Tenant isolation holds ✅
+
+
+## Entry 11: Stream 2 Closed — Complete RLS Hardening + API Key Provisioning
+
+### Context
+Stream 2: API Key Provisioning and Cloud Tier Auth. Scope expanded mid-stream to enforce strict RLS across ALL tables (core + api_keys), not just new tables. Strategic advice: governance across the entire system means no NULL-as-admin-bypass fallback.
+
+### Decision Made
+Path B: Rewrite 001_tenant_isolation.sql with strict RLS on core tables. Write 002_api_keys.sql with strict RLS from the start. Update all tests to use tenant_id fixtures. Establish strict RLS as the enforced standard.
+
+### Changes
+
+**RLS Policy Rewrite (`001_tenant_isolation.sql`)**
+- Removed `get_tenant_context() IS NULL` bypass from ALL policies
+- New policy: `USING (tenant_id = get_tenant_context() OR admin_bypass_rls())`
+- `admin_bypass_rls()` checks `current_setting('app.admin_bypass', TRUE) = 'true'`
+- `set_tenant_context()` uses session-level `set_config(..., FALSE)` (not transaction-local) to survive asyncpg autocommit
+- `FORCE ROW LEVEL SECURITY` enabled on all tables
+
+**API Keys Migration (`002_api_keys.sql`)**
+- New table: `api_keys` with `key_id`, `tenant_id`, `key_hash`, `name`, `scopes`, `expires_at`, `last_used_at`, `revoked`, `created_at`
+- Strict RLS from creation — no NULL bypass
+
+**Repository (`src/ledger/repository.py`)**
+- Added `create_api_key()`, `get_api_key_by_hash()`, `list_api_keys()`, `revoke_api_key()`, `update_api_key_last_used()`
+- Keys hashed with SHA-256 for storage
+
+**Test Fixtures (`tests/conftest.py`)**
+- `tenant_id` fixture: random `test_tenant_{uuid4 hex}` per test
+- `clean_database` fixture (autouse=True): TRUNCATE all tables with `SET app.admin_bypass = 'true'`
+- `db` fixture: direct connection with `set_tenant_context()` called
+- `kernel` fixture: pool with `setup=setup_tenant` callback (runs on every `acquire()`, ensuring context survives pool return/reset)
+
+**Test Updates**
+- `test_kernel_conformance.py` — 10 tests updated with `tenant_id` param, all INSERTs include `tenant_id`, all `Action` constructors pass `tenant_id=tenant_id`
+- `test_audit_chain_race_regression.py` — 3 tests updated
+- `test_capability_race_regression.py` — 4 tests updated
+- `test_idempotency_race_regression.py` — 3 tests updated
+- `test_kernel_concurrency.py` — 5 tests updated
+- `test_tenant_isolation.py` — 7 tests updated, cross-tenant setup uses admin bypass, assertions use tenant-scoped pools
+- `test_api_keys.py` — 7 new tests: create, cross-tenant isolation, revocation, expiration, last_used tracking, name optional, list pagination
+- `e2e_api_sdk.py` — updated to set tenant context
+
+### Invariants
+- 42 tests passing under strict RLS ✅
+- No NULL-as-admin-bypass pattern anywhere ✅
+- Admin operations explicitly authorized via `app.admin_bypass` ✅
+- Tenant context required on every test ✅
+- Canonical Action and KernelResult interfaces unchanged ✅
+- No experimental/ imports in src/ledger/ ✅
+
+### Commits
+- `ec8fe58` — test: update all tests for strict RLS
+- `2eeeeef` — fix: strict RLS on all tables + API key repository
+
+### Risk Notes
+- Admin bypass via `app.admin_bypass` is explicit but powerful — monitor for misuse
+- Tenant context must be set on EVERY database connection — middleware must be airtight
+- Future migrations must use admin bypass fixture if they touch tenant data
+
+### Recommendation
+PROCEED to Stream 3 (Onboarding Flow)
