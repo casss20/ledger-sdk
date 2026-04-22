@@ -19,6 +19,7 @@ from ledger.approval_service import ApprovalService
 from ledger.capability_service import CapabilityService
 from ledger.audit_service import AuditService
 from ledger.execution.executor import Executor as ActionExecutor
+from ledger.tokens import TokenVault, KillSwitch, TokenVerifier
 
 # Global pool reference (set in lifespan)
 _pool: Optional = None
@@ -68,7 +69,19 @@ async def get_kernel(request: Request) -> Kernel:
     repo = Repository(pool)
     policy_resolver = PolicyResolver(repo)
     policy_evaluator = PolicyEvaluator()
-    precedence = Precedence(repo, policy_evaluator)
+    
+    # Governance components (Phase 4 integration)
+    vault = TokenVault(pool)
+    kill_switch = KillSwitch(pool)
+    verifier = TokenVerifier(vault, kill_switch)
+    
+    precedence = Precedence(
+        repo,
+        policy_evaluator,
+        token_verifier=verifier,
+        governance_kill_switch=kill_switch,
+    )
+    
     approval_service = ApprovalService(repo)
     capability_service = CapabilityService(repo)
     audit_service = AuditService(repo)

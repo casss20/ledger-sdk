@@ -81,6 +81,11 @@ class Repository:
     
     async def save_decision(self, decision: Decision) -> None:
         """Persist terminal decision with tenant isolation."""
+        # Governance tokens (gt_cap_*) live in governance_tokens, not capabilities.
+        # Only old-style capability tokens can be stored in the capability_token FK column.
+        cap_token = decision.capability_token
+        if cap_token and cap_token.startswith("gt_cap_"):
+            cap_token = None
         async with self.pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO decisions (
@@ -94,7 +99,7 @@ class Repository:
                 decision.status.value,
                 decision.winning_rule,
                 decision.reason,
-                decision.capability_token,
+                cap_token,
                 decision.risk_level,
                 decision.risk_score,
                 decision.path_taken,

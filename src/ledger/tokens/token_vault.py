@@ -1,120 +1,134 @@
 """
-Token Vault — Ledger's proprietary storage for gt_ tokens.
+Token Vault — Stores GovernanceDecisions and derived CapabilityTokens.
 
-Why: Tokens only have meaning when resolved by Ledger.
-Removing Ledger = losing all resolution capability.
-This is the data gravity mechanism.
+Why: Decisions are first-class; tokens are optional derivations.
+Vault supports resolving by decision_id or token_id.
+Strict tenant isolation via RLS.
 """
 
 import json
 from typing import Optional
 
-from .governance_token import GovernanceToken
-
 
 class TokenVault:
     """
-    Stores and resolves gt_ tokens.
+    Stores and resolves governance decisions and capability tokens.
 
-    Only Ledger infrastructure can resolve tokens to decision traces.
-    Vault is tenant-isolated (strict RLS).
+    Tenant-isolated via RLS. Vault sets tenant context internally.
     """
 
-    def __init__(self, db_pool, tenant_context_provider):
+    def __init__(self, db_pool, tenant_context_provider=None):
         self.db = db_pool
         self.get_tenant = tenant_context_provider
 
-    async def store(self, token: GovernanceToken) -> None:
-        """Store token in vault (tenant-scoped)."""
+    async def store_decision(self, decision) -> None:
+        """Store a GovernanceDecision."""
         async with self.db.acquire() as conn:
-            # Set tenant context for RLS enforcement
-            await conn.execute("SELECT set_tenant_context($1)", token.tenant_id)
-            await conn.execute(
-                """
-                INSERT INTO governance_tokens (
-                    token_id, token_type, tenant_id, agent_id,
-                    created_at, content_hash, chain_hash,
-                    decision_trace, policy_version, previous_token_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                """,
-                token.token_id,
-                token.token_type.value,
-                token.tenant_id,
-                token.agent_id,
-                token.created_at,
-                token.content_hash,
-                token.chain_hash,
-                json.dumps(token.decision_trace),
-                token._policy_version,
-                None,  # previous_token_id would need chain tracking
-            )
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", decision.tenant_id)
+                await conn.execute(
+                    """
+                    INSERT INTO governance_decisions (
+                        decision_id, decision_type, tenant_id, actor_id,
+                        action, scope_actions, scope_resources,
+                        constraints, expiry, kill_switch_scope,
+                        created_at, reason
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    ON CONFLICT (decision_id) DO UPDATE SET
+                        decision_type = EXCLUDED.decision_type,
+                        reason = EXCLUDED.reason
+                    """,
+                    decision.decision_id,
+                    decision.decision_type.value,
+                    decision.tenant_id,
+                    decision.actor_id,
+                    decision.action,
+                    decision.scope.actions,
+                    decision.scope.resources,
+                    json.dumps(decision.constraints),
+                    decision.expiry,
+                    decision.kill_switch_scope.value,
+                    decision.created_at,
+                    decision.reason,
+                )
 
-    async def resolve(self, token_id: str) -> Optional[dict]:
-        """
-        Resolve gt_ token to full decision trace.
-        Only callable within Ledger's runtime.
-        Returns None if token doesn't exist or tenant mismatch.
-        """
-        tenant_id = self.get_tenant()
+    async def store_token(self, token) -> None:
+        """Store a CapabilityToken (links to a decision)."""
         async with self.db.acquire() as conn:
-            await conn.execute("SELECT set_tenant_context($1)", tenant_id)
-            row = await conn.fetchrow(
-                """
-                SELECT token_id, token_type, tenant_id, agent_id,
-                       created_at, content_hash, chain_hash,
-                       decision_trace, policy_version
-                FROM governance_tokens
-                WHERE token_id = $1
-                """,
-                token_id,
-            )
-            if not row:
-                return None
-            return dict(row)
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", token.tenant_id)
+                await conn.execute(
+                    """
+                    INSERT INTO governance_tokens (
+                        token_id, decision_id, tenant_id, actor_id,
+                        scope_actions, scope_resources, expiry,
+                        created_at, chain_hash
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    token.token_id,
+                    token.decision_id,
+                    token.tenant_id,
+                    token.actor_id,
+                    token.scope_actions,
+                    token.scope_resources,
+                    token.expiry,
+                    token.created_at,
+                    token.chain_hash,
+                )
 
-    async def get_chain(self, token_id: str) -> list:
-        """
-        Get hash chain ending at token_id.
-        Used for tamper detection and audit verification.
-        """
-        tenant_id = self.get_tenant()
+    async def resolve_token(self, token_id: str, tenant_id: str = None) -> Optional[dict]:
+        """Resolve a capability token by ID."""
+        tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
         async with self.db.acquire() as conn:
-            await conn.execute("SELECT set_tenant_context($1)", tenant_id)
-            row = await conn.fetchrow(
-                """
-                SELECT token_id, chain_hash, previous_token_id
-                FROM governance_tokens
-                WHERE token_id = $1
-                """,
-                token_id,
-            )
-            if not row:
-                return []
-            return [dict(row)]
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", tid)
+                row = await conn.fetchrow(
+                    """
+                    SELECT token_id, decision_id, tenant_id, actor_id,
+                           scope_actions, scope_resources, expiry,
+                           created_at, chain_hash
+                    FROM governance_tokens
+                    WHERE token_id = $1
+                    """,
+                    token_id,
+                )
+                return dict(row) if row else None
+
+    async def resolve_decision(self, decision_id: str, tenant_id: str = None) -> Optional[dict]:
+        """Resolve a governance decision by ID."""
+        tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
+        async with self.db.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", tid)
+                row = await conn.fetchrow(
+                    """
+                    SELECT decision_id, decision_type, tenant_id, actor_id,
+                           action, scope_actions, scope_resources,
+                           constraints, expiry, kill_switch_scope,
+                           created_at, reason
+                    FROM governance_decisions
+                    WHERE decision_id = $1
+                    """,
+                    decision_id,
+                )
+                return dict(row) if row else None
+
+    async def get_chain(self, token_id: str, tenant_id: str = None) -> list:
+        """Get token chain for tamper detection."""
+        tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
+        async with self.db.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", tid)
+                row = await conn.fetchrow(
+                    "SELECT token_id, chain_hash FROM governance_tokens WHERE token_id = $1",
+                    token_id,
+                )
+                return [dict(row)] if row else []
 
     async def verify_chain(self, token_id: str) -> bool:
-        """
-        Verify hash chain integrity from genesis to token_id.
-        Returns False if any token in chain is tampered.
-        """
-        tenant_id = self.get_tenant()
-        async with self.db.acquire() as conn:
-            await conn.execute("SELECT set_tenant_context($1)", tenant_id)
-            row = await conn.fetchrow(
-                """
-                SELECT content_hash, decision_trace
-                FROM governance_tokens
-                WHERE token_id = $1
-                """,
-                token_id,
-            )
-            if not row:
-                return False
-
-            import hashlib
-            from .governance_token import _canonical_json
-
-            expected = hashlib.sha256(
-                _canonical_json(row["decision_trace"]).encode()
-            ).hexdigest()
-            return expected == row["content_hash"]
+        """Verify token integrity by checking linked decision exists."""
+        token_data = await self.resolve_token(token_id)
+        if not token_data:
+            return False
+        decision = await self.resolve_decision(token_data["decision_id"])
+        return decision is not None

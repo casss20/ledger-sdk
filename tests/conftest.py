@@ -25,13 +25,47 @@ def tenant_id():
 async def clean_database(postgres_dsn):
     """Clean database before each test with admin bypass."""
     conn = await asyncpg.connect(postgres_dsn)
-    # Admin bypass allows TRUNCATE under strict RLS
     await conn.execute("SET app.admin_bypass = 'true'")
-    await conn.execute("""
-        TRUNCATE actors, policies, policy_snapshots, capabilities,
-                    kill_switches, approvals, actions, decisions,
-                    audit_events, execution_results, api_keys
-        CASCADE
-    """)
+    await conn.execute("SET LOCAL lock_timeout = '3s'")
+    try:
+        # Delete all test data - use simple conditions that work across tables
+        await conn.execute("""
+            DELETE FROM policy_snapshots WHERE EXISTS (SELECT 1 FROM policies p WHERE p.policy_id = policy_snapshots.policy_id AND p.tenant_id LIKE 'test_%');
+            DELETE FROM capabilities WHERE token_id LIKE 'test_%' OR token_id LIKE 'cap_%' OR token_id LIKE 'gt_%';
+            DELETE FROM kill_switches WHERE tenant_id LIKE 'test_%';
+            DELETE FROM approvals WHERE tenant_id LIKE 'test_%';
+            DELETE FROM decisions WHERE tenant_id LIKE 'test_%';
+            DELETE FROM audit_events WHERE tenant_id LIKE 'test_%';
+            DELETE FROM execution_results;
+            DELETE FROM api_keys;
+            DELETE FROM governance_tokens WHERE token_id LIKE 'gt_%';
+            DELETE FROM governance_audit_log WHERE tenant_id LIKE 'test_%';
+            DELETE FROM actions WHERE tenant_id LIKE 'test_%';
+            DELETE FROM policies WHERE tenant_id LIKE 'test_%';
+            DELETE FROM actors WHERE tenant_id LIKE 'test_%';
+            DELETE FROM governance_decisions WHERE tenant_id LIKE 'test_%';
+        """)
+    except Exception as e:
+        print(f"Warning: clean_database failed: {e}")
     await conn.close()
     yield
+
+
+@pytest.fixture
+async def db_pool(postgres_dsn):
+    """Database pool for tests that need it.
+    
+    Sets tenant context on each connection to allow queries through RLS.
+    Tests that need specific tenant isolation should create their own pool.
+    """
+    async def _setup(conn):
+        await conn.execute("SET app.current_tenant_id = 'test_tenant'")
+    
+    pool = await asyncpg.create_pool(
+        postgres_dsn, 
+        min_size=1, 
+        max_size=5,
+        init=_setup,
+    )
+    yield pool
+    await pool.close()

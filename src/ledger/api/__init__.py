@@ -19,7 +19,7 @@ from prometheus_client import make_asgi_app
 
 from ledger.config import settings
 from ledger.api.middleware import setup_middleware
-from ledger.api.routers import actions, approvals, audit, health, metrics
+from ledger.api.routers import actions, approvals, audit, governance, health, metrics
 
 
 @asynccontextmanager
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(actions.router, prefix="/v1")
     app.include_router(approvals.router, prefix="/v1")
     app.include_router(audit.router, prefix="/v1")
+    app.include_router(governance.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
     app.include_router(metrics.router, prefix="/v1")
     

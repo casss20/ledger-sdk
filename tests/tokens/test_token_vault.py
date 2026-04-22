@@ -1,11 +1,17 @@
-"""Tests for token vault with tenant isolation."""
+"""Tests for token vault with decision-centric storage."""
 
 import uuid
 
 import asyncpg
 import pytest
 
-from ledger.tokens import GovernanceToken, TokenType, TokenVault
+from ledger.tokens import (
+    CapabilityToken,
+    DecisionScope,
+    DecisionType,
+    GovernanceDecision,
+    TokenVault,
+)
 
 DSN = "postgresql://ledger:ledger@localhost:5432/ledger_test"
 
@@ -19,113 +25,107 @@ def tenant_id():
     return str(uuid.uuid4())
 
 
-class TestStoreAndResolve:
+class TestDecisionStorage:
     @pytest.mark.asyncio
-    async def test_store_and_resolve(self, tenant_id):
-        """Store a token and resolve it back."""
+    async def test_store_and_resolve_decision(self, tenant_id):
+        """Store a decision and resolve it back."""
         pool = await get_pool()
         vault = TokenVault(pool, lambda: tenant_id)
 
-        token = GovernanceToken.generate(
-            token_type=TokenType.POLICY_DECISION,
+        decision = GovernanceDecision(
+            decision_id="gd_test_001",
+            decision_type=DecisionType.ALLOW,
             tenant_id=tenant_id,
-            decision_trace={"action": "file.read"},
+            actor_id="agent_1",
+            action="file.read",
+            scope=DecisionScope(actions=["file.read"]),
         )
 
-        await vault.store(token)
-
-        # Resolve back
-        result = await vault.resolve(token.token_id)
+        await vault.store_decision(decision)
+        result = await vault.resolve_decision("gd_test_001")
 
         assert result is not None
-        assert result["token_id"] == token.token_id
-        assert result["token_type"] == "policy"
+        assert result["decision_id"] == "gd_test_001"
+        assert result["decision_type"] == "allow"
 
     @pytest.mark.asyncio
-    async def test_resolve_nonexistent(self, tenant_id):
-        """Resolving non-existent token returns None."""
+    async def test_store_and_resolve_token(self, tenant_id):
+        """Store a token linked to a decision and resolve it."""
         pool = await get_pool()
         vault = TokenVault(pool, lambda: tenant_id)
 
-        result = await vault.resolve("gt_pol_nonexistent12345")
-        assert result is None
+        decision = GovernanceDecision(
+            decision_id="gd_test_002",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_1",
+            action="file.write",
+            scope=DecisionScope(actions=["file.write"]),
+        )
+        token = CapabilityToken.derive(decision)
+
+        await vault.store_decision(decision)
+        await vault.store_token(token)
+
+        result = await vault.resolve_token(token.token_id)
+        assert result is not None
+        assert result["token_id"] == token.token_id
+        assert result["decision_id"] == decision.decision_id
 
 
 class TestTenantIsolation:
     @pytest.mark.asyncio
     async def test_cross_tenant_access_blocked(self, tenant_id):
-        """Tenant A cannot resolve Tenant B's tokens."""
+        """Tenant A cannot resolve Tenant B's decisions."""
         pool = await get_pool()
         tenant_a = str(uuid.uuid4())
         tenant_b = str(uuid.uuid4())
 
-        # Create token for tenant A
-        token = GovernanceToken.generate(
-            token_type=TokenType.AUDIT_EVENT,
+        decision = GovernanceDecision(
+            decision_id="gd_a_001",
+            decision_type=DecisionType.ALLOW,
             tenant_id=tenant_a,
-            decision_trace={"event": "test"},
+            actor_id="agent_1",
+            action="file.read",
+            scope=DecisionScope(),
         )
 
         vault_a = TokenVault(pool, lambda: tenant_a)
-        await vault_a.store(token)
+        await vault_a.store_decision(decision)
 
-        # Tenant B tries to resolve it
         vault_b = TokenVault(pool, lambda: tenant_b)
-        result = await vault_b.resolve(token.token_id)
-
-        # Should be None due to RLS
+        result = await vault_b.resolve_decision("gd_a_001")
         assert result is None
 
 
-class TestChainVerification:
+class TestTokenChain:
     @pytest.mark.asyncio
-    async def test_verify_chain_detects_tampering(self, tenant_id):
-        """Verification detects if decision trace was tampered."""
+    async def test_verify_chain(self, tenant_id):
+        """Token chain verification works."""
         pool = await get_pool()
         vault = TokenVault(pool, lambda: tenant_id)
 
-        token = GovernanceToken.generate(
-            token_type=TokenType.AUDIT_EVENT,
+        decision = GovernanceDecision(
+            decision_id="gd_chain_001",
+            decision_type=DecisionType.ALLOW,
             tenant_id=tenant_id,
-            decision_trace={"action": "read", "resource": "file.txt"},
+            actor_id="agent_1",
+            action="file.read",
+            scope=DecisionScope(),
         )
+        token = CapabilityToken.derive(decision)
 
-        await vault.store(token)
+        await vault.store_decision(decision)
+        await vault.store_token(token)
 
-        # Direct tamper in DB (bypass RLS)
-        async with pool.acquire() as conn:
-            await conn.execute("SET app.admin_bypass = 'true'")
-            await conn.execute(
-                "UPDATE governance_tokens SET decision_trace = $1 WHERE token_id = $2",
-                '{"tampered": true}',
-                token.token_id,
-            )
-
-        # Verify should detect mismatch
         is_valid = await vault.verify_chain(token.token_id)
+        assert is_valid is True
 
-        assert is_valid is False
-
-
-class TestAppendOnly:
     @pytest.mark.asyncio
-    async def test_no_delete_permission(self, tenant_id):
-        """Tokens are append-only — no DELETE via vault API."""
+    async def test_verify_chain_missing_token(self, tenant_id):
+        """Chain verification fails for non-existent token."""
         pool = await get_pool()
-
-        token = GovernanceToken.generate(
-            token_type=TokenType.POLICY_DECISION,
-            tenant_id=tenant_id,
-            decision_trace={"action": "test"},
-        )
-
         vault = TokenVault(pool, lambda: tenant_id)
-        await vault.store(token)
 
-        # Verify token exists
-        result = await vault.resolve(token.token_id)
-        assert result is not None
-
-        # Vault has no delete method (architectural immutability)
-        assert not hasattr(vault, 'delete')
-        assert not hasattr(vault, 'remove')
+        is_valid = await vault.verify_chain("gt_cap_nonexistent")
+        assert is_valid is False

@@ -59,9 +59,13 @@ class Precedence:
         self,
         repository: Repository,
         policy_evaluator: PolicyEvaluator,
+        token_verifier = None,
+        governance_kill_switch = None,
     ):
         self.repo = repository
         self.policy_eval = policy_evaluator
+        self.token_verifier = token_verifier
+        self.gov_kill_switch = governance_kill_switch
     
     async def evaluate(
         self,
@@ -140,25 +144,36 @@ class Precedence:
     
     async def _check_kill_switch(self, action: Action) -> KillSwitchStatus:
         """Check kill switches at all relevant scopes."""
-        # Check global
-        ks = await self.repo.check_kill_switch('global', '*', action.tenant_id)
-        if ks:
-            return KillSwitchStatus(active=True, reason=ks.get('reason'))
+        # 1. Check governance kill switch first (if available)
+        if self.gov_kill_switch is not None:
+            check = await self.gov_kill_switch.check(
+                actor_id=action.actor_id,
+                tenant_id=action.tenant_id,
+            )
+            if check.active:
+                return KillSwitchStatus(active=True, reason=check.reason)
         
-        # Check action-specific
-        ks = await self.repo.check_kill_switch('action', action.action_name, action.tenant_id)
-        if ks:
-            return KillSwitchStatus(active=True, reason=ks.get('reason'))
-        
-        # Check resource-specific
-        ks = await self.repo.check_kill_switch('resource', action.resource, action.tenant_id)
-        if ks:
-            return KillSwitchStatus(active=True, reason=ks.get('reason'))
-        
-        # Check actor-specific
-        ks = await self.repo.check_kill_switch('actor', action.actor_id, action.tenant_id)
-        if ks:
-            return KillSwitchStatus(active=True, reason=ks.get('reason'))
+        # 2. Fall back to repository-based kill switches (if repo available)
+        if self.repo is not None:
+            # Check global
+            ks = await self.repo.check_kill_switch('global', '*', action.tenant_id)
+            if ks:
+                return KillSwitchStatus(active=True, reason=ks.get('reason'))
+            
+            # Check action-specific
+            ks = await self.repo.check_kill_switch('action', action.action_name, action.tenant_id)
+            if ks:
+                return KillSwitchStatus(active=True, reason=ks.get('reason'))
+            
+            # Check resource-specific
+            ks = await self.repo.check_kill_switch('resource', action.resource, action.tenant_id)
+            if ks:
+                return KillSwitchStatus(active=True, reason=ks.get('reason'))
+            
+            # Check actor-specific
+            ks = await self.repo.check_kill_switch('actor', action.actor_id, action.tenant_id)
+            if ks:
+                return KillSwitchStatus(active=True, reason=ks.get('reason'))
         
         return KillSwitchStatus(active=False)
     
@@ -169,13 +184,26 @@ class Precedence:
     ) -> CapabilityStatus:
         """Validate and atomically consume capability token for action.
 
-        Semantic choice: consumption happens BEFORE execution.
-        Even if the executor later fails, the use is spent. This prevents
-        DoS where an attacker repeatedly requests with a limited-use cap
-        and relies on executor failures to retry. The tradeoff: transient
-        failures waste uses, but that's acceptable for safety.
+        Supports both old-style capabilities (from capabilities table) and
+        new governance tokens (gt_cap_* prefix) via TokenVerifier.
         """
-        # First, fetch capability to check scope (scope check is not in SQL function)
+        # If it's a governance token and we have a verifier, use it
+        if token.startswith("gt_cap_") and self.token_verifier is not None:
+            context = {
+                "tenant_id": action.tenant_id,
+                "actor_id": action.actor_id,
+            }
+            result = await self.token_verifier.verify_token(
+                token, action.action_name, action.resource, context
+            )
+            if not result.valid:
+                return CapabilityStatus(valid=False, reason=result.reason)
+            return CapabilityStatus(valid=True, remaining_uses=1)
+        
+        # Old-style capability token
+        if self.repo is None:
+            return CapabilityStatus(valid=False, reason="Capability not found (no repository)")
+        
         cap = await self.repo.get_capability(token)
         if not cap:
             return CapabilityStatus(valid=False, reason="Capability not found")
