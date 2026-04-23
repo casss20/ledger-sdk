@@ -100,4 +100,9 @@ Ledger is tested against adversarial scenarios:
 
 ## License
 
-MIT - See [NOTICES.md](NOTICES.md) for third-party attributions.
+Ledger is built on an **Open Core** model where openness drives adoption:
+
+- **SDKs, Schemas, and Integration Tooling**: Licensed under **Apache 2.0**.
+- **Core Governance Runtime**: Source-available under a **BSL-style license**.
+
+This allows for free internal use and self-hosting while protecting the commercial hosted product. See [NOTICES.md](NOTICES.md) for full terms and third-party attributions.

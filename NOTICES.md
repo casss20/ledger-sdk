@@ -1,8 +1,17 @@
-# Third-Party Notices
+# Third-Party Notices & License
 
-This document contains attribution for third-party software and architectural patterns used in the Ledger SDK.
+## Ledger SDK Project License
+
+The Ledger SDK project uses a dual-license commercial strategy:
+
+- **SDKs, Client Libraries, and Integration Tooling**: Licensed under the **Apache License 2.0**. This allows for maximum interoperability and free integration into any application.
+- **Core Governance Runtime & Kernel**: Licensed under a **Business Source License (BSL-style)**. This allows for free internal use, testing, and self-hosting, while protecting the commercial interests of the hosted Ledger Cloud platform.
+
+See the full [LICENSE](LICENSE) file for legal details.
 
 ---
+
+This document also contains attribution for third-party software and architectural patterns used in the Ledger SDK.
 
 ## Microsoft Agent Governance Toolkit
 
