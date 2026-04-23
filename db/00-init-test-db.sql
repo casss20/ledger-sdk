@@ -1,0 +1,2 @@
+CREATE DATABASE ledger_test;
+GRANT ALL PRIVILEGES ON DATABASE ledger_test TO ledger;

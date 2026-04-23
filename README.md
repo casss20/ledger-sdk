@@ -54,7 +54,29 @@ Ledger is organized as a **mixed-license monorepo** to separate the open ecosyst
 pip install ledger-sdk
 ```
 
-### Usage
+### Local Development Setup
+
+To run the Ledger SDK locally (or run the test suite), you must have a PostgreSQL database running with the correct schema.
+
+**1. Start the Database**
+We provide a `docker-compose.yml` to instantly spin up the required PostgreSQL instance and apply the schema:
+```bash
+docker compose up -d postgres
+```
+
+**2. Install Dependencies**
+Install the core runtime dependencies:
+```bash
+pip install -e .
+```
+
+**3. Run the API Server**
+Start the FastAPI server:
+```bash
+uvicorn ledger.api:app --reload
+```
+
+### Quick Usage
 ```python
 import ledger
 

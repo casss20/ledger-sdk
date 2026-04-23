@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: ledger
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/00-init-test-db.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
       - "5432:5432"
