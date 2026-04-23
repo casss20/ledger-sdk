@@ -24,7 +24,12 @@ def tenant_id():
 @pytest.fixture(autouse=True)
 async def clean_database(postgres_dsn):
     """Clean database before each test with admin bypass."""
-    conn = await asyncpg.connect(postgres_dsn)
+    try:
+        conn = await asyncpg.connect(postgres_dsn)
+    except (OSError, asyncpg.PostgresError, ConnectionRefusedError) as e:
+        # PostgreSQL not available — skip silently for non-DB tests
+        yield
+        return
     await conn.execute("SET app.admin_bypass = 'true'")
     await conn.execute("SET LOCAL lock_timeout = '3s'")
     try:

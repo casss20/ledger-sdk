@@ -66,7 +66,8 @@ async def get_kernel(request: Request) -> Kernel:
             detail="Database not connected",
         )
     
-    repo = Repository(pool)
+    from ledger.middleware.tenant_context import TenantAwarePool
+    repo = Repository(TenantAwarePool(pool))
     policy_resolver = PolicyResolver(repo)
     policy_evaluator = PolicyEvaluator()
     

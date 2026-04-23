@@ -55,8 +55,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
+    from ledger.middleware.fastapi_middleware import setup_tenant_middleware
+    
     # Middleware: logging, errors, CORS, request IDs
     setup_middleware(app)
+    
+    # Tenant context middleware (must run AFTER ErrorHandlingMiddleware but BEFORE routers)
+    setup_tenant_middleware(app)
     
     # Routers
     app.include_router(actions.router, prefix="/v1")
