@@ -1,104 +1,91 @@
 # Ledger SDK
 
-**Governed action execution with audit trails.**
+**Commercial-grade AI Governance: Constitution + Audit for Agent Builders.**
 
-A governance engine that intercepts actions, applies policy, requires approval for risky ones, executes the allowed ones, and logs everything to a tamper-evident audit chain.
+Ledger is a hardened governance engine that intercepts agent actions, applies multi-tenant policies, requires human-in-the-loop approvals for risky tasks, and logs everything to a tamper-proof PostgreSQL audit chain.
 
-## What Core Does Today
+## Core Capabilities
 
-The production core is a **stateless governance pipeline** backed by PostgreSQL:
+### 1. Multi-Tenancy & Auth (Cloud Ready)
+- **Strict Tenant Isolation**: Enforced via PostgreSQL Row-Level Security (RLS) and application-level filtering.
+- **API Key Management**: Secure SHA-256 hashed keys with scoped permissions and automatic `last_used` tracking.
+- **JWT Dashboard Auth**: Role-based access for operators and tenant admins.
 
-1. **Policy Resolution** — Rules match on actor, action, resource, and context. Rules resolve in precedence order. The winning rule decides: `ALLOWED`, `BLOCKED_*`, `PENDING_APPROVAL`, `RATE_LIMITED`.
+### 2. Commercial Entitlements & Billing
+- **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal.
+- **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
+- **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
+- **Atomic Usage Tracking**: High-concurrency Postgres counters for precise billing.
 
-2. **Capability Tokens** — Scoped, expiring, use-limited tokens that bypass policy for pre-authorized actions.
+### 3. Governance Lifecycle
+- **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
+- **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
+- **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
+- **Capability Tokens**: Scoped, expiring bypass tokens for pre-authorized workflows.
 
-3. **Approval Queue** — Human-in-the-loop for actions that match `PENDING_APPROVAL` rules. Approvers get a queue; decisions are recorded with reasons.
+## Directory Structure
 
-4. **Execution** — Allowed actions execute through a configurable executor. Results are captured or failures are logged.
+The repository is organized into a clean, modular structure for production scaling:
 
-5. **Audit Chain** — Every action and decision is hashed and linked in Postgres. The chain is append-only (triggers block UPDATE/DELETE). A `verify_audit_chain()` function checks integrity.
-
-6. **Idempotency** — Duplicate requests with the same `idempotency_key` return the original result without re-executing.
-
-7. **FastAPI API** — `POST /v1/actions/execute` runs an action through the full pipeline. `GET /v1/audit/verify` checks chain integrity. `GET /health/ready` reports database connectivity. API key auth via `X-API-Key`.
-
-8. **Universal SDK** — `LedgerClient(base_url, api_key)` works from Python with `httpx`. `execute()`, `guard()`, `wrap()`, `approve()`, `reject()`, `verify_audit()` are the surface.
-
-9. **Orchestrator** — `Orchestrator(kernel, executor)` runs a goal through a loop: plan → govern → execute → review → cleanup. Planner, critic, and prune are injected; stubs are used by default.
-
-### Directory Layout (Core)
-
-```
+```bash
 src/ledger/
-├── actions/          # Canonical Action, Decision, KernelStatus, KernelResult models
-├── execution/        # Kernel (governance pipeline) + Executor (action runner)
-├── audit/            # AuditService + audit chain verification
-├── api/              # FastAPI app, routers, middleware, dependencies
-├── sdk/              # LedgerClient (httpx-based universal client)
-├── policies/         # PolicyResolver, Precedence, PolicyEvaluator
-├── repository.py     # All DB access (actions, decisions, audit, capabilities, actors, policies)
-├── approval_service.py
-├── capability_service.py
-├── orchestrator.py
-└── config.py         # Pydantic Settings, .env support
+├── core/             # Governance Kernel, Repository, Orchestrator, SDK
+├── services/         # Approval, Audit, Capability, Policy, Analytics
+├── utils/            # Validation, Schema, Precedence, Status
+├── billing/          # Stripe Client, Entitlements, Usage tracking
+├── api/              # FastAPI Routers, Middleware, Dependencies
+└── auth/             # JWT, API Key, and Operator services
+
+tests/
+├── unit/             # Core logic and Auth tests
+├── integration/      # RLS, Tenant Isolation, and API flows
+├── simulations/      # Billing verification (Lockout, Grace Period)
+└── regression/       # Concurrency and Race-condition tests
+
+research/             # Archived experimental agent logic and legacy docs
+scripts/              # Admin utilities and database seeders
 ```
 
-## What Experimental Is Building Toward
+## Quick Start
 
-The `experimental/agent_runtime/` directory contains aspirational modules for an **autonomous agent governance runtime** — a different system from the core action-authorization engine. These modules are isolated from core; nothing in `src/ledger/` imports them.
-
-**Modules in experimental:**
-
-- `planner.py` (~520 lines) — Goal decomposition and action sequencing
-- `critic.py` (~450 lines) — Post-execution review and feedback loops
-- `prune.py` (~400 lines) — State cleanup and memory management
-- `focus.py` (~470 lines) — Attention routing and mode selection
-- `constitution.py` (~250 lines) — Agent self-governance rules
-
-**What would need to happen for experimental to integrate with core:**
-
-1. **Shared model** — `experimental/planner.py` must output `ledger.actions.Action` objects so the core kernel can govern them.
-
-2. **State contract** — `experimental/critic.py` and `experimental/prune.py` must accept `ledger.orchestrator.OrchestratorState` instead of their own state types.
-
-3. **Policy bridge** — `experimental/constitution.py` rules must map to `ledger.policies.Policy` objects so the kernel's `PolicyResolver` can evaluate them.
-
-4. **Execution wiring** — `experimental/planner.py` → `ledger.orchestrator.Orchestrator.run()` → `ledger.execution.Kernel.handle()` → `ledger.execution.Executor.execute()`.
-
-5. **Test isolation** — Experimental tests live in `experimental/tests/` and run separately from core tests.
-
-**Status:** Experimental is not wired to core. The Orchestrator accepts planner/critic/prune as constructor arguments, so they *can* be injected, but the experimental modules do not yet conform to the core interfaces. The README will be updated when that wiring is complete.
-
-## Installation
-
+### Installation
 ```bash
 pip install ledger-sdk
 ```
 
-Requires PostgreSQL 14+ for the audit chain and policy storage.
-
-## Quick Start
-
+### Usage
 ```python
 import ledger
 
-# Via API
+# Configure the universal client
 client = ledger.LedgerClient(base_url="http://localhost:8000", api_key="your-key")
+
+# Execute an action under governance
 result = await client.execute(
-    action="email.send",
-    resource="user:123",
-    payload={"to": "user@example.com"},
-    actor_id="agent-1",
+    action="file.delete",
+    resource="documents/sensitive.pdf",
+    actor_id="agent-v1",
 )
-print(result.status)  # "executed", "blocked", "pending_approval"
+
+if result.status == "executed":
+    print("Action permitted and logged.")
+elif result.status == "pending_approval":
+    print("Action is waiting for human review.")
 ```
+
+## Hardening & Verification
+
+Ledger is tested against adversarial scenarios:
+- **Simulation Scripts**: Run `python tests/simulations/simulate_lockout.py` to verify quota enforcement.
+- **Audit Verification**: Call `await client.verify_audit()` to check the cryptographic integrity of the entire governance chain.
+- **Race Condition Tests**: Extensive regression suite for concurrent action handling.
 
 ## Documentation
 
 - [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) — Module dependency graph
 - [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
-- [API Reference](docs/API.md) — HTTP endpoints and request/response schemas
+- [API Reference](docs/API.md) — HTTP endpoints and schemas
 
 ## License
 
-MIT
+MIT - See [NOTICES.md](NOTICES.md) for third-party attributions.
