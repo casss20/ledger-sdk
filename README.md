@@ -26,6 +26,14 @@ Ledger is a hardened governance engine that intercepts agent actions, applies mu
     - `gt_app_`: Pre-authorized approval tokens for automated high-risk tasks.
     - `gt_vlt_`: Secure vault tokens for governed credential access.
 
+## Technical Design Pillars
+
+The Ledger is built on three core architectural philosophies:
+
+1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
+2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
+3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, and Global Kill Switches for emergency intervention.
+
 ## Directory Structure
 
 The repository is organized into a clean, modular structure for production scaling:
