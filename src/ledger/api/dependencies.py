@@ -12,12 +12,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from ledger.config import settings
 from ledger.execution.kernel import Kernel
-from ledger.repository import Repository
-from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
-from ledger.precedence import Precedence
-from ledger.approval_service import ApprovalService
-from ledger.capability_service import CapabilityService
-from ledger.audit_service import AuditService
+from ledger.core.repository import Repository
+from ledger.services.policy_resolver import PolicyResolver, PolicyEvaluator
+from ledger.utils.precedence import Precedence
+from ledger.services.approval_service import ApprovalService
+from ledger.services.capability_service import CapabilityService
+from ledger.services.audit_service import AuditService
 from ledger.execution.executor import Executor as ActionExecutor
 from ledger.tokens import TokenVault, KillSwitch, TokenVerifier
 

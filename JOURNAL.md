@@ -113,3 +113,53 @@ Path B: Rewrite 001_tenant_isolation.sql with strict RLS on core tables. Write 0
 
 ### Recommendation
 PROCEED to Stream 3 (Onboarding Flow)
+
+## Entry 12: Commercial Hardening & Repository Refactor
+
+### Context
+After establishing tenant isolation and auth, the focus shifted to **Monetization Readiness** and **Structural Refinement**. The system needed to handle Stripe-backed billing with robust entitlement enforcement, and the repository had reached a state of "structural debt" that required architectural arrangement for production scaling.
+
+### Decision Made
+Implemented a production-grade billing control plane and refactored the entire project structure for clarity:
+
+1.  **Stripe-Backed Billing Engine**:
+    *   Implemented `008_billing.sql` with tables for customers, plans, subscriptions, and usage.
+    *   Created `BillingMiddleware` for request-time quota and payment enforcement.
+    *   Added `Billing.tsx` and `useBilling.ts` to the dashboard for user self-service.
+    *   Ensured **Middleware Order** is strictly `AuthMiddleware` -> `TenantContextMiddleware` -> `BillingMiddleware`.
+
+2.  **Entitlement Hardening**:
+    *   Developed a "Grace Period" logic allowing access during `past_due` status windows.
+    *   Implemented atomic SQL usage increments to prevent race conditions during high-traffic billing periods.
+    *   Verified Webhook Signature handling with raw request bodies for security.
+
+3.  **Repository Arrangement**:
+    *   Cleaned the root directory by moving all seeders and utilities to `scripts/`.
+    *   Refactored `src/ledger` into logical sub-packages: `core/`, `services/`, `utils/`, and `billing/`.
+    *   Tiered the test suite into `unit/`, `integration/`, `simulations/`, and `regression/`.
+
+4.  **Verification Simulations**:
+    *   Shipped `tests/simulations/` containing `lockout`, `downgrade`, and `grace_period` scripts to verify the commercial engine without live Stripe calls.
+
+### Reasoning
+- **Why refactor now?** The "flat" package structure in `src/ledger` was causing cognitive overhead. Organizing into `core/` and `services/` mirrors domain-driven design and makes the kernel easier to maintain as it moves toward the Cloud Tier.
+- **Why simulation scripts?** Billing bugs are high-severity. Testing "Subscription Deleted" or "Card Failed" in production is dangerous. Simulations allow verifying the "Lockout" logic (402/429) safely and repeatedly.
+- **Why atomic usage?** `ON CONFLICT DO UPDATE` in Postgres ensures that even under heavy parallel load, quota increments remain accurate and non-blocking.
+
+### Files Changed
+- `src/ledger/billing/*` — new billing and entitlement services
+- `src/ledger/api/__init__.py` — core API integration and middleware ordering
+- `src/ledger/__init__.py` — updated for sub-package stability
+- `tests/simulations/*` — verification suite
+- `scripts/*` — root utility consolidation
+- `db/migrations/008_billing.sql` — billing schema
+
+### Invariants
+- 429 Quota Lockout: **VERIFIED** ✅
+- 402 Payment Grace Period: **VERIFIED** ✅
+- Webhook Signature Security: **HARDENED** ✅
+- Backend Package Structure: **CLEANED** ✅
+- API Stability maintained via `__init__.py` mapping ✅
+
+### Recommendation
+PROCEED to Onboarding Flow and Production Deployment.
