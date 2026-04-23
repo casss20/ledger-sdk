@@ -22,6 +22,7 @@ from ledger.api.middleware import setup_middleware
 from ledger.api.routers import actions, approvals, audit, governance, health, metrics, dashboard
 from ledger.billing.routes import router as billing_router
 from ledger.billing.middleware import BillingMiddleware
+from ledger.utils.telemetry import setup_telemetry
 
 
 @asynccontextmanager
@@ -57,6 +58,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
+    # Initialize OpenTelemetry
+    setup_telemetry(service_name="ledger-api")
+    
     from ledger.middleware.fastapi_middleware import setup_tenant_middleware
     from ledger.middleware.auth_middleware import AuthMiddleware, setup_auth_endpoints
     from ledger.auth.jwt_token import JWTService
@@ -76,7 +80,6 @@ def create_app() -> FastAPI:
     
     app.state.cache = AppCache()
     jwt_service = JWTService(secret_key="secret_key_change_me_in_prod")
-    api_key_service = APIKeyService(db_pool=_pool, cache=app.state.cache)
     
     # Order: Outermost (runs first) to Innermost (runs last)
     
@@ -89,12 +92,11 @@ def create_app() -> FastAPI:
     # 1. Auth (identifies user and sets tenant_id)
     app.add_middleware(
         AuthMiddleware, 
-        jwt_service=jwt_service, 
-        api_key_service=api_key_service
+        jwt_service=jwt_service
     )
     
     # Auth endpoints
-    setup_auth_endpoints(app, jwt_service, api_key_service)
+    setup_auth_endpoints(app, jwt_service)
     
     # Routers
     app.include_router(actions.router, prefix="/v1")

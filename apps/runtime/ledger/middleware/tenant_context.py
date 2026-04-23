@@ -127,19 +127,21 @@ class TenantAwarePool:
     @asynccontextmanager
     async def acquire(self):
         async with self._pool.acquire() as conn:
-            try:
-                if is_admin_context():
-                    await conn.execute("SET app.admin_bypass = 'true'")
-                else:
-                    ctx = get_tenant_context()
-                    await conn.execute("SELECT set_tenant_context($1)", ctx.tenant_id)
-                yield conn
-            finally:
-                # Always reset context before returning to pool
+            # Every connection acquisition is now a transaction to ensure
+            # SET LOCAL app.current_tenant_id is strictly bound and auto-cleared.
+            async with conn.transaction():
                 try:
-                    await conn.execute("RESET app.current_tenant_id")
-                    await conn.execute("RESET app.admin_bypass")
-                except:
+                    if is_admin_context():
+                        await conn.execute("SET LOCAL app.admin_bypass = 'true'")
+                    else:
+                        ctx = get_tenant_context()
+                        await conn.execute("SELECT set_tenant_context($1)", ctx.tenant_id)
+                    yield conn
+                except Exception:
+                    # Transaction will rollback automatically on exception
+                    raise
+                finally:
+                    # No manual reset needed for SET LOCAL, but good practice for session variables
                     pass
 
     async def close(self):

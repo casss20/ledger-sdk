@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .repository import BillingRepository
 
 def ts_to_dt(ts: Optional[int]) -> Optional[datetime]:

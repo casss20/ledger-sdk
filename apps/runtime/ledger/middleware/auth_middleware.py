@@ -57,10 +57,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/auth/keys",
     }
     
-    def __init__(self, app, jwt_service: JWTService, api_key_service: APIKeyService):
+    def __init__(self, app, jwt_service: JWTService):
         super().__init__(app)
         self.jwt_service = jwt_service
-        self.api_key_service = api_key_service
     
     async def dispatch(self, request: Request, call_next):
         # Exempt paths (health, docs, login)
@@ -91,7 +90,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
         
         try:
-            api_key = await self.api_key_service.verify(api_key_id, api_key_secret)
+            db_pool = request.app.state.db_pool
+            cache = getattr(request.app.state, "cache", None)
+            api_key_service = APIKeyService(db_pool, cache)
+            api_key = await api_key_service.verify(api_key_id, api_key_secret)
             
             # Store in request state for downstream use
             request.state.api_key = api_key
@@ -153,7 +155,7 @@ async def get_db(request: Request):
 async def get_cache(request: Request):
     return getattr(request.app.state, "cache", None)
 
-def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService, api_key_service: APIKeyService):
+def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
     """Register authentication endpoints"""
     
     @app.post("/auth/login")

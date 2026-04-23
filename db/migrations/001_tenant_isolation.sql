@@ -64,7 +64,7 @@ END $$;
 CREATE OR REPLACE FUNCTION set_tenant_context(p_tenant_id TEXT)
 RETURNS VOID AS $$
 BEGIN
-    PERFORM set_config('app.current_tenant_id', p_tenant_id, FALSE);
+    PERFORM set_config('app.current_tenant_id', p_tenant_id, TRUE);
 END;
 $$ LANGUAGE plpgsql;
 

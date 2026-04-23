@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any
 
 from ledger.actions import Action, KernelStatus
 from ledger.repository import Repository
-from ledger.policy_resolver import PolicySnapshot, PolicyEvaluator, PolicyEvaluationResult
+from ledger.services.policy_resolver import PolicySnapshot, PolicyEvaluator, PolicyEvaluationResult
 
 
 @dataclass

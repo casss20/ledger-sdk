@@ -42,6 +42,10 @@ dependencies = [
     "typing-extensions>=4.0",
     "prometheus-client>=0.17",
     "httpx>=0.24",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
 [project.optional-dependencies]
@@ -113,4 +117,4 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["src"]
+pythonpath = ["apps/runtime"]

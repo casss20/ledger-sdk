@@ -1,4 +1,8 @@
-import stripe
+try:
+    import stripe
+except ImportError:
+    stripe = None  # Stripe not installed — billing features disabled
+
 from typing import Optional, Dict, Any
 from ledger.config import settings
 
