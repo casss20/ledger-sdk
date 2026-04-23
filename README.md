@@ -21,7 +21,10 @@ Ledger is a hardened governance engine that intercepts agent actions, applies mu
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
 - **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
 - **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
-- **Capability Tokens**: Scoped, expiring bypass tokens for pre-authorized workflows.
+- **Governance Tokens (GT)**: Advanced bypass and delegation system using signed, scoped tokens:
+    - `gt_cap_`: Capability delegation for specific resources.
+    - `gt_app_`: Pre-authorized approval tokens for automated high-risk tasks.
+    - `gt_vlt_`: Secure vault tokens for governed credential access.
 
 ## Directory Structure
 
@@ -65,6 +68,7 @@ result = await client.execute(
     action="file.delete",
     resource="documents/sensitive.pdf",
     actor_id="agent-v1",
+    capability_token="gt_cap_xyz..." # Optional: Bypass policy via GT token
 )
 
 if result.status == "executed":
