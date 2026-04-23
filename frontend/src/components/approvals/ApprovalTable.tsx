@@ -1,11 +1,30 @@
 import { useState } from "react";
-import { approvals } from "../../data/mock-approvals";
 import { StatusPill } from "../dashboard/StatusPill";
 import { ApprovalDetailDrawer } from "./ApprovalDetailDrawer";
-import type { ApprovalItem } from "../../features/approvals/types";
+import { useApprovals } from "../../hooks/useApprovals";
+import type { Approval } from "../../hooks/useApprovals";
+import { Loader2 } from "lucide-react";
 
 export function ApprovalTable() {
-  const [selectedItem, setSelectedItem] = useState<ApprovalItem | null>(null);
+  const { data: approvals, isLoading, error } = useApprovals();
+  const [selectedItem, setSelectedItem] = useState<Approval | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12 text-slate-400">
+        <Loader2 className="w-6 h-6 animate-spin mr-3" />
+        Loading approvals...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-400 bg-red-400/10 rounded-lg border border-red-400/20">
+        Error loading approvals. Please check your connection.
+      </div>
+    );
+  }
 
   return (
     <>
@@ -14,39 +33,38 @@ export function ApprovalTable() {
         <thead>
           <tr>
             <th>Status</th>
-            <th>Risk</th>
-            <th>Agent</th>
-            <th>Requested action</th>
-            <th>Target</th>
-            <th>Policy source</th>
-            <th>Requested at</th>
-            <th>Waiting</th>
-            <th>Decision</th>
+            <th>Priority</th>
+            <th>ID</th>
+            <th>Reason</th>
+            <th>Requested By</th>
+            <th>Action ID</th>
           </tr>
         </thead>
         <tbody>
-          {approvals.map((row) => (
+          {(approvals || []).map((row) => (
             <tr 
-              key={row.id} 
+              key={row.approval_id} 
               className="clickable-row"
               onClick={() => setSelectedItem(row)}
             >
               <td><StatusPill status={row.status} /></td>
-              <td>{row.risk}</td>
-              <td>{row.agent}</td>
-              <td>{row.action}</td>
-              <td>{row.target}</td>
-              <td>{row.policy}</td>
-              <td className="data-time">{row.requestedAt}</td>
-              <td className="data-num">{row.waiting}</td>
-              <td>{row.decision}</td>
+              <td className="font-bold">{row.priority}</td>
+              <td className="font-mono text-xs text-slate-500">{row.approval_id.slice(0, 8)}...</td>
+              <td>{row.reason}</td>
+              <td>{row.requested_by}</td>
+              <td className="font-mono text-xs text-slate-500">{row.action_id.slice(0, 8)}...</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {(approvals || []).length === 0 && (
+        <div className="p-12 text-center text-slate-500 italic">
+          No pending approvals found.
+        </div>
+      )}
       </div>
       <ApprovalDetailDrawer 
-        item={selectedItem} 
+        item={selectedItem as any} 
         onClose={() => setSelectedItem(null)} 
       />
     </>

@@ -1,5 +1,5 @@
 type Props = {
-  status: "approved" | "pending" | "blocked";
+  status: "approved" | "pending" | "blocked" | "rejected";
 };
 
 export function StatusPill({ status }: Props) {
@@ -7,6 +7,7 @@ export function StatusPill({ status }: Props) {
     approved: "status-badge status-approved",
     pending: "status-badge status-pending",
     blocked: "status-badge status-blocked",
+    rejected: "status-badge status-blocked",
   };
 
   return <span className={map[status]}>{status}</span>;

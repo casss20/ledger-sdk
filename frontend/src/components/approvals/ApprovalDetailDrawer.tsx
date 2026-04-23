@@ -1,14 +1,18 @@
-import type { ApprovalItem } from "../../features/approvals/types";
 import { Drawer } from "../ui/Drawer";
 import { Button } from "../ui/Button";
 import { StatusPill } from "../dashboard/StatusPill";
+import type { Approval } from "../../hooks/useApprovals";
+import { useApprovals } from "../../hooks/useApprovals";
+import { Loader2 } from "lucide-react";
 
 type Props = {
-  item: ApprovalItem | null;
+  item: Approval | null;
   onClose: () => void;
 };
 
 export function ApprovalDetailDrawer({ item, onClose }: Props) {
+  const { approve, reject, isProcessing } = useApprovals();
+  const user = { email: "Operator" }; // Mock until JWT decoding is implemented
   if (!item) return null;
 
   return (
@@ -18,11 +22,29 @@ export function ApprovalDetailDrawer({ item, onClose }: Props) {
       title="Request Details"
       actions={
         <div className="drawer-actions">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isProcessing}>
             Close
           </Button>
-          <Button variant="danger">Deny</Button>
-          <Button variant="primary">Approve Action</Button>
+          <Button 
+            variant="danger" 
+            onClick={async () => {
+              await reject({ id: item.approval_id, reviewer: user?.email || "Operator", reason: "Rejected by operator" });
+              onClose();
+            }}
+            disabled={isProcessing || item.status !== 'pending'}
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Deny"}
+          </Button>
+          <Button 
+            variant="primary"
+            onClick={async () => {
+              await approve({ id: item.approval_id, reviewer: user?.email || "Operator", reason: "Approved by operator" });
+              onClose();
+            }}
+            disabled={isProcessing || item.status !== 'pending'}
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Approve Action"}
+          </Button>
         </div>
       }
     >
@@ -34,49 +56,47 @@ export function ApprovalDetailDrawer({ item, onClose }: Props) {
           </div>
           <div className="detail-grid">
             <div className="field">
-              <span>Risk Level</span>
-              <p>{item.risk}</p>
+              <span>Priority</span>
+              <p className="font-bold">{item.priority}</p>
             </div>
             <div className="field">
-              <span>Agent</span>
-              <p>{item.agent}</p>
+              <span>Requested By</span>
+              <p>{item.requested_by}</p>
             </div>
             <div className="field">
-              <span>Target Resource</span>
-              <p>{item.target}</p>
+              <span>Action ID</span>
+              <p className="font-mono text-xs">{item.action_id}</p>
             </div>
             <div className="field">
-              <span>Requested At</span>
-              <p className="data-time">{item.requestedAt}</p>
+              <span>Approval ID</span>
+              <p className="font-mono text-xs">{item.approval_id}</p>
             </div>
           </div>
         </section>
 
         <section className="detail-section">
-          <h4>Requested Action</h4>
-          <div className="code-block">
-            <pre>
-              {`{
-  "action": "${item.action}",
-  "reason": "Agent requires execution outside of normal threshold bounds.",
-  "target_id": "${item.target.split(' / ')[1] || item.target}"
-}`}
-            </pre>
-          </div>
+          <h4>Reasoning</h4>
+          <p>{item.reason}</p>
         </section>
 
-        <section className="detail-section">
-          <h4>Policy Trigger</h4>
-          <p>
-            This action was intercepted by the <strong>{item.policy}</strong>{" "}
-            policy rule.
-          </p>
-          <div className="policy-box">
-            <code>
-              IF action.type == "{item.action.split(' ')[0].toLowerCase()}" AND action.risk &gt;= "{item.risk}" THEN require(human_review)
-            </code>
-          </div>
-        </section>
+        {item.decided_at && (
+          <section className="detail-section">
+            <h4>Decision Info</h4>
+            <div className="detail-grid">
+              <div className="field">
+                <span>Reviewed By</span>
+                <p>{item.reviewed_by}</p>
+              </div>
+              <div className="field">
+                <span>Decided At</span>
+                <p className="data-time">{item.decided_at}</p>
+              </div>
+            </div>
+            <div className="mt-2 text-sm text-slate-400">
+              {item.decision_reason}
+            </div>
+          </section>
+        )}
       </div>
     </Drawer>
   );
