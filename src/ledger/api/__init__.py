@@ -56,12 +56,38 @@ def create_app() -> FastAPI:
     )
     
     from ledger.middleware.fastapi_middleware import setup_tenant_middleware
+    from ledger.middleware.auth_middleware import AuthMiddleware, setup_auth_endpoints
+    from ledger.auth.jwt_token import JWTService
+    from ledger.auth.api_key import APIKeyService
     
     # Middleware: logging, errors, CORS, request IDs
     setup_middleware(app)
     
+    # Setup Auth services
+    # Mocking cache with a simple dict for this integration 
+    class AppCache:
+        def __init__(self):
+            self.store = {}
+        async def set(self, k, v, ttl=None): self.store[k] = v
+        async def get(self, k): return self.store.get(k)
+        async def delete(self, k): self.store.pop(k, None)
+    
+    app.state.cache = AppCache()
+    jwt_service = JWTService(secret_key="secret_key_change_me_in_prod")
+    api_key_service = APIKeyService(db_pool=_pool, cache=app.state.cache)
+    
+    # Add AuthMiddleware before TenantContextMiddleware
+    app.add_middleware(
+        AuthMiddleware, 
+        jwt_service=jwt_service, 
+        api_key_service=api_key_service
+    )
+    
     # Tenant context middleware (must run AFTER ErrorHandlingMiddleware but BEFORE routers)
     setup_tenant_middleware(app)
+    
+    # Auth endpoints
+    setup_auth_endpoints(app, jwt_service, api_key_service)
     
     # Routers
     app.include_router(actions.router, prefix="/v1")
