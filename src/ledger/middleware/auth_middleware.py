@@ -16,6 +16,7 @@ import logging
 
 from ledger.auth.jwt_token import JWTService, JWTError
 from ledger.auth.api_key import APIKeyService, APIKeyError
+from ledger.auth.operator import OperatorService
 
 logger = logging.getLogger(__name__)
 
@@ -156,33 +157,32 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService, api_key_service:
     
     @app.post("/auth/login")
     async def login(
-        email: str = Body(...),
+        username: str = Body(...),
         password: str = Body(...),
         db = Depends(get_db),
     ):
         """
-        Login endpoint — authenticate user and return JWT tokens.
-        
-        Returns: {access_token, refresh_token, expires_in}
+        Login endpoint — authenticate operator and return JWT tokens.
         """
-        # Verify email/password (would check DB)
-        # For now, mock implementation
+        operator_service = OperatorService(db)
+        operator = await operator_service.authenticate(username, password)
         
-        user_id = "user_" + email.split("@")[0]
+        if not operator:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
         
         access_token = jwt_service.create_token(
-            user_id=user_id,
-            tenant_id="acme",  # Would get from user record
-            email=email,
-            role="admin",
+            user_id=operator.operator_id,
+            tenant_id=operator.tenant_id,
+            email=operator.email,
+            role=operator.role,
             token_type="access"
         )
         
         refresh_token = jwt_service.create_token(
-            user_id=user_id,
-            tenant_id="acme",
-            email=email,
-            role="admin",
+            user_id=operator.operator_id,
+            tenant_id=operator.tenant_id,
+            email=operator.email,
+            role=operator.role,
             token_type="refresh"
         )
         
