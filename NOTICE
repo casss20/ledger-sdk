@@ -1,0 +1,10 @@
+Ledger SDK Monorepo
+
+Copyright (c) 2026 Ledger SDK Authors.
+
+This repository contains multiple components under different licenses.
+- Packages in `packages/` are licensed under the Apache License 2.0.
+- Applications in `apps/runtime` are licensed under the Business Source License 1.1.
+- Modules in `enterprise/` are proprietary.
+
+See LICENSING.md in the root directory for the full licensing map and attribution notices.

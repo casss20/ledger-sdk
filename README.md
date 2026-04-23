@@ -34,28 +34,18 @@ The Ledger is built on three core architectural philosophies:
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
 3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, and Global Kill Switches for emergency intervention.
 
-## Directory Structure
+## 📁 Repository Structure
 
-The repository is organized into a clean, modular structure for production scaling:
+Ledger is organized as a **mixed-license monorepo** to separate the open ecosystem from the core runtime:
 
-```bash
-src/ledger/
-├── core/             # Governance Kernel, Repository, Orchestrator, SDK
-├── services/         # Approval, Audit, Capability, Policy, Analytics
-├── utils/            # Validation, Schema, Precedence, Status
-├── billing/          # Stripe Client, Entitlements, Usage tracking
-├── api/              # FastAPI Routers, Middleware, Dependencies
-└── auth/             # JWT, API Key, and Operator services
-
-tests/
-├── unit/             # Core logic and Auth tests
-├── integration/      # RLS, Tenant Isolation, and API flows
-├── simulations/      # Billing verification (Lockout, Grace Period)
-└── regression/       # Concurrency and Race-condition tests
-
-research/             # Archived experimental agent logic and legacy docs
-scripts/              # Admin utilities and database seeders
-```
+- **`apps/runtime/`**: The core governance engine and control plane (**BSL 1.1**).
+- **`apps/dashboard/`**: The React-based management interface.
+- **`packages/sdk-python/`**: Public Python SDK for agent integration (**Apache 2.0**).
+- **`packages/open-spec/`**: Governance schemas and token specifications (**Apache 2.0**).
+- **`docs/`**: Technical documentation and public documentation site.
+- **`enterprise/`**: Proprietary modules and premium policy packs.
+- **`tests/`**: Tiered test suite (unit, simulation, hardening).
+- **`scripts/`**: Development and administrative utilities.
 
 ## Quick Start
 
@@ -98,11 +88,12 @@ Ledger is tested against adversarial scenarios:
 - [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
 - [API Reference](docs/API.md) — HTTP endpoints and schemas
 
-## License
+## Licensing
 
-Ledger is built on an **Open Core** model where openness drives adoption:
+Ledger uses a mixed-license model to protect its core while enabling broad adoption:
 
-- **SDKs, Schemas, and Integration Tooling**: Licensed under **Apache 2.0**.
-- **Core Governance Runtime**: Source-available under a **BSL-style license**.
+- **Apache 2.0**: SDKs, public schemas, and integration-facing packages in `packages/`.
+- **BSL 1.1 (Source-Available)**: The core self-hostable runtime in `apps/runtime/`.
+- **Proprietary**: Enterprise-only and hosted-cloud-only modules in `enterprise/`.
 
-This allows for free internal use and self-hosting while protecting the commercial hosted product. See [NOTICES.md](NOTICES.md) for full terms and third-party attributions.
+See [`LICENSING.md`](./LICENSING.md) for the full package-by-package breakdown.
