@@ -11,43 +11,41 @@ from ledger.dashboard.kill_switch_panel import (
 )
 
 
+import uuid
+
 TENANT = "test_tenant"
 
 
 class TestKillSwitchPanel:
     """Test kill switch panel service."""
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(autouse=True, scope="function")
     async def setup_test_data(self, db_pool):
         """Insert test kill switch data."""
-        import asyncpg
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
-        await conn.execute("SET app.admin_bypass = 'true'")
+        async with db_pool.acquire() as conn:
+            await conn.execute("SET app.admin_bypass = 'true'")
 
-        # Clear old test data
-        await conn.execute("DELETE FROM kill_switches WHERE tenant_id = $1", TENANT)
-        await conn.execute("DELETE FROM kill_switch_initiations WHERE tenant_id = $1", TENANT)
+            # Clear old test data
+            await conn.execute("DELETE FROM kill_switches WHERE tenant_id = $1", TENANT)
 
-        now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc)
 
-        # Insert active kill switches
-        await conn.execute(
-            """
-            INSERT INTO kill_switches (tenant_id, scope_type, scope_value, enabled, reason, created_by, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            """,
-            TENANT, "tenant", TENANT, True, "Test tenant kill switch", "admin", now, now,
-        )
+            # Insert active kill switches
+            await conn.execute(
+                """
+                INSERT INTO kill_switches (switch_id, tenant_id, scope_type, scope_value, enabled, reason, created_by, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """,
+                uuid.uuid4(), TENANT, "tenant", TENANT, True, "Test tenant kill switch", "admin", now, now,
+            )
 
-        await conn.execute(
-            """
-            INSERT INTO kill_switches (tenant_id, scope_type, scope_value, enabled, reason, created_by, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            """,
-            TENANT, "actor", "agent_123", True, "Test agent kill switch", "admin", now, now,
-        )
-
-        await conn.close()
+            await conn.execute(
+                """
+                INSERT INTO kill_switches (switch_id, tenant_id, scope_type, scope_value, enabled, reason, created_by, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """,
+                uuid.uuid4(), TENANT, "actor", "agent_123", True, "Test agent kill switch", "admin", now, now,
+            )
 
     @pytest.mark.asyncio
     async def test_get_status_returns_kill_switches(self, db_pool):

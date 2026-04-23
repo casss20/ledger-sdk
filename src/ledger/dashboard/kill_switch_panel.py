@@ -19,6 +19,7 @@ from typing import Optional
 
 class KillSwitchScope(Enum):
     AGENT = "agent"
+    ACTOR = "actor"
     TENANT = "tenant"
     GLOBAL = "global"
 

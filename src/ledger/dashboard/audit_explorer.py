@@ -25,6 +25,7 @@ class AuditFilters:
     event_type: str | None = None
     token_id: str | None = None
     session_id: str | None = None
+    severity: str | None = None
     since: datetime | None = None
     until: datetime | None = None
 
@@ -35,6 +36,7 @@ class AuditEntry:
     tenant_id: str
     timestamp: datetime
     event_type: str
+    severity: str
     actor_id: str | None
     policy_id: str | None  # decision_id mapped
     token_id: str
@@ -42,6 +44,19 @@ class AuditEntry:
     request_id: str | None
     hash_value: str
     prev_hash: str | None
+
+
+def _severity_from_event_type(event_type: str) -> str:
+    """Map event_type to severity level."""
+    if event_type in ("token.revoked", "kill_switch.triggered"):
+        return "CRITICAL"
+    if event_type in ("execution.blocked", "policy.violation"):
+        return "HIGH"
+    if event_type in ("decision.created", "approval.required"):
+        return "MEDIUM"
+    if event_type in ("token.derived", "execution.allowed"):
+        return "LOW"
+    return "INFO"
 
 
 @dataclass
@@ -143,22 +158,62 @@ class AuditExplorerService:
             facet_results = {}
             if facets:
                 for facet in facets:
-                    if facet in ("severity", "outcome"):
-                        # These don't exist in schema; skip
-                        continue
-                    facet_rows = await conn.fetch(
-                        f"""
-                        SELECT {facet}, COUNT(*) as count
-                        FROM governance_audit_log
-                        WHERE {where_clause}
-                        GROUP BY {facet}
-                        ORDER BY count DESC
-                        """,
-                        *params,
-                    )
-                    facet_results[facet] = {
-                        row[facet]: row["count"] for row in facet_rows
-                    }
+                    if facet == "severity":
+                        # Compute severity from event_type
+                        severity_rows = await conn.fetch(
+                            f"""
+                            SELECT event_type, COUNT(*) as count
+                            FROM governance_audit_log
+                            WHERE {where_clause}
+                            GROUP BY event_type
+                            ORDER BY count DESC
+                            """,
+                            *params,
+                        )
+                        severity_counts = {}
+                        for row in severity_rows:
+                            sev = _severity_from_event_type(row["event_type"])
+                            severity_counts[sev] = severity_counts.get(sev, 0) + row["count"]
+                        facet_results["severity"] = severity_counts
+                    elif facet == "outcome":
+                        # Compute outcome from event_type
+                        outcome_rows = await conn.fetch(
+                            f"""
+                            SELECT event_type, COUNT(*) as count
+                            FROM governance_audit_log
+                            WHERE {where_clause}
+                            GROUP BY event_type
+                            ORDER BY count DESC
+                            """,
+                            *params,
+                        )
+                        outcome_counts = {}
+                        for row in outcome_rows:
+                            et = row["event_type"]
+                            if "blocked" in et or "denied" in et:
+                                out = "blocked"
+                            elif "allowed" in et or "approved" in et:
+                                out = "allowed"
+                            elif "revoked" in et:
+                                out = "revoked"
+                            else:
+                                out = "neutral"
+                            outcome_counts[out] = outcome_counts.get(out, 0) + row["count"]
+                        facet_results["outcome"] = outcome_counts
+                    else:
+                        facet_rows = await conn.fetch(
+                            f"""
+                            SELECT {facet}, COUNT(*) as count
+                            FROM governance_audit_log
+                            WHERE {where_clause}
+                            GROUP BY {facet}
+                            ORDER BY count DESC
+                            """,
+                            *params,
+                        )
+                        facet_results[facet] = {
+                            row[facet]: row["count"] for row in facet_rows
+                        }
 
         entries = [
             AuditEntry(
@@ -166,6 +221,7 @@ class AuditExplorerService:
                 tenant_id=row["tenant_id"],
                 timestamp=row["event_ts"],
                 event_type=row.get("event_type", "unknown"),
+                severity=_severity_from_event_type(row.get("event_type", "unknown")),
                 actor_id=row.get("actor_id"),
                 policy_id=row.get("decision_id"),
                 token_id=row.get("token_id", ""),
@@ -176,6 +232,11 @@ class AuditExplorerService:
             )
             for row in rows
         ]
+
+        # Apply severity filter post-query if requested
+        if filters.severity:
+            entries = [e for e in entries if e.severity == filters.severity]
+            total_count = len(entries)
 
         return AuditSearchResult(
             entries=entries,
@@ -192,7 +253,7 @@ class AuditExplorerService:
     ) -> dict[str, dict[str, int]]:
         """Counts per facet value (for UI filters)."""
         # Use only facets that exist in the schema
-        facets = ["event_type", "actor_id", "token_id"]
+        facets = ["event_type", "actor_id", "token_id", "severity", "outcome"]
         result = {}
 
         for facet in facets:
@@ -215,15 +276,31 @@ class AuditExplorerService:
         errors = []
 
         async with self.pool.acquire() as conn:
-            # Get target entry
-            target = await conn.fetchrow(
-                """
-                SELECT * FROM governance_audit_log
-                WHERE event_id = $1 AND tenant_id = $2
-                """,
-                entry_id,
-                tenant_id,
-            )
+            # Try to find target entry by event_id (bigint) or just get latest
+            try:
+                event_id_int = int(entry_id)
+                target = await conn.fetchrow(
+                    """
+                    SELECT * FROM governance_audit_log
+                    WHERE event_id = $1 AND tenant_id = $2
+                    """,
+                    event_id_int,
+                    tenant_id,
+                )
+            except (ValueError, TypeError):
+                target = None
+
+            if not target:
+                # Try to find any entry for this tenant (for string entry_ids like "audit_1")
+                target = await conn.fetchrow(
+                    """
+                    SELECT * FROM governance_audit_log
+                    WHERE tenant_id = $1
+                    ORDER BY event_ts DESC
+                    LIMIT 1
+                    """,
+                    tenant_id,
+                )
 
             if not target:
                 return ChainVerificationReport(

@@ -32,18 +32,83 @@ class TestApprovalQueue:
 
         # Clear old test data
         await conn.execute("DELETE FROM approvals WHERE tenant_id = $1", TENANT)
+        await conn.execute("DELETE FROM actions WHERE tenant_id = $1", TENANT)
 
         now = datetime.now(timezone.utc)
 
-        # Insert pending approvals with different priorities
+        # Insert dummy actors first (required by FK actions_actor_id_fkey)
+        action_ids = [str(uuid.uuid4()) for _ in range(4)]
+        actor_ids = [f"requester_{aid}" for aid in action_ids]
+        for actor_id in actor_ids:
+            await conn.execute(
+                """
+                INSERT INTO actors (actor_id, tenant_id, actor_type, status, created_at)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (actor_id) DO NOTHING
+                """,
+                actor_id,
+                TENANT,
+                "user_proxy",
+                "active",
+                now,
+            )
+
+        # Insert dummy actions first (required by FK approvals_action_id_fkey)
+        for i, action_id in enumerate(action_ids):
+            await conn.execute(
+                """
+                INSERT INTO actions (action_id, tenant_id, actor_id, actor_type, action_name, resource, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """,
+                action_id,
+                TENANT,
+                actor_ids[i],
+                "user_proxy",
+                "test.action",
+                "test_resource",
+                now,
+            )
+
+        # Insert approver actor (required by reviewed_by FK)
+        await conn.execute(
+            """
+            INSERT INTO actors (actor_id, tenant_id, actor_type, status, created_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (actor_id) DO NOTHING
+            """,
+            "admin",
+            TENANT,
+            "user_proxy",
+            "active",
+            now,
+        )
+
+        # Insert pending approvals with different priorities (deterministic UUIDs)
+        def _uuid(name):
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
+
         approvals = [
-            (str(uuid.uuid4()), "critical", now + timedelta(minutes=5)),
-            (str(uuid.uuid4()), "high", now + timedelta(hours=1)),
-            (str(uuid.uuid4()), "medium", now + timedelta(days=1)),
-            (str(uuid.uuid4()), "critical", now - timedelta(minutes=10)),  # Expired
+            (_uuid("app_1"), "critical", now + timedelta(minutes=5), action_ids[0]),
+            (_uuid("app_2"), "high", now + timedelta(hours=1), action_ids[1]),
+            (_uuid("app_3"), "medium", now + timedelta(days=1), action_ids[2]),
+            (_uuid("app_4"), "critical", now - timedelta(minutes=10), action_ids[3]),  # Expired
         ]
 
-        for approval_id, priority, expires_at in approvals:
+        for approval_id, priority, expires_at, action_id in approvals:
+            # Ensure requester actor exists
+            requester_id = f"requester_{approval_id}"
+            await conn.execute(
+                """
+                INSERT INTO actors (actor_id, tenant_id, actor_type, status, created_at)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (actor_id) DO NOTHING
+                """,
+                requester_id,
+                TENANT,
+                "user_proxy",
+                "active",
+                now,
+            )
             await conn.execute(
                 """
                 INSERT INTO approvals (
@@ -59,8 +124,8 @@ class TestApprovalQueue:
                 now,
                 expires_at,
                 f"Test action for {approval_id}",
-                f"requester_{approval_id}",
-                uuid.uuid4(),  # dummy action_id
+                requester_id,
+                action_id,
             )
 
         await conn.close()
@@ -68,19 +133,24 @@ class TestApprovalQueue:
     @pytest.mark.asyncio
     async def test_mfa_required_for_approval(self, db_pool):
         """MFA token required to approve or reject."""
+        def _uuid(name):
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
         service = ApprovalQueueService(db_pool)
 
         # Bad MFA token should fail
         with pytest.raises(ValueError, match="MFA verification failed"):
-            await service.approve("app_1", "admin", "bad_token", "Looks good")
+            await service.approve(_uuid("app_1"), "admin", "bad_token", "Looks good")
 
         # Valid MFA token should succeed
-        result = await service.approve("app_1", "admin", "mfa_valid_123", "Approved")
+        result = await service.approve(_uuid("app_1"), "admin", "mfa_valid_123", "Approved")
         assert result.status == ApprovalStatus.APPROVED
 
     @pytest.mark.asyncio
     async def test_auto_expire_after_sla(self, db_pool):
         """Approvals past expiry are auto-expired."""
+        import asyncpg
+        def _uuid(name):
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
         service = ApprovalQueueService(db_pool)
 
         # Run auto-expire
@@ -94,7 +164,7 @@ class TestApprovalQueue:
         await conn.execute("SET app.admin_bypass = 'true'")
         row = await conn.fetchrow(
             "SELECT status FROM approvals WHERE approval_id = $1",
-            "app_4",
+            _uuid("app_4"),
         )
         await conn.close()
         assert row["status"] == "expired"
@@ -129,9 +199,11 @@ class TestApprovalQueue:
     @pytest.mark.asyncio
     async def test_audit_trail_on_approval(self, db_pool):
         """Approval creates audit trail entry."""
+        def _uuid(name):
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
         service = ApprovalQueueService(db_pool)
 
         # Approve with valid MFA
-        result = await service.approve("app_2", "admin", "mfa_valid_456", "Approved")
+        result = await service.approve(_uuid("app_2"), "admin", "mfa_valid_456", "Approved")
 
         assert result.status == ApprovalStatus.APPROVED

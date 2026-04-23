@@ -24,17 +24,18 @@ class TestAuditExplorer:
         conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
-        # Clear old test data
-        await conn.execute("DELETE FROM governance_audit_log WHERE tenant_id = $1", TENANT)
+        # Note: governance_audit_log is append-only; cannot delete. Insert with high random IDs to avoid collisions.
+        import random
+        base_id = random.randint(10000000, 99999999)
 
         now = datetime.now(timezone.utc)
 
         # Insert audit entries with different properties
         entries = [
-            (1000001, "token.revoked", "actor_1", "tok_1", now, "hash_1"),
-            (1000002, "execution.blocked", "actor_1", "tok_2", now - timedelta(hours=1), "hash_2"),
-            (1000003, "decision.created", "actor_2", "tok_3", now - timedelta(hours=2), "hash_3"),
-            (1000004, "token.derived", None, "tok_4", now - timedelta(hours=3), "hash_4"),
+            (base_id + 1, "token.revoked", "actor_1", "tok_1", now, "hash_1"),
+            (base_id + 2, "execution.blocked", "actor_1", "tok_2", now - timedelta(hours=1), "hash_2"),
+            (base_id + 3, "decision.created", "actor_2", "tok_3", now - timedelta(hours=2), "hash_3"),
+            (base_id + 4, "token.derived", "system", "tok_4", now - timedelta(hours=3), "hash_4"),
         ]
 
         for event_id, event_type, actor_id, token_id, event_ts, event_hash in entries:

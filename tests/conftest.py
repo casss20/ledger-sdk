@@ -28,7 +28,7 @@ async def clean_database(postgres_dsn):
     await conn.execute("SET app.admin_bypass = 'true'")
     await conn.execute("SET LOCAL lock_timeout = '3s'")
     try:
-        # Delete all test data - use simple conditions that work across tables
+        # Delete from tables that support it
         await conn.execute("""
             DELETE FROM policy_snapshots WHERE EXISTS (SELECT 1 FROM policies p WHERE p.policy_id = policy_snapshots.policy_id AND p.tenant_id LIKE 'test_%');
             DELETE FROM capabilities WHERE token_id LIKE 'test_%' OR token_id LIKE 'cap_%' OR token_id LIKE 'gt_%';
@@ -39,14 +39,13 @@ async def clean_database(postgres_dsn):
             DELETE FROM execution_results;
             DELETE FROM api_keys;
             DELETE FROM governance_tokens WHERE token_id LIKE 'gt_%';
-            DELETE FROM governance_audit_log WHERE tenant_id LIKE 'test_%';
             DELETE FROM actions WHERE tenant_id LIKE 'test_%';
             DELETE FROM policies WHERE tenant_id LIKE 'test_%';
             DELETE FROM actors WHERE tenant_id LIKE 'test_%';
             DELETE FROM governance_decisions WHERE tenant_id LIKE 'test_%';
         """)
     except Exception as e:
-        print(f"Warning: clean_database failed: {e}")
+        print(f"Warning: clean_database table deletes failed: {e}")
     await conn.close()
     yield
 
@@ -65,7 +64,7 @@ async def db_pool(postgres_dsn):
         postgres_dsn, 
         min_size=1, 
         max_size=5,
-        init=_setup,
+        setup=_setup,
     )
     yield pool
     await pool.close()
