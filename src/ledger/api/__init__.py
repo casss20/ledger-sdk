@@ -20,6 +20,8 @@ from prometheus_client import make_asgi_app
 from ledger.config import settings
 from ledger.api.middleware import setup_middleware
 from ledger.api.routers import actions, approvals, audit, governance, health, metrics, dashboard
+from ledger.billing.routes import router as billing_router
+from ledger.billing.middleware import BillingMiddleware
 
 
 @asynccontextmanager
@@ -76,15 +78,20 @@ def create_app() -> FastAPI:
     jwt_service = JWTService(secret_key="secret_key_change_me_in_prod")
     api_key_service = APIKeyService(db_pool=_pool, cache=app.state.cache)
     
-    # Add AuthMiddleware before TenantContextMiddleware
+    # Order: Outermost (runs first) to Innermost (runs last)
+    
+    # 3. Billing enforcement (depends on Auth)
+    app.add_middleware(BillingMiddleware)
+    
+    # 2. Tenant context (sets up scoped context)
+    setup_tenant_middleware(app)
+    
+    # 1. Auth (identifies user and sets tenant_id)
     app.add_middleware(
         AuthMiddleware, 
         jwt_service=jwt_service, 
         api_key_service=api_key_service
     )
-    
-    # Tenant context middleware (must run AFTER ErrorHandlingMiddleware but BEFORE routers)
-    setup_tenant_middleware(app)
     
     # Auth endpoints
     setup_auth_endpoints(app, jwt_service, api_key_service)
@@ -97,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/v1")
     app.include_router(metrics.router, prefix="/v1")
     app.include_router(dashboard.router, prefix="/api")
+    app.include_router(billing_router)
     
     # Prometheus metrics (raw ASGI app at root /metrics)
     if settings.metrics_enabled:

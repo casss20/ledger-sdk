@@ -8,4 +8,5 @@ export const navItems = [
   { label: "Incidents", to: "/incidents", icon: "!" },
   { label: "Emergency", to: "/emergency", icon: "⛶" },
   { label: "Settings", to: "/settings", icon: "⋯" },
+  { label: "Billing", to: "/billing", icon: "💳" },
 ];

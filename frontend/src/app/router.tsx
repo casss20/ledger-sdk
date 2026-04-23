@@ -10,6 +10,7 @@ import { AgentsPage } from "../pages/Agents";
 import { IncidentsPage } from "../pages/Incidents";
 import { EmergencyPage } from "../pages/Emergency";
 import { SettingsPage } from "../pages/Settings";
+import BillingPage from "../pages/Billing";
 import { useAuth } from "../hooks/useAuth";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export function AppRouter() {
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/billing" element={<BillingPage />} />
       </Route>
     </Routes>
   );

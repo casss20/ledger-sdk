@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     metrics_enabled: bool = True
     metrics_endpoint: str = "/metrics"
     
+    # Billing (Stripe)
+    stripe_secret_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_price_pro_id: Optional[str] = None
+    app_url: str = "http://localhost:5173"
+    
     @property
     def valid_api_keys(self) -> List[str]:
         if not self.api_keys:

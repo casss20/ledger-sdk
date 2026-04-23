@@ -38,6 +38,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/auth/login",      # Login endpoint
         "/auth/refresh",    # Token refresh
         "/redoc",
+        "/v1/billing/webhooks", # Stripe webhooks
     }
     
     # Endpoints that require API key
