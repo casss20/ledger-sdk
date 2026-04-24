@@ -4,7 +4,8 @@ Citadel API Middleware
 - Request ID tracing
 - Structured logging
 - Error handling with request IDs
-- CORS
+- CORS (production-locked)
+- Request body size limits
 """
 
 import time
@@ -16,6 +17,56 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from citadel.config import settings
+
+
+# Production CORS origins — override in .env or settings
+# Default: empty list (no CORS) in production
+# Debug mode: allow localhost origins only
+DEFAULT_DEBUG_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+
+def get_cors_origins() -> list:
+    """Get allowed CORS origins based on environment"""
+    if settings.debug:
+        return DEFAULT_DEBUG_ORIGINS
+    # Production: must be explicitly configured
+    # Settings can override with comma-separated origins
+    env_origins = getattr(settings, "cors_origins", None)
+    if env_origins:
+        return [o.strip() for o in env_origins.split(",") if o.strip()]
+    return []  # No CORS in production by default
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Block requests with body larger than max size"""
+    
+    MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB default
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                size = int(content_length)
+                if size > self.MAX_BODY_SIZE:
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": "payload_too_large",
+                            "message": f"Request body exceeds {self.MAX_BODY_SIZE // 1024 // 1024}MB limit",
+                            "max_size_mb": self.MAX_BODY_SIZE // 1024 // 1024,
+                        },
+                    )
+            except ValueError:
+                pass  # Invalid content-length, let downstream handle
+        
+        return await call_next(request)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -76,16 +127,23 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 def setup_middleware(app: FastAPI) -> None:
     """Register all middleware on the app."""
     
-    # CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS — locked down in production
+    origins = get_cors_origins()
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-API-Secret", "X-Tenant-ID", "X-User-ID", "X-Request-ID"],
+            expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"],
+            max_age=600,
+        )
     
-    # Request logging (first = outermost)
+    # Request size limit (outermost = first check)
+    app.add_middleware(RequestSizeLimitMiddleware)
+    
+    # Request logging
     app.add_middleware(RequestLoggingMiddleware)
     
     # Error handling (inner = last resort)

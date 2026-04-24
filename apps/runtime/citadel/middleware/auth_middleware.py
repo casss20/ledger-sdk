@@ -38,8 +38,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/auth/login",      # Login endpoint
         "/auth/refresh",    # Token refresh
         "/redoc",
-        "/v1/billing/webhooks", # Stripe webhooks
+        "/v1/health",       # Health checks
+        "/v1/health/ready",
+        "/v1/health/live",
+        "/metrics",
     }
+    
+    # Note: /v1/billing/webhooks is NOT exempt from auth.
+    # It uses HMAC signature verification instead (see stripe_webhooks.py)
     
     # Endpoints that require API key
     SDK_PATHS = {

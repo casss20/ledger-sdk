@@ -1,3 +1,5 @@
+import hmac
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 from .repository import BillingRepository
@@ -7,8 +9,60 @@ def ts_to_dt(ts: Optional[int]) -> Optional[datetime]:
     return datetime.fromtimestamp(ts, tz=timezone.utc)
 
 class StripeWebhookHandler:
-    def __init__(self, repo: BillingRepository):
+    def __init__(self, repo: BillingRepository, webhook_secret: Optional[str] = None):
         self.repo = repo
+        self.webhook_secret = webhook_secret
+
+    def verify_signature(self, payload: bytes, signature_header: Optional[str]) -> bool:
+        """
+        Verify Stripe webhook signature using HMAC-SHA256.
+        
+        This prevents webhook replay attacks and ensures the event
+        actually came from Stripe.
+        """
+        if not self.webhook_secret:
+            # In development without webhook secret, log warning but allow
+            import logging
+            logging.getLogger(__name__).warning(
+                "Stripe webhook secret not configured — skipping signature verification. "
+                "NEVER do this in production."
+            )
+            return True
+        
+        if not signature_header:
+            return False
+        
+        try:
+            # Stripe signature format: t=timestamp,v1=signature,v0=legacy
+            elements = signature_header.split(",")
+            sig_dict = {}
+            for element in elements:
+                item = element.strip()
+                if "=" in item:
+                    key, val = item.split("=", 1)
+                    sig_dict[key] = val
+            
+            timestamp = int(sig_dict.get("t", 0))
+            signature = sig_dict.get("v1", "")
+            
+            # Check timestamp to prevent replay attacks (5 minute tolerance)
+            now = int(datetime.now(timezone.utc).timestamp())
+            if abs(now - timestamp) > 300:
+                return False
+            
+            # Compute expected signature
+            signed_payload = f"{timestamp}.{payload.decode('utf-8')}"
+            expected = hmac.new(
+                self.webhook_secret.encode("utf-8"),
+                signed_payload.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            
+            # Use constant-time comparison to prevent timing attacks
+            return hmac.compare_digest(expected, signature)
+            
+        except Exception:
+            return False
 
     async def handle(self, event: Dict[str, Any]):
         etype = event["type"]

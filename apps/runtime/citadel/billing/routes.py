@@ -58,15 +58,23 @@ async def stripe_webhook(request: Request, repo: BillingRepository = Depends(get
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
     
-    stripe = StripeClient()
+    from citadel.config import settings
+    
+    # Use our own HMAC verification (more control than Stripe library)
+    handler = StripeWebhookHandler(repo, webhook_secret=settings.stripe_webhook_secret)
+    
+    if not handler.verify_signature(payload, sig_header):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    
+    # Parse the payload after verification
+    import json
     try:
-        event = stripe.verify_webhook(payload, sig_header)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+        event = json.loads(payload)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    
     await repo.log_event("stripe", event["id"], event["type"], event)
     
-    handler = StripeWebhookHandler(repo)
     try:
         await handler.handle(event)
         await repo.mark_event_processed(event["id"])
