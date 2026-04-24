@@ -1,6 +1,6 @@
-# Ledger Runtime
+# Citadel Runtime
 
-The core governance engine and control plane for the Ledger SDK. This component handles policy evaluation, audit chain persistence, and human-in-the-loop approvals.
+The core governance engine and control plane for the Citadel SDK. This component handles policy evaluation, audit chain persistence, and human-in-the-loop approvals.
 
 ## License
 

@@ -17,7 +17,7 @@ Your marketing agent sends welcome emails to new users. Without limits, a bug co
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: email-rate-limit
@@ -42,13 +42,13 @@ spec:
 # Send multiple emails
 for user in new_users:
     try:
-        action = ledger.govern(
+        action = citadel.govern(
             agent_id="welcome-agent",
             action="email.send",
             params={"to": user.email, "template": "welcome"}
         )
         result = action.execute()
-    except ledger_sdk.RateLimitError as e:
+    except CITADEL_sdk.RateLimitError as e:
         print(f"Rate limit hit. Retry after {e.retry_after}s")
         time.sleep(e.retry_after)
 ```
@@ -59,7 +59,7 @@ for user in new_users:
 
 ```python
 # Check rate limit status
-status = ledger.rate_limits.get_status(
+status = CITADEL.rate_limits.get_status(
     agent_id="welcome-agent",
     action="email.send"
 )

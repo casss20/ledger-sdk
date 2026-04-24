@@ -45,7 +45,7 @@ export function LoginPage() {
       <div className="login-card">
         <div className="login-brand">
           <div className="login-logo">L</div>
-          <h2>Ledger Governance</h2>
+          <h2>Citadel Governance</h2>
           <p>Operator Authentication</p>
         </div>
 

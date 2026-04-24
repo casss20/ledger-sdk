@@ -1,5 +1,5 @@
 """
-Ledger Kernel Conformance Test Suite
+CITADEL Kernel Conformance Test Suite
 
 Verifies that the governance kernel correctly:
 1. Writes to all database tables
@@ -23,16 +23,16 @@ sys.path.insert(0, 'src')
 import asyncpg
 
 # Kernel components
-from ledger.actions import Action, KernelStatus, KernelResult
-from ledger.execution.kernel import Kernel
-from ledger.repository import Repository
-from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
-from ledger.precedence import Precedence
-from ledger.approval_service import ApprovalService
-from ledger.capability_service import CapabilityService
-from ledger.audit_service import AuditService
-from ledger.execution.executor import Executor as ActionExecutor
-from ledger.status import ActorType
+from CITADEL.actions import Action, KernelStatus, KernelResult
+from CITADEL.execution.kernel import Kernel
+from CITADEL.repository import Repository
+from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
+from CITADEL.precedence import Precedence
+from CITADEL.approval_service import ApprovalService
+from CITADEL.capability_service import CapabilityService
+from CITADEL.audit_service import AuditService
+from CITADEL.execution.executor import Executor as ActionExecutor
+from CITADEL.status import ActorType
 
 
 @pytest.fixture

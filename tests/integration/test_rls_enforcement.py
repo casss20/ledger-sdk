@@ -8,7 +8,7 @@ import pytest
 import uuid
 import json
 from datetime import datetime
-from ledger.middleware.tenant_context import tenant_scope, TenantContextError
+from CITADEL.middleware.tenant_context import tenant_scope, TenantContextError
 
 @pytest.mark.asyncio
 async def test_rls_blocks_cross_tenant_access(db_pool):
@@ -94,7 +94,7 @@ async def test_missing_tenant_context_fails(db_pool):
     # But db_pool from conftest sets context by default in test suite.
     # To really test this, we need a raw pool without the conftest fixture setup,
     # OR we can just rely on the fact that TenantAwarePool raises TenantContextError.
-    from ledger.middleware.tenant_context import TenantAwarePool
+    from CITADEL.middleware.tenant_context import TenantAwarePool
     aware_pool = TenantAwarePool(db_pool)
     
     with pytest.raises(TenantContextError):
@@ -106,7 +106,7 @@ async def test_tenant_context_prevents_silent_bypass(db_pool):
     """
     Verify that forgetting tenant_id causes a loud error, not silent bypass.
     """
-    from ledger.middleware.tenant_context import TenantAwarePool
+    from CITADEL.middleware.tenant_context import TenantAwarePool
     aware_pool = TenantAwarePool(db_pool)
     
     # Simulate a developer forgetting to set tenant context

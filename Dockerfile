@@ -1,10 +1,10 @@
-# Ledger Governance API
+# Citadel Governance API
 # Production-ready container for the governance kernel
 
 FROM python:3.12-slim-bookworm
 
 # Security: run as non-root
-RUN groupadd -r ledger && useradd -r -g ledger ledger
+RUN groupadd -r citadel && useradd -r -g citadel citadel
 
 # Install dependencies
 WORKDIR /app
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -e ".[all]"
 RUN rm -rf /root/.cache /tmp/*
 
 # Switch to non-root user
-USER ledger
+USER citadel
 
 # Expose API port
 EXPOSE 8000
@@ -28,4 +28,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/live')" || exit 1
 
 # Run with uvicorn
-CMD ["uvicorn", "ledger.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "citadel.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

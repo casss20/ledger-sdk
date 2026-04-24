@@ -17,7 +17,7 @@ Prove to auditors that your AI governance audit trail has not been tampered with
 ## Generate Proof
 
 ```python
-proof = ledger.compliance.generate_proof(
+proof = CITADEL.compliance.generate_proof(
     start="2026-01-01",
     end="2026-03-31",
     include_hash_verification=True,
@@ -31,10 +31,10 @@ proof.download("/compliance/proof-q1-2026.pdf")
 
 ## Verification
 
-Independent verification without trusting Ledger:
+Independent verification without trusting CITADEL:
 
 ```python
-records = ledger.audit.query(start="2026-01-01", end="2026-03-31")
+records = CITADEL.audit.query(start="2026-01-01", end="2026-03-31")
 
 prev_hash = None
 for record in records:
@@ -59,7 +59,7 @@ print(f"Verified {len(records)} records. Chain intact.")
 @schedule("0 0 1 * *")  # First of each month
 def generate_monthly_proof():
     last_month = get_last_month()
-    proof = ledger.compliance.generate_proof(
+    proof = CITADEL.compliance.generate_proof(
         start=last_month.start,
         end=last_month.end
     )

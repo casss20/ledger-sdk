@@ -5,7 +5,7 @@ import uuid
 import asyncpg
 import pytest
 
-from ledger.tokens import (
+from CITADEL.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,
@@ -13,7 +13,7 @@ from ledger.tokens import (
     TokenVault,
 )
 
-DSN = "postgresql://ledger:ledger@localhost:5432/ledger_test"
+DSN = "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
 
 
 async def get_pool():

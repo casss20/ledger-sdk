@@ -1,6 +1,6 @@
-# Ledger Dashboard
+# Citadel Dashboard
 
-Modern React dashboard for Ledger SDK — AI governance for agent builders.
+Modern React dashboard for Citadel SDK - AI governance for agent builders.
 
 ## Tech Stack
 
@@ -21,7 +21,7 @@ Modern React dashboard for Ledger SDK — AI governance for agent builders.
 # Install dependencies
 npm install
 
-# Start dev server (proxies /ledger to localhost:8000)
+# Start dev server (proxies /CITADEL to localhost:8000)
 npm run dev
 
 # Build for production
@@ -33,28 +33,28 @@ npm run preview
 
 ## Features
 
-- ✅ Real-time stats grid (auto-refreshes every 2s)
-- ✅ Pending approvals queue with approve/deny
-- ✅ Kill switch management (kill/revive features)
-- ✅ Audit log table with risk badges
-- ✅ Dark mode UI (enterprise aesthetic)
-- ✅ Type-safe API hooks
+- Real-time stats grid (auto-refreshes every 2s)
+- Pending approvals queue with approve/deny
+- Kill switch management (kill/revive features)
+- Audit log table with risk badges
+- Dark mode UI (enterprise aesthetic)
+- Type-safe API hooks
 
 ## Environment Variables
 
 ```bash
 # .env.local
-VITE_API_URL=http://localhost:8000/ledger
+VITE_API_URL=http://localhost:8000/CITADEL
 ```
 
 ## API Proxy
 
-Vite dev server proxies `/ledger` to your backend:
+Vite dev server proxies `/CITADEL` to your backend:
 
 ```typescript
 // vite.config.ts
 proxy: {
-  "/ledger": {
+  "/CITADEL": {
     target: "http://localhost:8000",
     changeOrigin: true,
   },
@@ -63,22 +63,22 @@ proxy: {
 
 ## Project Structure
 
-```
+```text
 src/
-├── components/
-│   ├── ui/          # Primitive components
-│   ├── stats-grid.tsx
-│   ├── approval-queue.tsx
-│   ├── kill-switches.tsx
-│   └── audit-log.tsx
-├── lib/
-│   ├── utils.ts     # cn() helper
-│   ├── api.ts       # API config + queryClient
-│   └── hooks.ts     # TanStack Query hooks
-├── App.tsx          # Main dashboard layout
-└── main.tsx         # Entry point
+|- components/
+|  |- ui/          # Primitive components
+|  |- stats-grid.tsx
+|  |- approval-queue.tsx
+|  |- kill-switches.tsx
+|  `- audit-log.tsx
+|- lib/
+|  |- utils.ts     # cn() helper
+|  |- api.ts       # API config + queryClient
+|  `- hooks.ts     # TanStack Query hooks
+|- App.tsx         # Main dashboard layout
+`- main.tsx        # Entry point
 ```
 
 ## License
 
-MIT — Part of [ledger-sdk](https://github.com/casss20/ledger-sdk)
+MIT - Part of [citadel-sdk](https://github.com/casss20/citadel-sdk)

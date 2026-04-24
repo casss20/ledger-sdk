@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Secure your Ledger deployment
+- Secure your CITADEL deployment
 - Manage API keys
 - Configure network security
 - Audit security events
@@ -13,17 +13,17 @@
 
 ### Rotate keys every 90 days
 ```bash
-ledger keys rotate --env production
+CITADEL keys rotate --env production
 ```
 
 ### Use separate keys per environment
-- `ldk_test_*` — Development only
-- `ldk_live_*` — Production only
+- `ldk_test_*` â€” Development only
+- `ldk_live_*` â€” Production only
 - Never commit keys to version control
 
 ### Enable key restrictions
 ```python
-ledger.config.set_key_restrictions(
+CITADEL.config.set_key_restrictions(
     ip_allowlist=["10.0.0.0/8"],
     time_window={"start": "08:00", "end": "18:00"}
 )
@@ -50,8 +50,8 @@ Monitor these events:
 
 Forward to SIEM:
 ```python
-ledger.config.set_webhook(
-    url="https://siem.company.com/ledger",
+CITADEL.config.set_webhook(
+    url="https://siem.company.com/CITADEL",
     events=["kill_switch.activated", "policy.modified"]
 )
 ```
@@ -62,7 +62,7 @@ ledger.config.set_webhook(
 
 Test monthly in staging:
 ```bash
-ledger kill-switch test --env staging --scope all
+CITADEL kill-switch test --env staging --scope all
 ```
 
 ---

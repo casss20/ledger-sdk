@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ledger-sdk"
+name = "citadel-sdk"
 version = "0.1.0"
 description = "AI Governance: Constitution + Audit for Agent Builders"
 readme = "README.md"
@@ -42,6 +42,10 @@ dependencies = [
     "typing-extensions>=4.0",
     "prometheus-client>=0.17",
     "httpx>=0.24",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
 [project.optional-dependencies]
@@ -76,13 +80,13 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/casss20/ledger-sdk"
-Documentation = "https://github.com/casss20/ledger-sdk/tree/master/docs"
-Repository = "https://github.com/casss20/ledger-sdk.git"
-Issues = "https://github.com/casss20/ledger-sdk/issues"
+Homepage = "https://github.com/casss20/citadel-sdk"
+Documentation = "https://github.com/casss20/citadel-sdk/tree/master/docs"
+Repository = "https://github.com/casss20/citadel-sdk.git"
+Issues = "https://github.com/casss20/citadel-sdk/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ledger"]
+packages = ["src/CITADEL"]
 
 [tool.black]
 line-length = 100
@@ -113,4 +117,4 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["src"]
+pythonpath = ["apps/runtime"]

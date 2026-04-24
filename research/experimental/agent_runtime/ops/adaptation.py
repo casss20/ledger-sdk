@@ -1,4 +1,4 @@
-"""ADAPTATION — Behavioral Adjustment
+"""ADAPTATION â€” Behavioral Adjustment
 
 Implementation of ADAPTATION.md.
 
@@ -34,7 +34,7 @@ METHOD:
 4. Apply if confirmed
 5. Log change
 
-SOURCE OF TRUTH: ledger/ops/ADAPTATION.md
+SOURCE OF TRUTH: CITADEL/ops/ADAPTATION.md
 If this code contradicts the MD file, the MD file is correct.
 """
 

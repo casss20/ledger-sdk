@@ -1,49 +1,49 @@
-# SCHEDULER.md — Ledger SDK Release Status
+# SCHEDULER.md â€” Citadel SDK Release Status
 
-**Status:** ✅ **READY FOR 1.0 RELEASE**  
+**Status:** âœ… **READY FOR 1.0 RELEASE**  
 **Date:** 2026-04-19  
-**Commit:** `a221f73` — PyPI Preparation Complete
+**Commit:** `a221f73` â€” PyPI Preparation Complete
 
 ---
 
-## 🚦 Final Status
+## ðŸš¦ Final Status
 
 | Category | Status |
 |----------|--------|
-| Core Governance | ✅ DONE |
-| Weft Patterns | ✅ 8/8 Adopted |
-| Error Handling | ✅ DONE |
-| Subgraph Execution | ✅ DONE |
-| Cross-Action Analytics | ✅ DONE |
-| Dashboard API | ✅ DONE |
-| PyPI Package | ✅ READY |
+| Core Governance | âœ… DONE |
+| Weft Patterns | âœ… 8/8 Adopted |
+| Error Handling | âœ… DONE |
+| Subgraph Execution | âœ… DONE |
+| Cross-Action Analytics | âœ… DONE |
+| Dashboard API | âœ… DONE |
+| PyPI Package | âœ… READY |
 
 ---
 
-## ✅ Completed Work
+## âœ… Completed Work
 
-### Critical Gaps — ALL RESOLVED
+### Critical Gaps â€” ALL RESOLVED
 
 | Feature | File | Status |
 |---------|------|--------|
-| Error handling | `error_handling.py` | ✅ `@try_governed`, `Retry()`, `Catch()`, `Default()` |
-| Subgraph execution | `subgraph.py` | ✅ `@executor.output()`, selective execution |
-| Cross-action analytics | `analytics.py` | ✅ Anomaly detection, health scoring |
+| Error handling | `error_handling.py` | âœ… `@try_governed`, `Retry()`, `Catch()`, `Default()` |
+| Subgraph execution | `subgraph.py` | âœ… `@executor.output()`, selective execution |
+| Cross-action analytics | `analytics.py` | âœ… Anomaly detection, health scoring |
 
-### Weft Patterns — ALL ADOPTED
+### Weft Patterns â€” ALL ADOPTED
 
 | Pattern | File | Notes |
 |---------|------|-------|
 | Durable execution | `governance/durable.py` | Redis-backed, optional dependency |
 | Recursive groups | `groups.py` | Collapsible action groups |
-| Catalog pattern | `catalog.py` | Auto-discovery from `ledger/core/` |
+| Catalog pattern | `catalog.py` | Auto-discovery from `CITADEL/core/` |
 | Null propagation | `null_propagation.py` | `SkipExecution`, `Pipeline` |
 | Native mocking | `mocking.py` | `@mockable` decorator |
 | Compile validation | `validation.py` | Pydantic validation at startup |
 | Dense syntax | `dense.py` | `gov.action()`, `gov.email()` DSL |
 | Sidecar pattern | `sidecar.py` | HTTP bridge, optional aiohttp |
 
-### Rejected Patterns — DOCUMENTED
+### Rejected Patterns â€” DOCUMENTED
 
 | Pattern | Rationale |
 |---------|-----------|
@@ -52,39 +52,39 @@
 
 ---
 
-## 📦 PyPI Package
+## ðŸ“¦ PyPI Package
 
-**Wheel:** `ledger_sdk-0.1.0-py3-none-any.whl` (52.9 KB)  
-**Install:** `pip install ledger-sdk`
+**Wheel:** `citadel_sdk-0.1.0-py3-none-any.whl` (52.9 KB)  
+**Install:** `pip install citadel-sdk`
 
 ### Optional Dependencies
 
 ```bash
-pip install ledger-sdk[fastapi]   # FastAPI integration
-pip install ledger-sdk[durable]   # Redis-backed execution
-pip install ledger-sdk[sidecar]   # HTTP sidecar pattern
-pip install ledger-sdk[all]       # Everything
+pip install citadel-sdk[fastapi]   # FastAPI integration
+pip install citadel-sdk[durable]   # Redis-backed execution
+pip install citadel-sdk[sidecar]   # HTTP sidecar pattern
+pip install citadel-sdk[all]       # Everything
 ```
 
 ---
 
-## 🏗️ Architecture Decision
+## ðŸ—ï¸ Architecture Decision
 
-**Decision:** Option B — Separation of Concerns  
+**Decision:** Option B â€” Separation of Concerns  
 **File:** `docs/ARCHITECTURE_DECISION.md`
 
-- **Ledger SDK** (`sdk.py`): Owns execution
+- **Citadel SDK** (`sdk.py`): Owns execution
 - **Governor** (`governor.py`): Owns visibility
-- **Boundary:** Ledger reports to Governor; Governor never controls
+- **Boundary:** CITADEL reports to Governor; Governor never controls
 
 ---
 
-## 📚 Public API
+## ðŸ“š Public API
 
 ```python
-from ledger import (
+from CITADEL import (
     # Core
-    Ledger, Governor, Denied,
+    CITADEL, Governor, Denied,
     
     # Error handling
     try_governed, Retry, Catch, Default, DeadLetter,
@@ -111,7 +111,7 @@ from ledger import (
 
 ---
 
-## 🎯 1.0 Release Checklist
+## ðŸŽ¯ 1.0 Release Checklist
 
 - [x] All features implemented
 - [x] PyPI package builds successfully
@@ -125,12 +125,12 @@ from ledger import (
 
 ---
 
-## 📝 Decision Log
+## ðŸ“ Decision Log
 
 ### 2026-04-19: PyPI preparation complete
 **Commit:** `a221f73`  
 **Changes:**
-- Moved governance into ledger package
+- Moved governance into CITADEL package
 - Optional dependencies for redis/aiohttp
 - Fixed typing.Optional name collision
 - 52.9 KB wheel, clean imports

@@ -3,7 +3,7 @@
 ## What you'll learn
 
 - Govern Anthropic Claude tool use
-- Content moderation with Ledger policies
+- Content moderation with CITADEL policies
 - Streaming response governance
 - Multi-turn conversation audit
 
@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-pip install ledger-sdk[anthropic]
+pip install citadel-sdk[anthropic]
 ```
 
 ---
@@ -21,12 +21,12 @@ pip install ledger-sdk[anthropic]
 
 ```python
 from anthropic import Anthropic
-from ledger_sdk.integrations.anthropic import LedgerAnthropicMiddleware
+from citadel_sdk.integrations.anthropic import CITADELAnthropicMiddleware
 
-import ledger_sdk
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
+import citadel_sdk
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
 
-middleware = LedgerAnthropicMiddleware(client=ledger, agent_id="claude-agent-01")
+middleware = CITADELAnthropicMiddleware(client=CITADEL, agent_id="claude-agent-01")
 
 client = Anthropic(api_key="sk-ant-...")
 

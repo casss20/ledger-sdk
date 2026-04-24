@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Integrate Ledger with any agent framework
+- Integrate CITADEL with any agent framework
 - Build custom middleware for your stack
 - Handle governance errors in your application
 - Best practices for production integrations
@@ -15,15 +15,15 @@ Every integration follows the same pattern:
 
 ```
 Agent requests action
-    ↓
+    â†“
 [YOUR MIDDLEWARE] Intercept
-    ↓
-Call ledger.govern()
-    ↓
-    ├─ ALLOWED → Execute original action
-    ├─ DENIED → Return error to agent
-    └─ APPROVAL_REQUIRED → Queue for review
-    ↓
+    â†“
+Call citadel.govern()
+    â†“
+    â”œâ”€ ALLOWED â†’ Execute original action
+    â”œâ”€ DENIED â†’ Return error to agent
+    â””â”€ APPROVAL_REQUIRED â†’ Queue for review
+    â†“
 Return result to agent
 ```
 
@@ -34,15 +34,15 @@ Return result to agent
 ### Python middleware template
 
 ```python
-import ledger_sdk
+import citadel_sdk
 
 class CustomGovernanceMiddleware:
     def __init__(self, api_key, agent_id):
-        self.ledger = ledger_sdk.Client(api_key=api_key)
+        self.CITADEL = citadel_sdk.Client(api_key=api_key)
         self.agent_id = agent_id
 
     def before_action(self, action, params):
-        governed = self.ledger.govern(
+        governed = self.citadel.govern(
             agent_id=self.agent_id,
             action=action,
             params=params
@@ -50,13 +50,13 @@ class CustomGovernanceMiddleware:
         try:
             result = governed.execute()
             return {"allowed": True, "token": result.governance_token}
-        except ledger_sdk.PolicyDeniedError as e:
+        except citadel_sdk.PolicyDeniedError as e:
             return {"allowed": False, "error": str(e)}
-        except ledger_sdk.ApprovalRequiredError as e:
+        except citadel_sdk.ApprovalRequiredError as e:
             return {"allowed": False, "approval_url": e.approval_url}
 
     def after_action(self, action, params, outcome, token):
-        self.ledger.audit.record_outcome(
+        self.CITADEL.audit.record_outcome(
             governance_token=token,
             outcome=outcome
         )
@@ -65,19 +65,19 @@ class CustomGovernanceMiddleware:
 ### TypeScript middleware template
 
 ```typescript
-import { LedgerClient, PolicyDeniedError, ApprovalRequiredError } from '@ledger/sdk';
+import { CITADELClient, PolicyDeniedError, ApprovalRequiredError } from '@citadel/sdk';
 
 class CustomGovernanceMiddleware {
-  private ledger: LedgerClient;
+  private CITADEL: CITADELClient;
   private agentId: string;
 
   constructor(apiKey: string, agentId: string) {
-    this.ledger = new LedgerClient({ apiKey });
+    this.CITADEL = new CITADELClient({ apiKey });
     this.agentId = agentId;
   }
 
   async beforeAction(action: string, params: any) {
-    const governed = this.ledger.govern({
+    const governed = this.citadel.govern({
       agentId: this.agentId,
       action,
       params

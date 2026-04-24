@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import asyncpg
 import json
-from ledger.config import settings
+from CITADEL.config import settings
 
 async def simulate():
     print("--- Billing Downgrade Simulation ---")

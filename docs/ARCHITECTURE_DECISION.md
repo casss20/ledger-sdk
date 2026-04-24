@@ -10,30 +10,30 @@
 
 **Option B: Keep separation of concerns**
 
-- **Ledger SDK** (`sdk.py`): Owns execution — the `@governed` decorator, capability tokens, kill switches
-- **Governor**: Owns visibility — tracks all action lifecycle, provides query API, dashboard data
-- **Boundary**: Ledger reports to Governor; Governor never controls execution
+- **Citadel SDK** (`sdk.py`): Owns execution â€” the `@governed` decorator, capability tokens, kill switches
+- **Governor**: Owns visibility â€” tracks all action lifecycle, provides query API, dashboard data
+- **Boundary**: CITADEL reports to Governor; Governor never controls execution
 
 ---
 
-## Why Not Option A (Governor Absorbs Ledger)
+## Why Not Option A (Governor Absorbs CITADEL)
 
 | Concern | Option A | Option B (Chosen) |
 |---------|----------|-------------------|
 | **Complexity** | Governor becomes "god object" | Clear, separated responsibilities |
-| **Testing** | Hard to mock Governor for unit tests | Ledger testable without Governor |
-| **Coupling** | Tight coupling — can't use Ledger without Governor | Loose coupling — Governor is optional for visibility |
-| **Single Responsibility** | Violates SRP | Clean: Ledger acts, Governor observes |
+| **Testing** | Hard to mock Governor for unit tests | CITADEL testable without Governor |
+| **Coupling** | Tight coupling â€” can't use CITADEL without Governor | Loose coupling â€” Governor is optional for visibility |
+| **Single Responsibility** | Violates SRP | Clean: CITADEL acts, Governor observes |
 | **What We Built** | Requires major refactor | Current integration is correct |
 
 ---
 
 ## Why Option B Is Right
 
-1. **It matches what we just built** — Ledger already reports state transitions to Governor cleanly
-2. **Error handling fits naturally** — Ledger catches exceptions, reports `FAILED` to Governor
-3. **Subgraph execution is simple** — Ledger manages flow; Governor tracks which subgraph ran
-4. **Dashboard stays simple** — Governor is read-only data source, no execution logic
+1. **It matches what we just built** â€” CITADEL already reports state transitions to Governor cleanly
+2. **Error handling fits naturally** â€” CITADEL catches exceptions, reports `FAILED` to Governor
+3. **Subgraph execution is simple** â€” CITADEL manages flow; Governor tracks which subgraph ran
+4. **Dashboard stays simple** â€” Governor is read-only data source, no execution logic
 
 ---
 
@@ -46,17 +46,17 @@
 - Make approval decisions
 
 ### Governor DOES:
-- Receive state transitions from Ledger
+- Receive state transitions from CITADEL
 - Store complete action lifecycle
 - Answer queries about pending/failed/skipped actions
 - Provide summary statistics for dashboard
 
-### Ledger does NOT:
+### CITADEL does NOT:
 - Query Governor during execution (fire-and-forget reporting)
 - Wait for Governor approval
 - Check Governor state before acting
 
-### Ledger DOES:
+### CITADEL DOES:
 - Create records in Governor at start
 - Transition states during execution
 - Report final state (SUCCESS/FAILED/DENIED/TIMEOUT/SKIPPED)
@@ -67,25 +67,25 @@
 
 Now that decision is made, these can be implemented:
 
-1. **Error handling** (`try_governed`, `@catch`) — Ledger catches, reports to Governor
-2. **Subgraph execution** — Ledger manages flow, Governor tracks subgraph state
-3. **Unified dashboard** — Governor provides all data, read-only
+1. **Error handling** (`try_governed`, `@catch`) â€” CITADEL catches, reports to Governor
+2. **Subgraph execution** â€” CITADEL manages flow, Governor tracks subgraph state
+3. **Unified dashboard** â€” Governor provides all data, read-only
 
 ---
 
 ## Code Pattern
 
 ```python
-# Ledger executes
-gov = Ledger(...)
+# CITADEL executes
+gov = CITADEL(...)
 
 @gov.governed(action="send_email")
 async def send_email(to: str, subject: str, body: str):
-    # Ledger reports to Governor internally
+    # CITADEL reports to Governor internally
     return await smtp.send(to, subject, body)
 
 # Governor is queried elsewhere (dashboard, monitoring)
-from ledger import get_governor
+from CITADEL import get_governor
 governor = get_governor()
 
 # Read-only queries

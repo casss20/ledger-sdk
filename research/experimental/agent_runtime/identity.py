@@ -1,4 +1,4 @@
-"""Identity — Agent Identity & Attestation
+"""Identity â€” Agent Identity & Attestation
 
 The Identity module provides verified identities for AI agents.
 Every governed action is tied to a specific agent identity, enabling:
@@ -8,7 +8,7 @@ Every governed action is tied to a specific agent identity, enabling:
 - Capability restrictions: "What is this agent allowed to do?"
 
 Usage:
-    from ledger import Ledger, AgentIdentity
+    from CITADEL import CITADEL, AgentIdentity
     
     # Register an agent
     agent = AgentIdentity(
@@ -19,7 +19,7 @@ Usage:
         capabilities=["read", "send_email"]
     )
     
-    gov = Ledger()
+    gov = CITADEL()
     gov.register_agent(agent)
     
     # All actions now tagged with agent identity

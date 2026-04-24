@@ -1,4 +1,4 @@
-"""FAILURE — Recovery Protocol
+"""FAILURE â€” Recovery Protocol
 
 Implementation of FAILURE.md.
 
@@ -13,7 +13,7 @@ FAILURE decides what to do when things break.
 - Stop execution?
 - Rollback?
 
-SOURCE OF TRUTH: ledger/ops/FAILURE.md
+SOURCE OF TRUTH: CITADEL/ops/FAILURE.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -152,10 +152,10 @@ class Failure:
         Main entry: handle failure and return recovery decision.
         
         Decision Tree:
-        1. Can retry? → Retry with fix
-        2. Needs clarity? → Ask user
-        3. Cannot continue? → Stop
-        4. Partial results? → Deliver with note
+        1. Can retry? â†’ Retry with fix
+        2. Needs clarity? â†’ Ask user
+        3. Cannot continue? â†’ Stop
+        4. Partial results? â†’ Deliver with note
         """
         strategy = self._recovery_strategies.get(context.failure_type)
         

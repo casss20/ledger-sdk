@@ -1,7 +1,7 @@
 """
-Catalog Pattern — Ledger SDK
+Catalog Pattern â€” Citadel SDK
 
-Auto-discover governance rules from ledger/core/
+Auto-discover governance rules from CITADEL/core/
 Inspired by Weft's catalog architecture.
 """
 
@@ -51,7 +51,7 @@ class GovernanceRule:
 
 class Catalog:
     """
-    Auto-discover governance rules from ledger/core/
+    Auto-discover governance rules from CITADEL/core/
     Like Weft's catalog/ directory.
     """
     
@@ -65,19 +65,19 @@ class Catalog:
         }
     
     def load(self) -> None:
-        """Auto-discover rules from ledger/core/"""
-        ledger_path = Path(__file__).parent.parent / "ledger" / "core"
+        """Auto-discover rules from CITADEL/core/"""
+        citadel_path = Path(__file__).parent.parent / "CITADEL" / "core"
         
-        if not ledger_path.exists():
-            logger.warning(f"[Catalog] ledger/core/ not found at {ledger_path}")
+        if not citadel_path.exists():
+            logger.warning(f"[Catalog] CITADEL/core/ not found at {citadel_path}")
             return
         
-        for module_info in pkgutil.iter_modules([str(ledger_path)]):
+        for module_info in pkgutil.iter_modules([str(citadel_path)]):
             if module_info.name.startswith("_"):
                 continue
             
             try:
-                module = importlib.import_module(f"ledger.core.{module_info.name}")
+                module = importlib.import_module(f"CITADEL.core.{module_info.name}")
                 
                 # Look for GOVERNANCE dict in module
                 if hasattr(module, "GOVERNANCE"):

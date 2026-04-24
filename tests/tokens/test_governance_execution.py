@@ -11,13 +11,13 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
-import ledger.config
-ledger.config.settings.require_auth = True
-ledger.config.settings.api_keys = "test-key"
-ledger.config.settings.database_url = "postgresql://ledger:ledger@localhost:5432/ledger_test"
+import CITADEL.config
+CITADEL.config.settings.require_auth = True
+CITADEL.config.settings.api_keys = "test-key"
+CITADEL.config.settings.database_url = "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
 
-from ledger.api import app
-from ledger.tokens import (
+from CITADEL.api import app
+from CITADEL.tokens import (
     GovernanceDecision,
     DecisionType,
     DecisionScope,
@@ -54,7 +54,7 @@ class TestGovernanceTokenExecution:
 
     @pytest.mark.asyncio
     async def test_action_allowed_with_governance_token(self, db_pool):
-        """Submit action with a valid gt_cap_* token → allowed + executed."""
+        """Submit action with a valid gt_cap_* token â†’ allowed + executed."""
         import asyncpg
 
         # Create a tenant-scoped pool so RLS works through the HTTP layer
@@ -62,14 +62,14 @@ class TestGovernanceTokenExecution:
             await conn.execute("SELECT set_tenant_context($1)", TENANT)
 
         scoped_pool = await asyncpg.create_pool(
-            "postgresql://ledger:ledger@localhost:5432/ledger_test",
+            "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test",
             min_size=1, max_size=2, setup=_setup,
         )
         app.state.db_pool = scoped_pool
         vault = TokenVault(scoped_pool)
 
         # Insert actor first (FK constraint on actions table)
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
         await conn.execute(
             """
@@ -136,9 +136,9 @@ class TestGovernanceTokenExecution:
             reason="Emergency maintenance",
         )
 
-        from ledger.precedence import Precedence
-        from ledger.policy_resolver import PolicyEvaluator
-        from ledger.actions import Action, KernelStatus
+        from CITADEL.precedence import Precedence
+        from CITADEL.policy_resolver import PolicyEvaluator
+        from CITADEL.actions import Action, KernelStatus
 
         precedence = Precedence(
             repository=None,
@@ -190,9 +190,9 @@ class TestGovernanceTokenExecution:
         token = CapabilityToken.derive(decision)
         await vault.store_token(token)
 
-        from ledger.precedence import Precedence
-        from ledger.policy_resolver import PolicyEvaluator
-        from ledger.actions import Action, KernelStatus
+        from CITADEL.precedence import Precedence
+        from CITADEL.policy_resolver import PolicyEvaluator
+        from CITADEL.actions import Action, KernelStatus
 
         verifier = TokenVerifier(vault, None, MockAuditLogger())
         precedence = Precedence(
@@ -243,9 +243,9 @@ class TestGovernanceTokenExecution:
         token = CapabilityToken.derive(decision)
         await vault.store_token(token)
 
-        from ledger.precedence import Precedence
-        from ledger.policy_resolver import PolicyEvaluator
-        from ledger.actions import Action, KernelStatus
+        from CITADEL.precedence import Precedence
+        from CITADEL.policy_resolver import PolicyEvaluator
+        from CITADEL.actions import Action, KernelStatus
 
         verifier = TokenVerifier(vault, None, MockAuditLogger())
         precedence = Precedence(
@@ -285,14 +285,14 @@ class TestGovernanceTokenExecution:
             await conn.execute("SELECT set_tenant_context($1)", TENANT)
 
         scoped_pool = await asyncpg.create_pool(
-            "postgresql://ledger:ledger@localhost:5432/ledger_test",
+            "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test",
             min_size=1, max_size=2, setup=_setup,
         )
         app.state.db_pool = scoped_pool
 
         cap_token = f"cap_old_{uuid.uuid4().hex[:12]}"
 
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         # Bypass RLS for direct test insertion
         await conn.execute("SET app.admin_bypass = 'true'")
         # Insert actor first (FK constraint)
@@ -365,9 +365,9 @@ class TestGovernanceTokenExecution:
         token = CapabilityToken.derive(decision)
         await vault.store_token(token)
 
-        from ledger.precedence import Precedence
-        from ledger.policy_resolver import PolicyEvaluator
-        from ledger.actions import Action
+        from CITADEL.precedence import Precedence
+        from CITADEL.policy_resolver import PolicyEvaluator
+        from CITADEL.actions import Action
 
         verifier = TokenVerifier(vault, None, MockAuditLogger())
         precedence = Precedence(

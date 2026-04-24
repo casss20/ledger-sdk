@@ -17,7 +17,7 @@ Your customer service agent can process refunds automatically for small amounts,
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: refund-approval-over-1000
@@ -44,7 +44,7 @@ spec:
 
 ```python
 # Attempt refund
-action = ledger.govern(
+action = citadel.govern(
     agent_id="refund-agent-01",
     action="refund.create",
     params={"order_id": "ORD-123", "amount": 2500, "reason": "Defective product"}
@@ -53,7 +53,7 @@ action = ledger.govern(
 try:
     result = action.execute()
     print(f"Refund processed: {result.governance_token}")
-except ledger_sdk.ApprovalRequiredError as e:
+except CITADEL_sdk.ApprovalRequiredError as e:
     print(f"Approval required: {e.approval_url}")
     # Finance manager receives notification
 ```
@@ -64,15 +64,15 @@ except ledger_sdk.ApprovalRequiredError as e:
 
 ```python
 # Test small refund (should auto-allow)
-small = ledger.govern(agent_id="refund-agent", action="refund.create", params={"amount": 500})
+small = citadel.govern(agent_id="refund-agent", action="refund.create", params={"amount": 500})
 assert small.execute().decision == "allowed"
 
 # Test large refund (should require approval)
-large = ledger.govern(agent_id="refund-agent", action="refund.create", params={"amount": 2500})
+large = citadel.govern(agent_id="refund-agent", action="refund.create", params={"amount": 2500})
 try:
     large.execute()
     assert False, "Should have required approval"
-except ledger_sdk.ApprovalRequiredError:
+except CITADEL_sdk.ApprovalRequiredError:
     pass  # Expected
 ```
 

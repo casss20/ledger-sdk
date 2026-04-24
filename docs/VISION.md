@@ -1,14 +1,14 @@
-# VISION.md — Ledger SDK Long-Term Vision
+# VISION.md â€” Citadel SDK Long-Term Vision
 
-**Document Purpose:** Capture the ultimate vision for Ledger beyond the current implementation.
+**Document Purpose:** Capture the ultimate vision for CITADEL beyond the current implementation.
 
 ---
 
 ## The North Star
 
-**Ledger is the universal control layer for autonomous AI.**
+**CITADEL is the universal control layer for autonomous AI.**
 
-Before any AI agent takes a risky action — in any domain, on any platform — it asks Ledger:
+Before any AI agent takes a risky action â€” in any domain, on any platform â€” it asks CITADEL:
 
 > *"Is this allowed?"*
 
@@ -36,7 +36,7 @@ AI agents can now:
 ```python
 # Customer Service AI
 @gov.governed(action="send_email")           # Block spam, require approval
-@gov.governed(action="issue_refund")         # HIGH risk → human approval
+@gov.governed(action="issue_refund")         # HIGH risk â†’ human approval
 @gov.governed(action="close_account")        # Kill switch can stop this
 
 # DevOps AI
@@ -98,10 +98,10 @@ AI agents can now:
 - Billing & metering
 
 ### Phase 3: Multi-Language
-- **Node.js SDK** — `npm install ledger-sdk`
-- **Go SDK** — `go get github.com/ledger/sdk`
-- **Rust SDK** — `cargo add ledger-sdk`
-- **Java SDK** — Maven/Gradle integration
+- **Node.js SDK** â€” `npm install citadel-sdk`
+- **Go SDK** â€” `go get github.com/CITADEL/sdk`
+- **Rust SDK** â€” `cargo add citadel-sdk`
+- **Java SDK** â€” Maven/Gradle integration
 
 ### Phase 4: Enterprise Platform
 - AI-to-AI governance (agents governing agents)
@@ -120,7 +120,7 @@ AI agents can now:
 ## Business Model: Open Core + Hosted SaaS
 
 ### Open Source (Free)
-- Core `ledger-sdk` library
+- Core `citadel-sdk` library
 - Basic governance features
 - Self-hosted deployment
 - Community support
@@ -214,9 +214,9 @@ AI agents can now:
 
 ## The Ultimate Goal
 
-> **Every AI agent in the world runs through Ledger first.**
+> **Every AI agent in the world runs through CITADEL first.**
 
-When AI becomes autonomous — scheduling meetings, trading stocks, diagnosing patients, writing code — **Ledger is the safety layer that keeps it aligned with human intent.**
+When AI becomes autonomous â€” scheduling meetings, trading stocks, diagnosing patients, writing code â€” **CITADEL is the safety layer that keeps it aligned with human intent.**
 
 We're not just building a library.  
 We're building **the immune system for the AI age.**

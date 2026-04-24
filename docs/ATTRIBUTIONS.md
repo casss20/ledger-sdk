@@ -1,17 +1,17 @@
 # Third-Party Notices & License
 
-## Ledger SDK Project License
+## Citadel SDK Project License
 
-The Ledger SDK project uses a dual-license commercial strategy:
+The Citadel SDK project uses a dual-license commercial strategy:
 
 - **SDKs, Client Libraries, and Integration Tooling**: Licensed under the **Apache License 2.0**. This allows for maximum interoperability and free integration into any application.
-- **Core Governance Runtime & Kernel**: Licensed under a **Business Source License (BSL-style)**. This allows for free internal use, testing, and self-hosting, while protecting the commercial interests of the hosted Ledger Cloud platform.
+- **Core Governance Runtime & Kernel**: Licensed under a **Business Source License (BSL-style)**. This allows for free internal use, testing, and self-hosting, while protecting the commercial interests of the hosted CITADEL Cloud platform.
 
 See the full [LICENSE](LICENSE) file for legal details.
 
 ---
 
-This document also contains attribution for third-party software and architectural patterns used in the Ledger SDK.
+This document also contains attribution for third-party software and architectural patterns used in the Citadel SDK.
 
 ## Microsoft Agent Governance Toolkit
 
@@ -19,15 +19,15 @@ This document also contains attribution for third-party software and architectur
 - **License**: MIT License
 - **Copyright**: Copyright (c) Microsoft Corporation
 
-Portions of the Ledger SDK's governance runtime are inspired by and adapted from Microsoft's Agent Governance Toolkit (AGT), released under the MIT license. The following patterns were analyzed and reimplemented in Ledger's architecture, conventions, and design principles:
+Portions of the Citadel SDK's governance runtime are inspired by and adapted from Microsoft's Agent Governance Toolkit (AGT), released under the MIT license. The following patterns were analyzed and reimplemented in CITADEL's architecture, conventions, and design principles:
 
-- Trust scoring methodology (0–1000 scale with composite sub-scores)
+- Trust scoring methodology (0â€“1000 scale with composite sub-scores)
 - Delegation chain tracking for agent authority
 - Audit sink protocol design (write / write_batch / verify_integrity)
 - Policy rule priority evaluation (first-match-wins)
 - OWASP Agentic Top 10 risk mapping
 
-**Important**: No AGT source code was copied directly into the Ledger SDK. All implementation was written from scratch for Ledger's specific architecture (async Python, PostgreSQL with strict Row-Level Security, tenant isolation). AGT was used as an architectural reference only.
+**Important**: No AGT source code was copied directly into the Citadel SDK. All implementation was written from scratch for CITADEL's specific architecture (async Python, PostgreSQL with strict Row-Level Security, tenant isolation). AGT was used as an architectural reference only.
 
 ### MIT License Text
 
@@ -57,23 +57,23 @@ SOFTWARE.
 
 ---
 
-## Stripe, Inc. — Architectural Patterns
+## Stripe, Inc. â€” Architectural Patterns
 
 - **Source**: Public documentation and PCI Security Standards Council materials
 - **License**: Architectural concepts are public knowledge; no code used
 
-The Ledger SDK adapts the following **publicly documented** architectural pattern from Stripe:
+The Citadel SDK adapts the following **publicly documented** architectural pattern from Stripe:
 
 - **PaymentMethod tokenization (`pm_` pattern)**: Adapted as `gt_` governance tokens. The concept of "open to store, proprietary to resolve" is a public architectural pattern documented in PCI SSC materials and Stripe's public API documentation. No Stripe source code was used.
 
 ---
 
-## Datadog, Inc. — Architectural Patterns
+## Datadog, Inc. â€” Architectural Patterns
 
 - **Source**: Public documentation and blog posts
 - **License**: Architectural concepts are public knowledge; no code used
 
-The Ledger SDK adapts the following **publicly documented** architectural patterns from Datadog:
+The Citadel SDK adapts the following **publicly documented** architectural patterns from Datadog:
 
 - **Audit Trail / Log Management separation**: Separate schema, RBAC, retention policies for governance audit vs. operational logs. Publicly documented in Datadog's product documentation.
 - **Security Inbox pattern**: Prioritized governance violation queue. Publicly documented in Datadog security product materials.
@@ -85,7 +85,7 @@ The Ledger SDK adapts the following **publicly documented** architectural patter
 - **Source**: https://www.postgresql.org/
 - **License**: PostgreSQL License (permissive, BSD-style)
 
-Ledger uses PostgreSQL's native Row-Level Security (RLS) feature for tenant isolation. RLS is a built-in PostgreSQL feature used according to its public documentation.
+CITADEL uses PostgreSQL's native Row-Level Security (RLS) feature for tenant isolation. RLS is a built-in PostgreSQL feature used according to its public documentation.
 
 ---
 
@@ -94,13 +94,13 @@ Ledger uses PostgreSQL's native Row-Level Security (RLS) feature for tenant isol
 - **Source**: https://opentelemetry.io/
 - **License**: Apache License 2.0
 
-The Ledger SDK adapts the following **publicly documented** architectural patterns from OpenTelemetry:
+The Citadel SDK adapts the following **publicly documented** architectural patterns from OpenTelemetry:
 
 - **W3C Trace Context propagation**: For kill switch signal propagation across agent boundaries
 - **Fan-out exporter pattern**: For dual-write pipeline (archive + index)
 - **Immutable SpanContext**: As model for immutable governance audit entries
 
-No OpenTelemetry source code was copied. Patterns were reimplemented for Ledger's specific use case.
+No OpenTelemetry source code was copied. Patterns were reimplemented for CITADEL's specific use case.
 
 ---
 
@@ -109,7 +109,7 @@ No OpenTelemetry source code was copied. Patterns were reimplemented for Ledger'
 - **Source**: https://www.rfc-editor.org/rfc/rfc8785
 - **License**: Public standard (IETF)
 
-Ledger implements JSON Canonicalization Scheme as described in RFC 8785 for deterministic SHA-256 hashing of governance audit payloads.
+CITADEL implements JSON Canonicalization Scheme as described in RFC 8785 for deterministic SHA-256 hashing of governance audit payloads.
 
 ---
 
@@ -121,4 +121,4 @@ Ledger implements JSON Canonicalization Scheme as described in RFC 8785 for dete
 
 ---
 
-*This file is maintained as part of Ledger SDK open source compliance. For questions about third-party usage, contact the Ledger maintainers.*
+*This file is maintained as part of Citadel SDK open source compliance. For questions about third-party usage, contact the CITADEL maintainers.*

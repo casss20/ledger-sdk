@@ -1,4 +1,4 @@
-"""OPPORTUNITY — Leverage Detection
+"""OPPORTUNITY â€” Leverage Detection
 
 Implementation of OPPORTUNITY.md.
 
@@ -37,7 +37,7 @@ Do not:
 - Surface every small thing
 - Create FOMO
 
-SOURCE OF TRUTH: ledger/ops/OPPORTUNITY.md
+SOURCE OF TRUTH: CITADEL/ops/OPPORTUNITY.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -220,7 +220,7 @@ class OpportunityDetector:
             opportunities.append(Opportunity(
                 id=str(uuid.uuid4())[:8],
                 type=OpportunityType.INTEGRATION,
-                title="GitHub → Slack notifications",
+                title="GitHub â†’ Slack notifications",
                 description="Connect GitHub events to Slack for team visibility",
                 context_relevance="Both tools already connected",
                 value_estimate="medium",

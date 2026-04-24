@@ -1,11 +1,11 @@
-# Ledger SDK for Python
+# Citadel SDK for Python
 
-The official Python client library for integrating with the Ledger governance runtime.
+The official Python client library for integrating with the Citadel governance runtime.
 
 ## Installation
 
 ```bash
-pip install ledger-sdk
+pip install citadel-sdk
 ```
 
 ## License

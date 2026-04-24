@@ -17,7 +17,7 @@ Your content generation agent writes customer-facing emails. Verify outputs for 
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: output-verification
@@ -44,7 +44,7 @@ spec:
 
 ```python
 # Generate content
-action = ledger.govern(
+action = citadel.govern(
     agent_id="content-agent",
     action="content.generate",
     params={"type": "email", "destination": "customer-facing"}
@@ -63,7 +63,7 @@ if result.decision == "require_approval":
 
 ```python
 # Custom verification
-verifier = ledger.verification.create_pipeline([
+verifier = CITADEL.verification.create_pipeline([
     {"check": "fact_accuracy", "threshold": 0.95},
     {"check": "brand_compliance", "threshold": 0.90},
     {"check": "toxicity", "threshold": 0.01}

@@ -16,7 +16,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 import asyncpg
-from ledger.repository import Repository
+from CITADEL.repository import Repository
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def _hash_key(plaintext: str) -> str:
 
 async def test_create_api_key(repo, tenant_id):
     """Create an API key and verify it can be looked up by hash."""
-    plaintext = f"ledger_{uuid.uuid4().hex}"
+    plaintext = f"citadel_{uuid.uuid4().hex}"
     key_hash = _hash_key(plaintext)
 
     key = await repo.create_api_key(
@@ -115,7 +115,7 @@ async def test_api_key_cross_tenant_isolation(postgres_dsn, db):
 
 async def test_api_key_revocation(repo, db, tenant_id):
     """Revoke an API key and verify it can no longer be looked up."""
-    plaintext = f"ledger_{uuid.uuid4().hex}"
+    plaintext = f"citadel_{uuid.uuid4().hex}"
     key_hash = _hash_key(plaintext)
 
     key = await repo.create_api_key(key_hash=key_hash, tenant_id=tenant_id)
@@ -139,7 +139,7 @@ async def test_api_key_revocation(repo, db, tenant_id):
 
 async def test_api_key_expiration(repo, db, tenant_id):
     """Expired keys should not be returned by lookup."""
-    plaintext = f"ledger_{uuid.uuid4().hex}"
+    plaintext = f"citadel_{uuid.uuid4().hex}"
     key_hash = _hash_key(plaintext)
 
     # Create key that expired 1 hour ago
@@ -157,7 +157,7 @@ async def test_api_key_expiration(repo, db, tenant_id):
 
 async def test_api_key_last_used(repo, db, tenant_id):
     """update_api_key_last_used should update the timestamp."""
-    plaintext = f"ledger_{uuid.uuid4().hex}"
+    plaintext = f"citadel_{uuid.uuid4().hex}"
     key_hash = _hash_key(plaintext)
 
     await db.execute("SET app.admin_bypass = 'true'")
@@ -181,7 +181,7 @@ async def test_api_key_last_used(repo, db, tenant_id):
 
 async def test_api_key_name_optional(repo, tenant_id):
     """API key creation should succeed when name is omitted (nullable field)."""
-    plaintext = f"ledger_{uuid.uuid4().hex}"
+    plaintext = f"citadel_{uuid.uuid4().hex}"
     key_hash = _hash_key(plaintext)
 
     key = await repo.create_api_key(

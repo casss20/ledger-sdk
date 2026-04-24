@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Intercept Kimi tool-use calls with Ledger governance
+- Intercept Kimi tool-use calls with CITADEL governance
 - Govern streaming and batch completions
 - Policy-based content filtering for Kimi outputs
 - Audit trail for every Kimi API call
@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-pip install ledger-sdk[kimi]
+pip install citadel-sdk[kimi]
 ```
 
 ---
@@ -21,12 +21,12 @@ pip install ledger-sdk[kimi]
 
 ```python
 from openai import OpenAI
-from ledger_sdk.integrations.kimi import LedgerKimiMiddleware
+from citadel_sdk.integrations.kimi import CITADELKimiMiddleware
 
-import ledger_sdk
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
+import citadel_sdk
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
 
-middleware = LedgerKimiMiddleware(client=ledger, agent_id="kimi-agent-01")
+middleware = CITADELKimiMiddleware(client=CITADEL, agent_id="kimi-agent-01")
 
 client = OpenAI(api_key="sk-...", base_url="https://api.moonshot.cn/v1")
 

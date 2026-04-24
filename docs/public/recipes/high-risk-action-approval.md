@@ -17,7 +17,7 @@ Transferring funds, deleting user accounts, or accessing sensitive data are high
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: high-risk-actions
@@ -48,7 +48,7 @@ spec:
 
 ```python
 # In true emergencies, executive can override
-ledger.approvals.override(
+CITADEL.approvals.override(
     approval_id="app_123",
     executive_id="ceo@company.com",
     reason="Critical system outage, emergency patch required",

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 
-export interface LedgerStats {
+export interface CITADELStats {
   pending_approvals: number;
   active_agents: number;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -13,9 +13,9 @@ export interface LedgerStats {
   recent_events_count: number;
 }
 
-export function useLedgerStats() {
-  return useQuery<LedgerStats>({
-    queryKey: ['ledger-stats'],
+export function useCITADELStats() {
+  return useQuery<CITADELStats>({
+    queryKey: ['CITADEL-stats'],
     queryFn: () => apiFetch('/api/dashboard/stats'),
     refetchInterval: 5000, // Refresh every 5 seconds
   });

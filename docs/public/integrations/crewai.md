@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Install Ledger's CrewAI task hooks
+- Install CITADEL's CrewAI task hooks
 - Govern every task execution in your crew
 - Inter-agent authentication with `gt_` tokens
 - Configure crew-wide policies vs. per-agent policies
@@ -12,9 +12,9 @@
 ## Installation
 
 ```bash
-pip install ledger-sdk[crewai]
+pip install citadel-sdk[crewai]
 # or
-pip install ledger-sdk crewai
+pip install citadel-sdk crewai
 ```
 
 ---
@@ -23,15 +23,15 @@ pip install ledger-sdk crewai
 
 ```python
 from crewai import Agent, Task, Crew
-from ledger_sdk.integrations.crewai import LedgerTaskHook
+from citadel_sdk.integrations.crewai import CITADELTaskHook
 
-# Initialize Ledger
-import ledger_sdk
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
+# Initialize CITADEL
+import citadel_sdk
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
 
-# Create Ledger hook
-ledger_hook = LedgerTaskHook(
-    client=ledger,
+# Create CITADEL hook
+citadel_hook = CITADELTaskHook(
+    client=CITADEL,
     crew_id="research-crew-01"
 )
 
@@ -40,27 +40,27 @@ researcher = Agent(
     role="Researcher",
     goal="Find information",
     tools=[search_tool],
-    hooks=[ledger_hook]  # <-- Governance here
+    hooks=[citadel_hook]  # <-- Governance here
 )
 
 writer = Agent(
     role="Writer",
     goal="Write content",
     tools=[write_tool],
-    hooks=[ledger_hook]
+    hooks=[citadel_hook]
 )
 
 # Define tasks with governance
 task1 = Task(
     description="Research topic",
     agent=researcher,
-    hooks=[ledger_hook]
+    hooks=[citadel_hook]
 )
 
 task2 = Task(
     description="Write article",
     agent=writer,
-    hooks=[ledger_hook]
+    hooks=[citadel_hook]
 )
 
 # Create crew
@@ -83,9 +83,9 @@ Different tasks, different policies:
 task_sensitive = Task(
     description="Access customer database",
     agent=researcher,
-    hooks=[ledger_hook],
+    hooks=[citadel_hook],
     metadata={
-        "ledger_policy": "database-access-approval"
+        "citadel_policy": "database-access-approval"
     }
 )
 
@@ -93,9 +93,9 @@ task_sensitive = Task(
 task_simple = Task(
     description="Search web",
     agent=researcher,
-    hooks=[ledger_hook],
+    hooks=[citadel_hook],
     metadata={
-        "ledger_policy": "web-search-allow"
+        "citadel_policy": "web-search-allow"
     }
 )
 ```
@@ -109,14 +109,14 @@ When agents hand off work, verify identity:
 ```python
 # Agent A completes task, generates auth token
 task_result = task1.execute()
-auth_token = ledger.agents.authenticate(
+auth_token = CITADEL.agents.authenticate(
     from_agent="researcher-01",
     to_agent="writer-01",
     task_id=task_result.id
 )
 
 # Agent B verifies before accepting
-is_valid = ledger.agents.verify_auth(
+is_valid = CITADEL.agents.verify_auth(
     agent_id="writer-01",
     token=auth_token
 )

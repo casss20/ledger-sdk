@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Deploy Ledger SDK to production
+- Deploy Citadel SDK to production
 - Configure high availability
 - Set up monitoring and alerting
 - Secure your deployment
@@ -21,7 +21,7 @@
 ## Docker Deployment
 
 ```bash
-docker run -d   --name ledger-sdk   -p 8080:8080   -e LEDGER_API_KEY=ldk_live_...   -e DATABASE_URL=postgres://...   ledger/sdk:latest
+docker run -d   --name citadel-sdk   -p 8080:8080   -e CITADEL_API_KEY=ldk_live_...   -e DATABASE_URL=postgres://...   CITADEL/sdk:latest
 ```
 
 ---
@@ -32,32 +32,32 @@ docker run -d   --name ledger-sdk   -p 8080:8080   -e LEDGER_API_KEY=ldk_live_..
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ledger-sdk
+  name: citadel-sdk
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: ledger-sdk
+      app: citadel-sdk
   template:
     metadata:
       labels:
-        app: ledger-sdk
+        app: citadel-sdk
     spec:
       containers:
-      - name: ledger
-        image: ledger/sdk:latest
+      - name: CITADEL
+        image: CITADEL/sdk:latest
         ports:
         - containerPort: 8080
         env:
-        - name: LEDGER_API_KEY
+        - name: CITADEL_API_KEY
           valueFrom:
             secretKeyRef:
-              name: ledger-secrets
+              name: CITADEL-secrets
               key: api-key
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: ledger-secrets
+              name: CITADEL-secrets
               key: database-url
         readinessProbe:
           httpGet:
@@ -72,8 +72,8 @@ spec:
 ## Helm Chart
 
 ```bash
-helm repo add ledger https://charts.ledger.dev
-helm install ledger-sdk ledger/ledger-sdk   --set apiKey=ldk_live_...   --set database.url=postgres://...
+helm repo add CITADEL https://charts.CITADEL.dev
+helm install citadel-sdk CITADEL/citadel-sdk   --set apiKey=ldk_live_...   --set database.url=postgres://...
 ```
 
 ---
@@ -99,9 +99,9 @@ GET /metrics     # Prometheus metrics
 ### Key metrics
 | Metric | Alert Threshold |
 |--------|----------------|
-| `ledger_policy_eval_latency` | p99 > 10ms |
-| `ledger_audit_ingest_rate` | < 1000/sec |
-| `ledger_kill_switch_active` | > 0 |
+| `CITADEL_policy_eval_latency` | p99 > 10ms |
+| `CITADEL_audit_ingest_rate` | < 1000/sec |
+| `CITADEL_kill_switch_active` | > 0 |
 
 ---
 

@@ -3,16 +3,16 @@
 ## Installation
 
 ```bash
-go get github.com/ledger/sdk-go
+go get github.com/CITADEL/sdk-go
 ```
 
 ## Client
 
 ```go
-import "github.com/ledger/sdk-go"
+import "github.com/CITADEL/sdk-go"
 
 client, err := sdk.NewClient(sdk.Config{
-    APIKey:      os.Getenv("LEDGER_API_KEY"),
+    APIKey:      os.Getenv("citadel_API_KEY"),
     Environment: "sandbox",
 })
 ```

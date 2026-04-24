@@ -1,5 +1,5 @@
 # Database Write Governance Rule
-# Auto-discovered by ledger.catalog
+# Auto-discovered by CITADEL.catalog
 
 GOVERNANCE = {
     "action": "write_database",

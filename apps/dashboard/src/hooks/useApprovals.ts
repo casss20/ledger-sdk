@@ -41,7 +41,7 @@ export function useApprovals() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
-      queryClient.invalidateQueries({ queryKey: ["ledger-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["CITADEL-stats"] });
     },
   });
 
@@ -54,7 +54,7 @@ export function useApprovals() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
-      queryClient.invalidateQueries({ queryKey: ["ledger-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["CITADEL-stats"] });
     },
   });
 

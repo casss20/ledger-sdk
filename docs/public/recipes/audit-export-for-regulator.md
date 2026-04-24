@@ -17,7 +17,7 @@ A regulator requests your AI system's audit trail for Q1 2026 under EU AI Act Ar
 ## Generate Export
 
 ```python
-package = ledger.compliance.export(
+package = CITADEL.compliance.export(
     framework="eu_ai_act",
     period_start="2026-01-01",
     period_end="2026-03-31",
@@ -47,7 +47,7 @@ The export includes:
 
 ```python
 # Create read-only auditor account
-ledger.users.create_auditor(
+CITADEL.users.create_auditor(
     email="auditor@regulator.eu",
     scope="eu_ai_act_q1_2026",
     expiry="30d"

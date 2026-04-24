@@ -6,7 +6,7 @@ export function Topbar({ onOpenCommandBar }: Props) {
   return (
     <header className="topbar">
       <div>
-        <h1>Ledger Governance</h1>
+        <h1>Citadel Governance</h1>
         <p>Runtime controls and audit visibility</p>
       </div>
 

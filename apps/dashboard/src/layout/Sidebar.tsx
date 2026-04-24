@@ -9,7 +9,7 @@ export function Sidebar() {
       <div className="sidebar__brand">
         <div className="sidebar__logo">L</div>
         <div>
-          <strong>Ledger</strong>
+          <strong>Citadel</strong>
           <p>Governance Console</p>
         </div>
       </div>

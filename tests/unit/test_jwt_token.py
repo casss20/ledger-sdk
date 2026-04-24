@@ -1,6 +1,6 @@
 import pytest
 import time
-from ledger.auth.jwt_token import JWTService, JWTError, TokenType
+from CITADEL.auth.jwt_token import JWTService, JWTError, TokenType
 
 class MockCache:
     def __init__(self):

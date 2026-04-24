@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from ledger.dashboard.activity_stream import ActivityStreamService, ActivityFilters, ActivityEvent
+from CITADEL.dashboard.activity_stream import ActivityStreamService, ActivityFilters, ActivityEvent
 
 
 TENANT = "test_tenant"
@@ -25,7 +25,7 @@ class TestActivityStream:
         """Insert test audit events."""
         import asyncpg
         import random
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Use random base to avoid PK conflicts (governance_audit_log is append-only)

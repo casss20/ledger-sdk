@@ -3,15 +3,15 @@
 ## Installation
 
 ```bash
-pip install ledger-sdk
+pip install citadel-sdk
 ```
 
 ## Client
 
 ```python
-import ledger_sdk
+import citadel_sdk
 
-ledger = ledger_sdk.Client(
+CITADEL = citadel_sdk.Client(
     api_key="ldk_test_...",
     environment="sandbox"  # or "production"
 )
@@ -20,7 +20,7 @@ ledger = ledger_sdk.Client(
 ## Govern Actions
 
 ```python
-action = ledger.govern(
+action = citadel.govern(
     agent_id="agent-123",
     action="email.send",
     params={"to": "user@example.com", "subject": "Welcome"}
@@ -43,42 +43,42 @@ result = action.execute()
 
 ```python
 # Query
-records = ledger.audit.query(agent_id="agent-123", limit=100)
+records = CITADEL.audit.query(agent_id="agent-123", limit=100)
 
 # Get by token
-record = ledger.audit.get("gt_...")
+record = CITADEL.audit.get("gt_...")
 
 # Verify chain
-is_valid = ledger.audit.verify_chain(record)
+is_valid = CITADEL.audit.verify_chain(record)
 ```
 
 ## Kill Switch
 
 ```python
-ledger.kill_switch.activate(agent_id="agent-123", reason="...", duration="1h")
-ledger.kill_switch.deactivate(agent_id="agent-123", reason="...")
+CITADEL.kill_switch.activate(agent_id="agent-123", reason="...", duration="1h")
+CITADEL.kill_switch.deactivate(agent_id="agent-123", reason="...")
 ```
 
 ## Approvals
 
 ```python
-pending = ledger.approvals.list(status="pending")
-ledger.approvals.approve(approval_id="app_...", reason="Verified")
-ledger.approvals.deny(approval_id="app_...", reason="Suspicious")
+pending = CITADEL.approvals.list(status="pending")
+CITADEL.approvals.approve(approval_id="app_...", reason="Verified")
+CITADEL.approvals.deny(approval_id="app_...", reason="Suspicious")
 ```
 
 ## Policies
 
 ```python
-ledger.policies.create(policy_yaml)
-ledger.policies.list(namespace="payments")
-ledger.policies.delete(name="old-policy")
-ledger.policies.test(policy=policy_yaml, sample_actions=[...])
+CITADEL.policies.create(policy_yaml)
+CITADEL.policies.list(namespace="payments")
+CITADEL.policies.delete(name="old-policy")
+CITADEL.policies.test(policy=policy_yaml, sample_actions=[...])
 ```
 
 ## Trust Scoring
 
 ```python
-score = ledger.trust.get_score(agent_id="agent-123")
-ledger.trust.set_alert(threshold=500, notify=["#alerts"])
+score = CITADEL.trust.get_score(agent_id="agent-123")
+CITADEL.trust.set_alert(threshold=500, notify=["#alerts"])
 ```

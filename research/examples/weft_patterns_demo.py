@@ -1,5 +1,5 @@
 """
-Example: Using Ledger SDK with Weft-inspired patterns
+Example: Using Citadel SDK with Weft-inspired patterns
 
 This file demonstrates all the patterns copied from Weft:
 1. Native mocking
@@ -9,10 +9,10 @@ This file demonstrates all the patterns copied from Weft:
 """
 
 import asyncio
-from ledger.dense import gov
-from ledger.mocking import mockable, MockRegistry, Mock
-from ledger.validation import validate_at_startup, validate_config
-from ledger.sidecar import PostgresSidecar, get_sidecar_registry
+from CITADEL.dense import gov
+from CITADEL.mocking import mockable, MockRegistry, Mock
+from CITADEL.validation import validate_at_startup, validate_config
+from CITADEL.sidecar import PostgresSidecar, get_sidecar_registry
 from governance import get_sdk
 
 # Initialize governance
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         for issue in issues:
             print(f"  [{issue.severity.value}] {issue.field}: {issue.message}")
             if issue.suggestion:
-                print(f"    💡 {issue.suggestion}")
+                print(f"    ðŸ’¡ {issue.suggestion}")
 
 
 # ============================================================================
@@ -219,7 +219,7 @@ async def process_payment(
 
 async def main():
     print("=" * 60)
-    print("Ledger SDK - Weft-inspired Patterns Demo")
+    print("Citadel SDK - Weft-inspired Patterns Demo")
     print("=" * 60)
     
     # Show dense configs

@@ -6,7 +6,7 @@ Target: 6 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from ledger.dashboard.audit_explorer import (
+from CITADEL.dashboard.audit_explorer import (
     AuditExplorerService, AuditFilters, AuditSearchResult,
 )
 
@@ -21,7 +21,7 @@ class TestAuditExplorer:
     async def setup_test_data(self, db_pool):
         """Insert test audit entries."""
         import asyncpg
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Note: governance_audit_log is append-only; cannot delete. Insert with high random IDs to avoid collisions.

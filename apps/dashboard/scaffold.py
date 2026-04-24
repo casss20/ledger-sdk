@@ -94,7 +94,7 @@ export function Sidebar() {
       <div className="sidebar__brand">
         <div className="sidebar__logo">L</div>
         <div>
-          <strong>Ledger</strong>
+          <strong>Citadel</strong>
           <p>Governance Console</p>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function Sidebar() {
   return (
     <header className="topbar">
       <div>
-        <h1>Ledger Governance</h1>
+        <h1>Citadel Governance</h1>
         <p>Runtime controls and audit visibility</p>
       </div>
 

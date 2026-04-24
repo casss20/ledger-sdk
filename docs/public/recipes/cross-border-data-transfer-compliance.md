@@ -17,7 +17,7 @@ Your multi-national agents must not transfer EU customer data to non-adequate co
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: cross-border-transfer
@@ -39,7 +39,7 @@ spec:
 ## Implementation
 
 ```python
-action = ledger.govern(
+action = citadel.govern(
     agent_id="global-agent",
     action="data.transfer",
     params={
@@ -51,7 +51,7 @@ action = ledger.govern(
 
 try:
     result = action.execute()
-except ledger_sdk.ApprovalRequiredError:
+except CITADEL_sdk.ApprovalRequiredError:
     print("Transfer blocked - DPO approval required")
 ```
 

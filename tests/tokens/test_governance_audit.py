@@ -1,5 +1,5 @@
 """
-Tests for GovernanceAuditTrail — separated audit log.
+Tests for GovernanceAuditTrail â€” separated audit log.
 
 Covers:
 - Hash chain integrity (tamper-evident)
@@ -13,7 +13,7 @@ import pytest
 import asyncpg
 from datetime import datetime, timezone
 
-from ledger.tokens import (
+from CITADEL.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,
@@ -324,7 +324,7 @@ class TestAuditIntegrationWithVerifier:
         verifier = TokenVerifier(vault, ks, audit)
         middleware = ExecutionMiddleware(verifier, audit)
 
-        # Try with non-existent token → should record execution.blocked
+        # Try with non-existent token â†’ should record execution.blocked
         result = await middleware.check(
             "gt_cap_nonexistent", "file.read", context={"tenant_id": tenant_id, "actor_id": "agent_x"}
         )
