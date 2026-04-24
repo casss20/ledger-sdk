@@ -7,6 +7,6 @@ setup(
     name="citadel-sdk",
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(where="apps/runtime"),
+    package_dir={"": "apps/runtime"},
 )

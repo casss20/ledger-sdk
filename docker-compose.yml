@@ -4,9 +4,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: CITADEL
-      POSTGRES_PASSWORD: CITADEL
-      POSTGRES_DB: CITADEL
+      POSTGRES_USER: citadel
+      POSTGRES_PASSWORD: citadel
+      POSTGRES_DB: citadel
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/00-init-test-db.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
@@ -14,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U CITADEL"]
+      test: ["CMD-SHELL", "pg_isready -U citadel"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
   api:
     build: .
     environment:
-      DATABASE_URL: postgresql://CITADEL:CITADEL@postgres:5432/CITADEL
+      DATABASE_URL: postgresql://citadel:citadel@postgres:5432/citadel
       DB_MIN_SIZE: 2
       DB_MAX_SIZE: 10
       API_KEYS: prod-key-change-me-now,dev-key-for-testing

@@ -13,7 +13,7 @@ from citadel.tokens import (
     TokenVault,
 )
 
-DSN = "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
+DSN = "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 
 async def get_pool():

@@ -13,7 +13,7 @@ import asyncpg
 
 @pytest.fixture
 def postgres_dsn():
-    return "postgresql://citadel:citadel@localhost:5432/ledger_test"
+    return "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 
 @pytest.fixture

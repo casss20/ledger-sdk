@@ -16,11 +16,11 @@ import secrets  # Why: cryptographically secure random key generation
 import sys  # Why: modify Python path to find citadel package
 import uuid  # Why: Citadel uses UUIDs for all primary identifiers
 from datetime import datetime  # Why: audit trail requires timestamps
-from pathlib import Path  # Why: resolve src/ directory for imports
+from pathlib import Path  # Why: resolve runtime package directory for imports
 
-# Why: add src/ to Python path so `import citadel` works from repo root
-src_path = Path(__file__).parent / "src"
-sys.path.insert(0, str(src_path))
+# Why: add runtime package to Python path so `import citadel` works from repo root
+runtime_path = Path(__file__).resolve().parent.parent / "apps" / "runtime"
+sys.path.insert(0, str(runtime_path))
 
 import asyncpg  # Why: direct PostgreSQL access for quickstart setup
 
@@ -34,7 +34,7 @@ from citadel.audit_service import AuditService
 from citadel.capability_service import CapabilityService
 
 # Why: test database — quickstart uses same local Postgres as tests
-DSN = "postgresql://citadel:citadel@localhost:5432/ledger_test"
+DSN = "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 
 async def initialize_test_tenant():
@@ -78,7 +78,7 @@ async def execute_sample_action(tenant_id, api_key):
         actor_id=tenant_id,
         actor_type="agent",
         action_name="file.write",
-        resource="/tmp/ledger_test.txt",
+        resource="/tmp/citadel_test.txt",
         tenant_id=tenant_id,
         payload={"content": "Citadel governed this action."},
         context={"source": "quickstart"},

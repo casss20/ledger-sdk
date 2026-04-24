@@ -5,7 +5,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_asyncpg_connection():
     try:
-        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@127.0.0.1:5432/citadel_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@127.0.0.1:5432/citadel_test")
     except asyncpg.exceptions.InvalidAuthorizationSpecificationError:
         pytest.skip("PostgreSQL database 'CITADEL' not available")
     except Exception as e:

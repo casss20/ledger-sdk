@@ -86,7 +86,7 @@ Repository = "https://github.com/casss20/citadel-sdk.git"
 Issues = "https://github.com/casss20/citadel-sdk/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/CITADEL"]
+packages = ["apps/runtime/citadel"]
 
 [tool.black]
 line-length = 100

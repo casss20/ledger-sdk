@@ -30,8 +30,8 @@ Test suite proving the governance kernel enforces all control semantics end-to-e
 
 ```bash
 # Setup test database
-createdb ledger_test
-psql ledger_test -f db/schema.sql
+createdb citadel_test
+psql citadel_test -f db/schema.sql
 
 # Run all conformance tests
 pytest tests/test_kernel_conformance.py -v
