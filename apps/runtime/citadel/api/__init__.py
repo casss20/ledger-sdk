@@ -45,6 +45,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         app.state.db_pool = _pool
         app.state.db_startup_error = None
+        
+        # Seed default admin if operators table exists and is empty
+        try:
+            async with _pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
+                if row and row['cnt'] == 0:
+                    import hashlib, secrets
+                    salt = secrets.token_hex(16)
+                    iterations = 100000
+                    key = hashlib.pbkdf2_hmac('sha256', b'admin123', salt.encode(), iterations)
+                    password_hash = f"pbkdf2:sha256:{iterations}:{salt}:{key.hex()}"
+                    await conn.execute("""
+                        INSERT INTO operators (operator_id, username, email, password_hash, tenant_id, role, is_active)
+                        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+                        ON CONFLICT (username) DO NOTHING
+                    """, "op_admin_default", "admin", "admin@citadel.dev", password_hash, "demo-tenant", "admin")
+                    logger.info("Seeded default admin operator (admin / admin123)")
+        except Exception as seed_exc:
+            # Table might not exist yet (migrations not run)
+            logger.debug(f"Operator seed skipped: {seed_exc}")
     except Exception as exc:
         logger.exception("Database pool initialization failed; readiness will report unhealthy")
         app.state.db_pool = None

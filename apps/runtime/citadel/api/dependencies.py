@@ -35,6 +35,10 @@ async def require_api_key(
     if not settings.require_auth:
         return "anonymous"
     
+    # Demo/dev key bypass: if key matches simple valid_api_keys, allow without secret
+    if api_key and api_key in settings.valid_api_keys:
+        return api_key
+    
     # Check header
     key = api_key
     if not key:
