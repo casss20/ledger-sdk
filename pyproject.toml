@@ -43,6 +43,7 @@ dependencies = [
     "prometheus-client>=0.17",
     "httpx>=0.24",
     "asyncpg>=0.29",
+    "PyJWT>=2.8",
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
     "opentelemetry-instrumentation-fastapi>=0.41b0",
@@ -79,6 +80,7 @@ all = [
     "pydantic-settings>=2.0",
     "prometheus-client>=0.17",
     "asyncpg>=0.29",
+    "PyJWT>=2.8",
 ]
 
 [project.urls]
