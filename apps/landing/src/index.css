@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #020617;
+  color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .mono {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+/* Dot grid hero background */
+.hero-grid {
+  background-image: radial-gradient(circle, rgba(148,163,184,0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Gradient fade over grid */
+.hero-fade {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(234,88,12,0.08) 0%, transparent 70%);
+}
+
+/* Code block token colors */
+.token-keyword  { color: #f97316; }
+.token-string   { color: #86efac; }
+.token-comment  { color: #64748b; }
+.token-function { color: #7dd3fc; }
+.token-number   { color: #c084fc; }
+.token-plain    { color: #e2e8f0; }
+
+/* Glow ring on feature cards */
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(234,88,12,0.3), 0 8px 32px rgba(234,88,12,0.06);
+}
+
+/* Animated underline for nav links */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0;
+  width: 0; height: 1px;
+  background: #ea580c;
+  transition: width 200ms ease;
+}
+.nav-link:hover::after { width: 100%; }
+
+/* Copy button flash */
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.flash { animation: flash 300ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
