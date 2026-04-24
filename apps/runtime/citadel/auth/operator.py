@@ -67,20 +67,23 @@ class OperatorService:
             WHERE username = $1 AND is_active = TRUE
         """
         async with self.db.acquire() as conn:
-            row = await conn.fetchrow(query, username)
-            
-            if not row:
+            async with conn.transaction():
+                # Login happens before a tenant is known, so use the explicit
+                # per-transaction RLS bypass while verifying credentials only.
+                await conn.execute("SET LOCAL app.admin_bypass = 'true'")
+                row = await conn.fetchrow(query, username)
+                
+                if not row:
+                    return None
+                
+                if self.verify_password(password, row['password_hash']):
+                    await conn.execute(
+                        "UPDATE operators SET last_login = NOW() WHERE operator_id = $1",
+                        row['operator_id']
+                    )
+                    return Operator(**dict(row))
+                
                 return None
-            
-            if self.verify_password(password, row['password_hash']):
-                # Update last login
-                await conn.execute(
-                    "UPDATE operators SET last_login = NOW() WHERE operator_id = $1",
-                    row['operator_id']
-                )
-                return Operator(**dict(row))
-            
-            return None
 
     async def create_operator(self, username: str, email: str, password: str, tenant_id: str, role: str = 'operator') -> str:
         """Create a new operator (internal use or admin only)"""
@@ -93,4 +96,6 @@ class OperatorService:
             RETURNING operator_id
         """
         async with self.db.acquire() as conn:
-            return await conn.fetchval(query, operator_id, username, email, password_hash, tenant_id, role)
+            async with conn.transaction():
+                await conn.execute("SET LOCAL app.admin_bypass = 'true'")
+                return await conn.fetchval(query, operator_id, username, email, password_hash, tenant_id, role)

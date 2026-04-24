@@ -2,7 +2,7 @@
 -- Stripe-backed billing and entitlements infrastructure
 
 -- 1. Billing Customers
-CREATE TABLE billing_customers (
+CREATE TABLE IF NOT EXISTS billing_customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id TEXT NOT NULL UNIQUE,
     account_owner_user_id UUID NULL,
@@ -16,7 +16,7 @@ CREATE TABLE billing_customers (
 );
 
 -- 2. Billing Plans
-CREATE TABLE billing_plans (
+CREATE TABLE IF NOT EXISTS billing_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code TEXT NOT NULL UNIQUE, -- free | pro | enterprise
     name TEXT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE billing_plans (
 );
 
 -- 3. Billing Subscriptions
-CREATE TABLE billing_subscriptions (
+CREATE TABLE IF NOT EXISTS billing_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id TEXT NOT NULL UNIQUE,
     billing_customer_id UUID NOT NULL REFERENCES billing_customers(id) ON DELETE CASCADE,
@@ -58,7 +58,7 @@ CREATE TABLE billing_subscriptions (
 );
 
 -- 4. Billing Usage Monthly
-CREATE TABLE billing_usage_monthly (
+CREATE TABLE IF NOT EXISTS billing_usage_monthly (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id TEXT NOT NULL,
     period_ym TEXT NOT NULL, -- 2026-04
@@ -73,7 +73,7 @@ CREATE TABLE billing_usage_monthly (
 );
 
 -- 5. Billing Event Log (Idempotency)
-CREATE TABLE billing_event_log (
+CREATE TABLE IF NOT EXISTS billing_event_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider TEXT NOT NULL, -- stripe
     provider_event_id TEXT NOT NULL UNIQUE,
@@ -87,7 +87,7 @@ CREATE TABLE billing_event_log (
 );
 
 -- 6. Billing Entitlement Overrides
-CREATE TABLE billing_entitlement_overrides (
+CREATE TABLE IF NOT EXISTS billing_entitlement_overrides (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id TEXT NOT NULL,
     feature_key TEXT NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE billing_entitlement_overrides (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_billing_customers_tenant ON billing_customers(tenant_id);
-CREATE INDEX idx_billing_subscriptions_tenant ON billing_subscriptions(tenant_id);
-CREATE INDEX idx_billing_usage_tenant_period ON billing_usage_monthly(tenant_id, period_ym);
-CREATE INDEX idx_billing_event_log_provider_id ON billing_event_log(provider_event_id);
+CREATE INDEX IF NOT EXISTS idx_billing_customers_tenant ON billing_customers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_billing_subscriptions_tenant ON billing_subscriptions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_billing_usage_tenant_period ON billing_usage_monthly(tenant_id, period_ym);
+CREATE INDEX IF NOT EXISTS idx_billing_event_log_provider_id ON billing_event_log(provider_event_id);

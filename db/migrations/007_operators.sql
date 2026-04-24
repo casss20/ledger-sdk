@@ -22,6 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_operators_tenant ON operators (tenant_id);
 -- RLS: Strict tenant isolation
 ALTER TABLE operators ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS operators_tenant_isolation ON operators;
 CREATE POLICY operators_tenant_isolation ON operators
     FOR ALL
     USING (tenant_id = get_tenant_context() OR admin_bypass_rls());
@@ -37,6 +38,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_operators_timestamp ON operators;
 CREATE TRIGGER trg_update_operators_timestamp
     BEFORE UPDATE ON operators
     FOR EACH ROW

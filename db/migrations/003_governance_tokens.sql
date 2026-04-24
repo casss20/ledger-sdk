@@ -30,6 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_gd_type   ON governance_decisions (decision_type,
 ALTER TABLE governance_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE governance_decisions FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS gd_tenant_isolation ON governance_decisions;
 CREATE POLICY gd_tenant_isolation ON governance_decisions
     USING (tenant_id = get_tenant_context() OR admin_bypass_rls());
 
@@ -57,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_gt_actor     ON governance_tokens (actor_id, crea
 ALTER TABLE governance_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE governance_tokens FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS gt_tenant_isolation ON governance_tokens;
 CREATE POLICY gt_tenant_isolation ON governance_tokens
     USING (tenant_id = get_tenant_context() OR admin_bypass_rls());
 

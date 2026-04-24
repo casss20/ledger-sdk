@@ -263,4 +263,6 @@ def permissions_to_json(permissions: list[str]) -> str:
 def permissions_from_json(json_str: str) -> list[str]:
     """Convert JSON string to permissions list"""
     import json
+    if isinstance(json_str, list):
+        return json_str
     return json.loads(json_str) if json_str else []

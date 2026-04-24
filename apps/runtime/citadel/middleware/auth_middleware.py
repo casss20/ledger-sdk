@@ -13,6 +13,7 @@ from fastapi import Request, HTTPException, Depends, FastAPI, Body
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 import logging
+from urllib.parse import parse_qs
 
 from citadel.auth.jwt_token import JWTService, JWTError
 from citadel.auth.api_key import APIKeyService, APIKeyError
@@ -33,6 +34,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = {
         "/health",
         "/healthz",
+        "/v1/health",
+        "/v1/health/live",
+        "/v1/health/ready",
         "/docs",
         "/openapi.json",
         "/auth/login",      # Login endpoint
@@ -160,13 +164,25 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
     
     @app.post("/auth/login")
     async def login(
-        username: str = Body(...),
-        password: str = Body(...),
+        request: Request,
         db = Depends(get_db),
     ):
         """
-        Login endpoint — authenticate operator and return JWT tokens.
+        Login endpoint - authenticate operator and return JWT tokens.
         """
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            payload = await request.json()
+            username = payload.get("username")
+            password = payload.get("password")
+        else:
+            form = parse_qs((await request.body()).decode("utf-8"))
+            username = form.get("username", [None])[0]
+            password = form.get("password", [None])[0]
+
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required")
+
         operator_service = OperatorService(db)
         operator = await operator_service.authenticate(username, password)
         

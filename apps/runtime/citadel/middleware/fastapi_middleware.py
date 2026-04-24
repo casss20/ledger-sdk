@@ -36,6 +36,7 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
       - /openapi.json (no tenant required)
       - /redoc (no tenant required)
       - /metrics (no tenant required)
+      - /auth/login and /auth/refresh (no tenant known before login)
     """
     
     EXEMPT_PATHS = {
@@ -46,13 +47,15 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         "/openapi.json",
         "/redoc",
         "/metrics",
+        "/auth/login",
+        "/auth/refresh",
     }
     
     async def dispatch(self, request: Request, call_next):
         if request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)
         
-        tenant_id = request.headers.get("X-Tenant-ID")
+        tenant_id = getattr(request.state, "tenant_id", None) or request.headers.get("X-Tenant-ID")
         
         if not tenant_id or tenant_id.strip() == "":
             logger.error(
