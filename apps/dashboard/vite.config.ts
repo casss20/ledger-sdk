@@ -35,17 +35,14 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __API_URL__: JSON.stringify(
-        isDev 
-          ? ''  // Uses proxy in dev
-          : 'https://api.citadelsdk.com'  // Production API
+        isDev
+          ? ''
+          : (process.env.VITE_API_URL || 'https://ledger-sdk.fly.dev')
       ),
     },
     build: {
       outDir: 'dist',
       sourcemap: true,
-      rollupOptions: {
-        external: ['react', 'react-dom'],
-      },
     },
   }
 })
