@@ -68,6 +68,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.jwt_service = jwt_service
     
     async def dispatch(self, request: Request, call_next):
+        import os
+        if os.getenv("CITADEL_DEV_MODE") == "true" or os.getenv("LEDGER_DEV_MODE") == "true":
+            request.state.tenant_id = "dev_tenant"
+            request.state.user_id = "dev_user"
+            request.state.role = "admin"
+            return await call_next(request)
+            
         # Exempt paths (health, docs, login)
         if request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)

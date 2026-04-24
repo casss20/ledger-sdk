@@ -98,6 +98,16 @@ def create_app() -> FastAPI:
     from citadel.auth.api_key import APIKeyService
     
     # Middleware: logging, errors, CORS, request IDs
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     setup_middleware(app)
     
     # Setup Auth services
