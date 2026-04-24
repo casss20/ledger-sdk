@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from CITADEL.dashboard.activity_stream import ActivityStreamService, ActivityFilters, ActivityEvent
+from citadel.dashboard.activity_stream import ActivityStreamService, ActivityFilters, ActivityEvent
 
 
 TENANT = "test_tenant"

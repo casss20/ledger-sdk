@@ -16,7 +16,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 import asyncpg
-from CITADEL.repository import Repository
+from citadel.repository import Repository
 
 
 @pytest.fixture
