@@ -1,5 +1,5 @@
 """
-End-to-end test: SDK â†’ API â†’ Kernel â†’ Database
+End-to-end test: SDK → API → Kernel → Database
 
 Creates an actor, submits an action via SDK, verifies audit.
 """
@@ -8,14 +8,14 @@ import asyncio
 import sys
 sys.path.insert(0, 'src')
 
-from CITADEL.sdk import CITADELClient
+from citadel.sdk import CitadelClient
 import asyncpg
 
 
 async def main():
     tenant_id = "sdk_test_tenant"
     # Setup: create actor in DB
-    conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
+    conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/ledger_test")
     await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     await conn.execute(
         """
@@ -31,14 +31,14 @@ async def main():
     )
     await conn.close()
     
-    client = CITADELClient(
+    client = CitadelClient(
         base_url="http://127.0.0.1:8001",
         api_key="dev-key-for-testing",
         actor_id="sdk_test_agent",
     )
     
     print("=" * 50)
-    print("CITADEL E2E: SDK â†’ API â†’ Kernel â†’ DB")
+    print("CITADEL E2E: SDK → API → Kernel → DB")
     print("=" * 50)
     
     # 1. Verify audit chain

@@ -1,4 +1,4 @@
-"""Agent â€” Agent Lifecycle Management
+"""Agent — Agent Lifecycle Management
 
 High-level agent management that combines Identity, Constitution, and Governance.
 
@@ -6,7 +6,7 @@ This is the main interface developers use to create and manage AI agents
 with full governance, identity, and constitutional constraints.
 
 Usage:
-    from CITADEL import Agent
+    from citadel import Agent
     
     # Create a governed agent
     agent = Agent(
@@ -36,10 +36,10 @@ import asyncio
 
 from .identity import AgentIdentity, AgentRegistry, get_registry, register_agent
 from .core import Constitution, ConstitutionViolation, DEFAULT_CONSTITUTION
-from .sdk import CITADELClient
+from .sdk import CitadelClient
 
 # Backward compatibility alias
-CITADEL = CITADELClient
+Citadel = CitadelClient
 from .governor import get_governor, ActionState
 
 
@@ -86,7 +86,7 @@ class Agent:
     
     # Internal
     _identity: Optional[AgentIdentity] = field(default=None, repr=False)
-    _CITADEL: Optional[CITADEL] = field(default=None, repr=False)
+    _ledger: Optional[Citadel] = field(default=None, repr=False)
     _registered: bool = field(default=False, repr=False)
     
     def __post_init__(self):
@@ -106,8 +106,8 @@ class Agent:
             capabilities=self.capabilities.copy()
         )
         
-        # Create CITADEL for this agent
-        self._CITADEL = CITADEL(
+        # Create citadel for this agent
+        self._ledger = Citadel(
             agent=self.agent_id,
             constitution=self.constitution
         )
@@ -123,9 +123,9 @@ class Agent:
         return self._identity
     
     @property
-    def CITADEL(self) -> CITADEL:
-        """Get agent's CITADEL instance."""
-        return self._CITADEL
+    def citadel(self) -> Citadel:
+        """Get agent's citadel instance."""
+        return self._ledger
     
     @property
     def fingerprint(self) -> str:
@@ -180,8 +180,8 @@ class Agent:
                 return await smtp.send(to, body)
         """
         def decorator(func: Callable[P, T]) -> Callable[P, T]:
-            # First apply CITADEL governance
-            governed_func = self._citadel.governed(
+            # First apply citadel governance
+            governed_func = self._ledger.governed(
                 action=action,
                 resource=resource or action,
                 flag=flag

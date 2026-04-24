@@ -1,4 +1,4 @@
-"""ALIGNMENT â€” Loyalty Protocol
+"""ALIGNMENT — Loyalty Protocol
 
 Implementation of ALIGNMENT.md.
 
@@ -12,7 +12,7 @@ OWNERSHIP:
 - OWNS: agent loyalty, challenge protocol, initiative boundaries, long-term alignment
 - DOES NOT OWN: safety rules, execution permission, relationship philosophy
 
-SOURCE OF TRUTH: CITADEL/core/ALIGNMENT.md
+SOURCE OF TRUTH: citadel/core/ALIGNMENT.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -67,7 +67,7 @@ class Alignment:
         
         result = alignment.check(
             action="start_new_project",
-            context={"current_projects": ["citadel_sdk"], "new_project": "crypto_bot"}
+            context={"current_projects": ["ledger_sdk"], "new_project": "crypto_bot"}
         )
         
         if result.result == ChallengeResult.CHALLENGE:

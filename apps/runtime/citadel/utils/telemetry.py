@@ -1,5 +1,5 @@
 """
-OpenTelemetry telemetry utility â€” gracefully degrades if OTel is not installed.
+OpenTelemetry telemetry utility — gracefully degrades if OTel is not installed.
 
 When OTel packages are available:
   - Full W3C Trace Context propagation
@@ -28,7 +28,7 @@ try:
     _OTEL_AVAILABLE = True
 except ImportError:
     _OTEL_AVAILABLE = False
-    logger.debug("OpenTelemetry not installed â€” telemetry disabled (no-op)")
+    logger.debug("OpenTelemetry not installed — telemetry disabled (no-op)")
 
 
 class _NoOpSpan:
@@ -47,23 +47,23 @@ class _NoOpTracer:
         return _NoOpSpan()
 
 
-def setup_telemetry(service_name: str = "Citadel-runtime") -> None:
+def setup_telemetry(service_name: str = "citadel-runtime") -> None:
     """Initialize OpenTelemetry with W3C Trace Context."""
     if not _OTEL_AVAILABLE:
-        logger.info("OpenTelemetry not available â€” skipping telemetry setup")
+        logger.info("OpenTelemetry not available — skipping telemetry setup")
         return
 
     # Set up Resource
     resource = Resource.create(attributes={
         SERVICE_NAME: service_name,
-        "environment": os.getenv("CITADEL_ENV", "development")
+        "environment": os.getenv("LEDGER_ENV", "development")
     })
 
     # Initialize TracerProvider
     provider = TracerProvider(resource=resource)
 
     # Add Console Exporter for dev
-    if os.getenv("CITADEL_LOG_LEVEL") == "DEBUG":
+    if os.getenv("LEDGER_LOG_LEVEL") == "DEBUG":
         provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     # Add OTLP Exporter if endpoint is provided
@@ -75,7 +75,7 @@ def setup_telemetry(service_name: str = "Citadel-runtime") -> None:
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
             logger.info(f"OTLP exporter configured for {otlp_endpoint}")
         except ImportError:
-            logger.warning("opentelemetry-exporter-otlp not installed â€” OTLP export disabled")
+            logger.warning("opentelemetry-exporter-otlp not installed — OTLP export disabled")
 
     # Set global TracerProvider
     trace.set_tracer_provider(provider)
@@ -86,7 +86,7 @@ def setup_telemetry(service_name: str = "Citadel-runtime") -> None:
     logger.info(f"OpenTelemetry initialized for {service_name}")
 
 
-def get_tracer(name: str = "Citadel"):
+def get_tracer(name: str = "citadel"):
     """Get a tracer instance. Returns no-op tracer if OTel is unavailable."""
     if _OTEL_AVAILABLE:
         return trace.get_tracer(name)

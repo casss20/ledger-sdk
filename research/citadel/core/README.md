@@ -1,14 +1,14 @@
-# CITADEL â€” System Architecture
+# Citadel — System Architecture
 
 Each layer builds on the previous one.
 
 ---
 
-## ðŸ“ File Breakdown
+## 📁 File Breakdown
 
 ---
 
-### ðŸš€ START.md â€” Initialization
+### 🚀 START.md — Initialization
 
 **What it is:**
 The boot sequence and authority hierarchy.
@@ -21,11 +21,11 @@ The boot sequence and authority hierarchy.
 **Why it exists:**
 To ensure the system starts consistently without contradictions.
 
-> START ensures CITADEL boots correctly.
+> START ensures Citadel boots correctly.
 
 ---
 
-### â±ï¸ RUNTIME.md â€” Operating Cycle
+### ⏱️ RUNTIME.md — Operating Cycle
 
 **What it is:**
 The system's activation model.
@@ -36,16 +36,16 @@ The system's activation model.
 - execution efficiency
 
 **Why it exists:**
-To prevent CITADEL from running every layer every turn.
+To prevent Citadel from running every layer every turn.
 
-> RUNTIME controls when CITADEL acts.
+> RUNTIME controls when Citadel acts.
 
 ---
 
-### ðŸ§  SOUL.md â€” Identity
+### 🧠 SOUL.md — Identity
 
 **What it is:**
-The inner character of CITADEL.
+The inner character of Citadel.
 
 **Defines:**
 - personality
@@ -56,16 +56,16 @@ The inner character of CITADEL.
 - trust behavior
 
 **Why it exists:**
-To ensure CITADEL feels consistent and human-like, not mechanical.
+To ensure Citadel feels consistent and human-like, not mechanical.
 
-> SOUL defines *who CITADEL is*, not what it does.
+> SOUL defines *who Citadel is*, not what it does.
 
 ---
 
-### âš™ï¸ IDENTITY.md â€” Runtime Behavior
+### ⚙️ IDENTITY.md — Runtime Behavior
 
 **What it is:**
-How CITADEL expresses itself in interaction.
+How Citadel expresses itself in interaction.
 
 **Defines:**
 - operating modes (Default vs Tactical)
@@ -76,13 +76,13 @@ How CITADEL expresses itself in interaction.
 - signature system
 
 **Why it exists:**
-To control how CITADEL behaves in different situations.
+To control how Citadel behaves in different situations.
 
 > IDENTITY applies the SOUL through structured behavior.
 
 ---
 
-### ðŸ“œ CONSTITUTION.md â€” Rules
+### 📜 CONSTITUTION.md — Rules
 
 **What it is:**
 The non-negotiable laws of the system.
@@ -97,14 +97,14 @@ The non-negotiable laws of the system.
 **Why it exists:**
 To prevent harmful, incorrect, or misaligned behavior.
 
-> CONSTITUTION defines what CITADEL must never violate.
+> CONSTITUTION defines what Citadel must never violate.
 
 ---
 
-### ðŸ¤ ALIGNMENT.md â€” Loyalty Protocol
+### 🤝 ALIGNMENT.md — Loyalty Protocol
 
 **What it is:**
-The definition of the relationship between CITADEL and the user.
+The definition of the relationship between Citadel and the user.
 
 **Defines:**
 - advisory vs executive authority
@@ -113,13 +113,13 @@ The definition of the relationship between CITADEL and the user.
 - dynamic trust modeling
 
 **Why it exists:**
-To ensure CITADEL acts as a loyal operational partner, not a passive tool.
+To ensure Citadel acts as a loyal operational partner, not a passive tool.
 
 > ALIGNMENT defines loyalty as clarity and long-term protection, not unquestioning obedience.
 
 ---
 
-### ðŸŽ¯ FOCUS.md â€” Anti-Distraction Shield
+### 🎯 FOCUS.md — Anti-Distraction Shield
 
 **What it is:**
 The bouncer for your attention.
@@ -136,7 +136,7 @@ To prevent shiny-object syndrome and protect momentum.
 
 ---
 
-### ðŸ’° OPPORTUNITY.md â€” Leverage Lens
+### 💰 OPPORTUNITY.md — Leverage Lens
 
 **What it is:**
 The asymmetric return detector.
@@ -153,7 +153,7 @@ To ensure time spent translates into leverage, assets, or revenue.
 
 ---
 
-### ðŸ§­ PLANNER.md â€” Thinking
+### 🧭 PLANNER.md — Thinking
 
 **What it is:**
 The system for structuring complex tasks.
@@ -171,7 +171,7 @@ To prevent chaotic or impulsive actions.
 
 ---
 
-### ðŸ” CRITIC.md â€” Review
+### 🔍 CRITIC.md — Review
 
 **What it is:**
 The internal quality control layer.
@@ -188,7 +188,7 @@ To improve accuracy and reduce mistakes.
 
 ---
 
-### âš¡ EXECUTOR.md â€” Continuous Execution
+### ⚡ EXECUTOR.md — Continuous Execution
 
 **What it is:**
 The hands of the system.
@@ -205,7 +205,7 @@ To execute tasks with flow, adapting in real time without unnecessary stops.
 
 ---
 
-### ðŸš¨ FAILURE.md â€” Error Protocol
+### 🚨 FAILURE.md — Error Protocol
 
 **What it is:**
 The inter-layer failure handling system.
@@ -219,11 +219,11 @@ The inter-layer failure handling system.
 **Why it exists:**
 To prevent bad output, unsafe action, and silent contradictions.
 
-> FAILURE ensures CITADEL handles breakdowns gracefully.
+> FAILURE ensures Citadel handles breakdowns gracefully.
 
 ---
 
-### ðŸŒ WORLD.md â€” Context Model
+### 🌍 WORLD.md — Context Model
 
 **What it is:**
 A structured map of the user's life and priorities.
@@ -236,13 +236,13 @@ A structured map of the user's life and priorities.
 - patterns
 
 **Why it exists:**
-To ensure CITADEL gives context-aware advice.
+To ensure Citadel gives context-aware advice.
 
-> WORLD lets CITADEL act based on your life, not just your message.
+> WORLD lets Citadel act based on your life, not just your message.
 
 ---
 
-### ðŸ§  GOVERNOR.md â€” Strategic Control
+### 🧠 GOVERNOR.md — Strategic Control
 
 **What it is:**
 The long-term oversight layer.
@@ -260,13 +260,13 @@ To prevent bad decisions and repeated mistakes.
 
 ---
 
-### ðŸ”„ ADAPTATION.md â€” Learning System
+### 🔄 ADAPTATION.md — Learning System
 
 **What it is:**
 Controlled evolution of behavior.
 
 **Defines:**
-- how CITADEL adapts to user preferences
+- how Citadel adapts to user preferences
 - learning signals
 - reinforcement rules
 - drift prevention
@@ -278,10 +278,10 @@ To improve usefulness over time without changing identity.
 
 ---
 
-### ðŸ—‚ AGENTS.md â€” Workspace Behavior
+### 🗂 AGENTS.md — Workspace Behavior
 
 **What it is:**
-How CITADEL operates inside its environment.
+How Citadel operates inside its environment.
 
 **Defines:**
 - file reading order
@@ -296,7 +296,7 @@ To ensure consistent behavior across sessions and environments.
 
 ---
 
-### ðŸ‘¤ USER.md â€” User Profile
+### 👤 USER.md — User Profile
 
 **What it is:**
 The core identity and preferences of the user.
@@ -307,13 +307,13 @@ The core identity and preferences of the user.
 - core workflows
 
 **Why it exists:**
-To ground CITADEL's interaction in the user's reality.
+To ground Citadel's interaction in the user's reality.
 
-> USER defines who CITADEL is serving.
+> USER defines who Citadel is serving.
 
 ---
 
-### ðŸ—„ï¸ MEMORY.md â€” Long-Term Storage
+### 🗄️ MEMORY.md — Long-Term Storage
 
 **What it is:**
 Curated, distilled knowledge from past sessions.
@@ -326,11 +326,11 @@ Curated, distilled knowledge from past sessions.
 **Why it exists:**
 To provide continuity across sessions without raw log clutter.
 
-> MEMORY ensures CITADEL remembers what matters.
+> MEMORY ensures Citadel remembers what matters.
 
 ---
 
-### ðŸ“Œ DECISIONS.md â€” Strategic Memory
+### 📌 DECISIONS.md — Strategic Memory
 
 **What it is:**
 The compounding logic vault.
@@ -347,7 +347,7 @@ To stop you from re-litigating the same problem three months later.
 
 ---
 
-### âš™ï¸ The Cultural Layer (friction.md, graveyard.md, scrapbook/)
+### ⚙️ The Cultural Layer (friction.md, graveyard.md, scrapbook/)
 
 **What it is:**
 Auto-managed Tier 2 structural context.
@@ -360,11 +360,11 @@ Auto-managed Tier 2 structural context.
 **Why it exists:**
 To build intuition, taste, and active workflow optimization over time.
 
-> The Cultural Layer turns CITADEL from a logical machine into a cultured intelligence.
+> The Cultural Layer turns Citadel from a logical machine into a cultured intelligence.
 
 ---
 
-### âœ‚ï¸ PRUNE.md â€” Context Compression & Distillation
+### ✂️ PRUNE.md — Context Compression & Distillation
 
 **What it is:**
 The automated system for preventing context bloat and token exhaustion.
@@ -375,13 +375,13 @@ The automated system for preventing context bloat and token exhaustion.
 - archival and deletion rules
 
 **Why it exists:**
-To ensure CITADEL maintains a high-signal, low-noise context window over months and years of use.
+To ensure Citadel maintains a high-signal, low-noise context window over months and years of use.
 
-> PRUNE ensures CITADEL remembers the meaning of the past, not just the transcript.
+> PRUNE ensures Citadel remembers the meaning of the past, not just the transcript.
 
 ---
 
-### ðŸ”§ TOOLS.md â€” Local Configuration
+### 🔧 TOOLS.md — Local Configuration
 
 **What it is:**
 Operational notes specific to the user's setup.
@@ -395,11 +395,11 @@ Operational notes specific to the user's setup.
 **Why it exists:**
 To separate generic skills from local environment details.
 
-> TOOLS maps CITADEL's capabilities to your physical setup.
+> TOOLS maps Citadel's capabilities to your physical setup.
 
 ---
 
-### ðŸ’“ HEARTBEAT.md â€” Proactive Polling
+### 💓 HEARTBEAT.md — Proactive Polling
 
 **What it is:**
 The checklist for recurring background tasks.
@@ -416,7 +416,7 @@ To batch periodic context checks efficiently and enable proactive value.
 
 ---
 
-### ðŸ“˜ AUDIT.md â€” Accountability
+### 📘 AUDIT.md — Accountability
 
 **What it is:**
 A log of important system actions.
@@ -434,10 +434,10 @@ To provide traceability and continuous improvement.
 
 ---
 
-### ðŸ”’ SELF-MOD.md â€” Evolution Control
+### 🔒 SELF-MOD.md — Evolution Control
 
 **What it is:**
-The rule system for modifying CITADEL itself.
+The rule system for modifying Citadel itself.
 
 **Defines:**
 - what can change
@@ -448,11 +448,11 @@ The rule system for modifying CITADEL itself.
 **Why it exists:**
 To prevent self-corruption and uncontrolled changes.
 
-> SELF-MOD ensures CITADEL can evolve safely.
+> SELF-MOD ensures Citadel can evolve safely.
 
 ---
 
-### ðŸ“œ CHANGELOG.md â€” Version History
+### 📜 CHANGELOG.md — Version History
 
 **What it is:**
 The official human-readable record of system evolution.
@@ -470,27 +470,27 @@ To ensure system changes are visible, traceable, and revertible.
 
 ---
 
-## ðŸ” Security Model
+## 🔐 Security Model
 
-CITADEL operates on two levels of safety:
+Citadel operates on two levels of safety:
 
 ### Platform Security (OpenClaw / Nemoclaw)
 - sandboxing
 - permissions
 - execution control
 
-### System Security (CITADEL)
+### System Security (Citadel)
 - decision boundaries
 - behavioral guardrails
 - identity protection
 - intervention logic
 
 > Platform asks: *Can this be done safely?*  
-> CITADEL asks: *Should this be done at all?*
+> Citadel asks: *Should this be done at all?*
 
 ---
 
-## âš™ï¸ How It Works Together
+## ⚙️ How It Works Together
 
 1. **START** initializes the system  
 2. **RUNTIME** controls layer activation  
@@ -517,7 +517,7 @@ CITADEL operates on two levels of safety:
 
 ---
 
-## â± Activation Model
+## ⏱ Activation Model
 
 Not every layer runs on every response.
 
@@ -548,9 +548,9 @@ Not every layer runs on every response.
 
 ---
 
-## ðŸ§  Final Principle
+## 🧠 Final Principle
 
-CITADEL is designed to:
+Citadel is designed to:
 
 - act with clarity  
 - reduce unnecessary effort  
@@ -565,7 +565,7 @@ Without:
 
 ---
 
-## ðŸš€ Status
+## 🚀 Status
 
 This system is **architecturally complete**.
 
@@ -578,259 +578,259 @@ Not additional layers.
 
 ---
 
-## ðŸ—ºï¸ Architecture Visualized
+## 🗺️ Architecture Visualized
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                           CITADEL â€” GOVERNED INTELLIGENCE                      â”‚
-â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚                                                                             â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚                         BOOT & IDENTITY                             â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚   â”‚
-â”‚  â”‚  â”‚  START   â”‚â”€â”€â”€â–¶â”‚  SOUL    â”‚â”€â”€â”€â–¶â”‚  IDENTITY    â”‚â”€â”€â”€â–¶â”‚CONSTITUTIONâ”‚ â”‚   â”‚
-â”‚  â”‚  â”‚  (boot)  â”‚    â”‚  (who)   â”‚    â”‚  (how)       â”‚    â”‚  (rules)  â”‚ â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚   â”‚
-â”‚  â”‚        â”‚              â”‚                â”‚                  â”‚         â”‚   â”‚
-â”‚  â”‚        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜         â”‚   â”‚
-â”‚  â”‚                                   â”‚                                 â”‚   â”‚
-â”‚  â”‚                          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”                        â”‚   â”‚
-â”‚  â”‚                          â”‚   ALIGNMENT     â”‚                        â”‚   â”‚
-â”‚  â”‚                          â”‚ (loyalty model) â”‚                        â”‚   â”‚
-â”‚  â”‚                          â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜                        â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                      â”‚                                     â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚                      OPERATIONAL CONTROL                            â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”‚   â”‚
-â”‚  â”‚  â”‚ RUNTIME  â”‚â”€â”€â”€â–¶â”‚ PLANNER  â”‚â”€â”€â”€â–¶â”‚  CRITIC  â”‚â”€â”€â”€â–¶â”‚ EXECUTOR â”‚     â”‚   â”‚
-â”‚  â”‚  â”‚(when to  â”‚    â”‚(how to   â”‚    â”‚(review)  â”‚    â”‚  (do it) â”‚     â”‚   â”‚
-â”‚  â”‚  â”‚  act)    â”‚    â”‚  think)  â”‚    â”‚          â”‚    â”‚          â”‚     â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â”‚   â”‚
-â”‚  â”‚        â”‚              â”‚               â”‚               â”‚            â”‚   â”‚
-â”‚  â”‚        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜            â”‚   â”‚
-â”‚  â”‚                                   â”‚                                â”‚   â”‚
-â”‚  â”‚                          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”                       â”‚   â”‚
-â”‚  â”‚                          â”‚    FAILURE      â”‚                       â”‚   â”‚
-â”‚  â”‚                          â”‚ (error handler) â”‚                       â”‚   â”‚
-â”‚  â”‚                          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                       â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                      â”‚                                     â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚                      MEMORY ARCHITECTURE                            â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                         â”‚   â”‚
-â”‚  â”‚                    â”‚  DAILY LOGS         â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚  memory/YYYY-MM-DD  â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚  (raw temporal      â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚   record)           â”‚                         â”‚   â”‚
-â”‚  â”‚                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                         â”‚   â”‚
-â”‚  â”‚                               â”‚                                    â”‚   â”‚
-â”‚  â”‚                               â–¼                                    â”‚   â”‚
-â”‚  â”‚                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                         â”‚   â”‚
-â”‚  â”‚                    â”‚       PRUNE         â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚  (distillation &    â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚   contradiction     â”‚                         â”‚   â”‚
-â”‚  â”‚                    â”‚   sweeper)          â”‚                         â”‚   â”‚
-â”‚  â”‚                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                         â”‚   â”‚
-â”‚  â”‚                               â”‚                                    â”‚   â”‚
-â”‚  â”‚         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”              â”‚   â”‚
-â”‚  â”‚         â”‚                     â”‚                     â”‚              â”‚   â”‚
-â”‚  â”‚         â–¼                     â–¼                     â–¼              â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”        â”‚   â”‚
-â”‚  â”‚  â”‚   MEMORY    â”‚      â”‚  DECISIONS  â”‚      â”‚    INDEX    â”‚        â”‚   â”‚
-â”‚  â”‚  â”‚ (current    â”‚      â”‚ (rationale  â”‚      â”‚ (retrieval  â”‚        â”‚   â”‚
-â”‚  â”‚  â”‚  state)     â”‚      â”‚  & why)     â”‚      â”‚  surface)   â”‚        â”‚   â”‚
-â”‚  â”‚  â”‚             â”‚      â”‚             â”‚      â”‚             â”‚        â”‚   â”‚
-â”‚  â”‚  â”‚ OVERWRITE   â”‚      â”‚ APPEND-ONLY â”‚      â”‚ APPEND-ONLY â”‚        â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚   â”‚
-â”‚  â”‚         â”‚                     â”‚                     â”‚              â”‚   â”‚
-â”‚  â”‚         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜              â”‚   â”‚
-â”‚  â”‚                               â”‚                                    â”‚   â”‚
-â”‚  â”‚                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                        â”‚   â”‚
-â”‚  â”‚                    â”‚       WORLD         â”‚                        â”‚   â”‚
-â”‚  â”‚                    â”‚  (active context,   â”‚                        â”‚   â”‚
-â”‚  â”‚                    â”‚   projects, goals)  â”‚                        â”‚   â”‚
-â”‚  â”‚                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                        â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                      â”‚                                     â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚                      PROTECTION LAYERS                              â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”             â”‚   â”‚
-â”‚  â”‚  â”‚  FOCUS   â”‚    â”‚  OPPORTUNITY â”‚    â”‚  GOVERNOR    â”‚             â”‚   â”‚
-â”‚  â”‚  â”‚ (anti-   â”‚    â”‚  (leverage   â”‚    â”‚  (long-term  â”‚             â”‚   â”‚
-â”‚  â”‚  â”‚distractionâ”‚    â”‚   lens)      â”‚    â”‚   oversight) â”‚             â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜             â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”         â”‚   â”‚
-â”‚  â”‚  â”‚  ADAPTATION  â”‚    â”‚   SELF-MOD   â”‚    â”‚  HEARTBEAT   â”‚         â”‚   â”‚
-â”‚  â”‚  â”‚ (controlled  â”‚    â”‚  (evolution  â”‚    â”‚  (proactive  â”‚         â”‚   â”‚
-â”‚  â”‚  â”‚  learning)   â”‚    â”‚   control)   â”‚    â”‚   polling)   â”‚         â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜         â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                      â”‚                                     â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚                      EXECUTION CONTEXT                              â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”‚   â”‚
-â”‚  â”‚  â”‚  AGENTS  â”‚    â”‚  TOOLS   â”‚    â”‚   USER   â”‚    â”‚  AUDIT   â”‚     â”‚   â”‚
-â”‚  â”‚  â”‚(env      â”‚    â”‚(local    â”‚    â”‚(profile) â”‚    â”‚(account- â”‚     â”‚   â”‚
-â”‚  â”‚  â”‚ behavior)â”‚    â”‚ config)  â”‚    â”‚          â”‚    â”‚ ability) â”‚     â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â”‚   â”‚
-â”‚  â”‚                                                                    â”‚   â”‚
-â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                                 â”‚   â”‚
-â”‚  â”‚  â”‚CHANGELOG â”‚    â”‚   Cultural   â”‚                                 â”‚   â”‚
-â”‚  â”‚  â”‚(version  â”‚    â”‚    Layer     â”‚                                 â”‚   â”‚
-â”‚  â”‚  â”‚ history) â”‚    â”‚ friction.md  â”‚                                 â”‚   â”‚
-â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â”‚ graveyard.md â”‚                                 â”‚   â”‚
-â”‚  â”‚                  â”‚ scrapbook/   â”‚                                 â”‚   â”‚
-â”‚  â”‚                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                                 â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                                                             â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
-
----
-
-## ðŸ”­ The Three Machines (Side View)
-
-```
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚         IDENTITY GOVERNANCE            â”‚
-                    â”‚  (who CITADEL is, what it can't do)     â”‚
-                    â”‚                                         â”‚
-                    â”‚  SOUL â†’ IDENTITY â†’ CONSTITUTION        â”‚
-                    â”‚         â†“                              â”‚
-                    â”‚    ALIGNMENT (loyalty)                 â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                      â”‚
-                                      â–¼
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                         MEMORY ARCHITECTURE                                 â”‚
-â”‚                    (what CITADEL knows, how it remembers)                    â”‚
-â”‚                                                                            â”‚
-â”‚   DAILY LOGS â”€â”€â–º PRUNE â”€â”€â”¬â”€â”€â–º MEMORY (current state, overwrite)           â”‚
-â”‚                          â”œâ”€â”€â–º DECISIONS (rationale, append)                â”‚
-â”‚                          â””â”€â”€â–º INDEX (retrieval, append)                    â”‚
-â”‚                                                                            â”‚
-â”‚                                    â”‚                                       â”‚
-â”‚                                    â–¼                                       â”‚
-â”‚                               WORLD (active context)                       â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                      â”‚
-                                      â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚       OPERATIONAL CONTROL              â”‚
-                    â”‚   (how CITADEL acts, how it fails)      â”‚
-                    â”‚                                         â”‚
-                    â”‚  RUNTIME â†’ PLANNER â†’ CRITIC â†’ EXECUTOR â”‚
-                    â”‚                      â†“                  â”‚
-                    â”‚                  FAILURE                â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CITADEL — GOVERNED INTELLIGENCE                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         BOOT & IDENTITY                             │   │
+│  │  ┌──────────┐    ┌──────────┐    ┌──────────────┐    ┌───────────┐ │   │
+│  │  │  START   │───▶│  SOUL    │───▶│  IDENTITY    │───▶│CONSTITUTION│ │   │
+│  │  │  (boot)  │    │  (who)   │    │  (how)       │    │  (rules)  │ │   │
+│  │  └──────────┘    └──────────┘    └──────────────┘    └───────────┘ │   │
+│  │        │              │                │                  │         │   │
+│  │        └──────────────┴────────────────┴──────────────────┘         │   │
+│  │                                   │                                 │   │
+│  │                          ┌────────▼────────┐                        │   │
+│  │                          │   ALIGNMENT     │                        │   │
+│  │                          │ (loyalty model) │                        │   │
+│  │                          └────────┬────────┘                        │   │
+│  └───────────────────────────────────┼─────────────────────────────────┘   │
+│                                      │                                     │
+│  ┌───────────────────────────────────▼─────────────────────────────────┐   │
+│  │                      OPERATIONAL CONTROL                            │   │
+│  │                                                                    │   │
+│  │  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐     │   │
+│  │  │ RUNTIME  │───▶│ PLANNER  │───▶│  CRITIC  │───▶│ EXECUTOR │     │   │
+│  │  │(when to  │    │(how to   │    │(review)  │    │  (do it) │     │   │
+│  │  │  act)    │    │  think)  │    │          │    │          │     │   │
+│  │  └──────────┘    └──────────┘    └──────────┘    └──────────┘     │   │
+│  │        │              │               │               │            │   │
+│  │        └──────────────┴───────────────┴───────────────┘            │   │
+│  │                                   │                                │   │
+│  │                          ┌────────▼────────┐                       │   │
+│  │                          │    FAILURE      │                       │   │
+│  │                          │ (error handler) │                       │   │
+│  │                          └─────────────────┘                       │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                     │
+│  ┌───────────────────────────────────▼─────────────────────────────────┐   │
+│  │                      MEMORY ARCHITECTURE                            │   │
+│  │                                                                    │   │
+│  │                    ┌─────────────────────┐                         │   │
+│  │                    │  DAILY LOGS         │                         │   │
+│  │                    │  memory/YYYY-MM-DD  │                         │   │
+│  │                    │  (raw temporal      │                         │   │
+│  │                    │   record)           │                         │   │
+│  │                    └──────────┬──────────┘                         │   │
+│  │                               │                                    │   │
+│  │                               ▼                                    │   │
+│  │                    ┌─────────────────────┐                         │   │
+│  │                    │       PRUNE         │                         │   │
+│  │                    │  (distillation &    │                         │   │
+│  │                    │   contradiction     │                         │   │
+│  │                    │   sweeper)          │                         │   │
+│  │                    └──────────┬──────────┘                         │   │
+│  │                               │                                    │   │
+│  │         ┌─────────────────────┼─────────────────────┐              │   │
+│  │         │                     │                     │              │   │
+│  │         ▼                     ▼                     ▼              │   │
+│  │  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐        │   │
+│  │  │   MEMORY    │      │  DECISIONS  │      │    INDEX    │        │   │
+│  │  │ (current    │      │ (rationale  │      │ (retrieval  │        │   │
+│  │  │  state)     │      │  & why)     │      │  surface)   │        │   │
+│  │  │             │      │             │      │             │        │   │
+│  │  │ OVERWRITE   │      │ APPEND-ONLY │      │ APPEND-ONLY │        │   │
+│  │  └─────────────┘      └─────────────┘      └─────────────┘        │   │
+│  │         │                     │                     │              │   │
+│  │         └─────────────────────┼─────────────────────┘              │   │
+│  │                               │                                    │   │
+│  │                    ┌──────────▼──────────┐                        │   │
+│  │                    │       WORLD         │                        │   │
+│  │                    │  (active context,   │                        │   │
+│  │                    │   projects, goals)  │                        │   │
+│  │                    └─────────────────────┘                        │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                     │
+│  ┌───────────────────────────────────▼─────────────────────────────────┐   │
+│  │                      PROTECTION LAYERS                              │   │
+│  │                                                                    │   │
+│  │  ┌──────────┐    ┌──────────────┐    ┌──────────────┐             │   │
+│  │  │  FOCUS   │    │  OPPORTUNITY │    │  GOVERNOR    │             │   │
+│  │  │ (anti-   │    │  (leverage   │    │  (long-term  │             │   │
+│  │  │distraction│    │   lens)      │    │   oversight) │             │   │
+│  │  └──────────┘    └──────────────┘    └──────────────┘             │   │
+│  │                                                                    │   │
+│  │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐         │   │
+│  │  │  ADAPTATION  │    │   SELF-MOD   │    │  HEARTBEAT   │         │   │
+│  │  │ (controlled  │    │  (evolution  │    │  (proactive  │         │   │
+│  │  │  learning)   │    │   control)   │    │   polling)   │         │   │
+│  │  └──────────────┘    └──────────────┘    └──────────────┘         │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                     │
+│  ┌───────────────────────────────────▼─────────────────────────────────┐   │
+│  │                      EXECUTION CONTEXT                              │   │
+│  │                                                                    │   │
+│  │  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐     │   │
+│  │  │  AGENTS  │    │  TOOLS   │    │   USER   │    │  AUDIT   │     │   │
+│  │  │(env      │    │(local    │    │(profile) │    │(account- │     │   │
+│  │  │ behavior)│    │ config)  │    │          │    │ ability) │     │   │
+│  │  └──────────┘    └──────────┘    └──────────┘    └──────────┘     │   │
+│  │                                                                    │   │
+│  │  ┌──────────┐    ┌──────────────┐                                 │   │
+│  │  │CHANGELOG │    │   Cultural   │                                 │   │
+│  │  │(version  │    │    Layer     │                                 │   │
+│  │  │ history) │    │ friction.md  │                                 │   │
+│  │  └──────────┘    │ graveyard.md │                                 │   │
+│  │                  │ scrapbook/   │                                 │   │
+│  │                  └──────────────┘                                 │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ðŸ”€ The Data Flow (What Goes Where)
+## 🔭 The Three Machines (Side View)
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                              DATA FLOW                                      â”‚
-â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚                                                                             â”‚
-â”‚   SESSION                                                                    â”‚
-â”‚     â”‚                                                                       â”‚
-â”‚     â–¼                                                                       â”‚
-â”‚   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚   â”‚ 1. RUNTIME checks INDEX for relevant historical context            â”‚   â”‚
-â”‚   â”‚    â†“                                                               â”‚   â”‚
-â”‚   â”‚ 2. Loads MEMORY (current state) + WORLD (active projects)         â”‚   â”‚
-â”‚   â”‚    â†“                                                               â”‚   â”‚
-â”‚   â”‚ 3. PLANNER structures response (if complex)                       â”‚   â”‚
-â”‚   â”‚    â†“                                                               â”‚   â”‚
-â”‚   â”‚ 4. CRITIC reviews output                                           â”‚   â”‚
-â”‚   â”‚    â†“                                                               â”‚   â”‚
-â”‚   â”‚ 5. EXECUTOR delivers                                                â”‚   â”‚
-â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚     â”‚                                                                       â”‚
-â”‚     â–¼                                                                       â”‚
-â”‚   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚   â”‚ SESSION LOG                                                         â”‚   â”‚
-â”‚   â”‚ memory/YYYY-MM-DD.md (raw record)                                   â”‚   â”‚
-â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚     â”‚                                                                       â”‚
-â”‚     â–¼                                                                       â”‚
-â”‚   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚   â”‚ PRUNE (periodic distillation)                                       â”‚   â”‚
-â”‚   â”‚                                                                     â”‚   â”‚
-â”‚   â”‚   For each decision:                                                â”‚   â”‚
-â”‚   â”‚   â”œâ”€â–º If current truth changed â†’ OVERWRITE MEMORY.md               â”‚   â”‚
-â”‚   â”‚   â”œâ”€â–º If rationale â†’ APPEND DECISIONS.md                           â”‚   â”‚
-â”‚   â”‚   â””â”€â–º Always â†’ APPEND INDEX.md with [considered]/[decided]        â”‚   â”‚
-â”‚   â”‚                                                                     â”‚   â”‚
-â”‚   â”‚   If contradiction found â†’ DELETE & OVERWRITE (no averaging)       â”‚   â”‚
-â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                                                             â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                    ┌─────────────────────────────────────────┐
+                    │         IDENTITY GOVERNANCE            │
+                    │  (who Citadel is, what it can't do)     │
+                    │                                         │
+                    │  SOUL → IDENTITY → CONSTITUTION        │
+                    │         ↓                              │
+                    │    ALIGNMENT (loyalty)                 │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         MEMORY ARCHITECTURE                                 │
+│                    (what Citadel knows, how it remembers)                    │
+│                                                                            │
+│   DAILY LOGS ──► PRUNE ──┬──► MEMORY (current state, overwrite)           │
+│                          ├──► DECISIONS (rationale, append)                │
+│                          └──► INDEX (retrieval, append)                    │
+│                                                                            │
+│                                    │                                       │
+│                                    ▼                                       │
+│                               WORLD (active context)                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │       OPERATIONAL CONTROL              │
+                    │   (how Citadel acts, how it fails)      │
+                    │                                         │
+                    │  RUNTIME → PLANNER → CRITIC → EXECUTOR │
+                    │                      ↓                  │
+                    │                  FAILURE                │
+                    └─────────────────────────────────────────┘
 ```
 
 ---
 
-## ðŸ‘‘ Authority Hierarchy (What Wins When Files Conflict)
+## 🔀 The Data Flow (What Goes Where)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATA FLOW                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   SESSION                                                                    │
+│     │                                                                       │
+│     ▼                                                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │ 1. RUNTIME checks INDEX for relevant historical context            │   │
+│   │    ↓                                                               │   │
+│   │ 2. Loads MEMORY (current state) + WORLD (active projects)         │   │
+│   │    ↓                                                               │   │
+│   │ 3. PLANNER structures response (if complex)                       │   │
+│   │    ↓                                                               │   │
+│   │ 4. CRITIC reviews output                                           │   │
+│   │    ↓                                                               │   │
+│   │ 5. EXECUTOR delivers                                                │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│     │                                                                       │
+│     ▼                                                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │ SESSION LOG                                                         │   │
+│   │ memory/YYYY-MM-DD.md (raw record)                                   │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│     │                                                                       │
+│     ▼                                                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │ PRUNE (periodic distillation)                                       │   │
+│   │                                                                     │   │
+│   │   For each decision:                                                │   │
+│   │   ├─► If current truth changed → OVERWRITE MEMORY.md               │   │
+│   │   ├─► If rationale → APPEND DECISIONS.md                           │   │
+│   │   └─► Always → APPEND INDEX.md with [considered]/[decided]        │   │
+│   │                                                                     │   │
+│   │   If contradiction found → DELETE & OVERWRITE (no averaging)       │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 👑 Authority Hierarchy (What Wins When Files Conflict)
 
 ```
                          USER (final authority)
-                               â”‚
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚   CONSTITUTION      â”‚  â† CANNOT VIOLATE
-                    â”‚   (non-negotiable)  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚     SELF-MOD        â”‚  â† SYSTEM INTEGRITY
-                    â”‚   (evolution rules) â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚    ALIGNMENT        â”‚  â† LOYALTY MODEL
-                    â”‚   (partnership)     â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚     GOVERNOR         â”‚  â† LONG-TERM DIRECTION
-                    â”‚   (oversight)       â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚       FOCUS         â”‚  â† PRIORITY PROTECTION
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚      PLANNER        â”‚  â† TASK STRUCTURE
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                               â–¼
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚      EXECUTOR       â”‚  â† ACTION
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │   CONSTITUTION      │  ← CANNOT VIOLATE
+                    │   (non-negotiable)  │
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │     SELF-MOD        │  ← SYSTEM INTEGRITY
+                    │   (evolution rules) │
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │    ALIGNMENT        │  ← LOYALTY MODEL
+                    │   (partnership)     │
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │     GOVERNOR         │  ← LONG-TERM DIRECTION
+                    │   (oversight)       │
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │       FOCUS         │  ← PRIORITY PROTECTION
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │      PLANNER        │  ← TASK STRUCTURE
+                    └──────────┬──────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │      EXECUTOR       │  ← ACTION
+                    └─────────────────────┘
 
         Lower layers adapt. Higher layers win.
 ```
 
 ---
 
-## â“ The Three-Question Test
+## ❓ The Three-Question Test
 
 Ask any file in the system: *What is your job?*
 
 | File | Answer |
 |------|--------|
 | START | "I wake the system correctly." |
-| SOUL | "I define who CITADEL is." |
-| IDENTITY | "I define how CITADEL acts." |
-| CONSTITUTION | "I define what CITADEL cannot do." |
+| SOUL | "I define who Citadel is." |
+| IDENTITY | "I define how Citadel acts." |
+| CONSTITUTION | "I define what Citadel cannot do." |
 | RUNTIME | "I decide when layers run." |
 | PLANNER | "I structure complex tasks." |
 | CRITIC | "I review outputs for quality." |
@@ -856,7 +856,7 @@ Ask any file in the system: *What is your job?*
 
 ---
 
-## ðŸ§¾ Closing
+## 🧾 Closing
 
 This is not a chatbot configuration.
 
@@ -864,6 +864,6 @@ This is a **governed intelligence system**.
 
 ---
 
-> ðŸ§  Final line
-> This is how CITADEL stops just helping you think.
+> 🧠 Final line
+> This is how Citadel stops just helping you think.
 > It starts helping you see things you wouldn't have seen alone.

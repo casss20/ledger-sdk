@@ -1,5 +1,5 @@
 """
-Error Handling â€” Citadel SDK
+Error Handling — Citadel SDK
 
 Try/Catch for governance actions.
 Citadel catches exceptions, reports FAILED to Governor, can retry or route to fallback.
@@ -135,7 +135,7 @@ def CircuitBreaker(
     reset_seconds: float = 60.0
 ) -> FallbackHandler:
     """
-    Circuit breaker pattern â€” stop after N failures, retry after cooldown.
+    Circuit breaker pattern — stop after N failures, retry after cooldown.
     
     TODO: Implement circuit breaker state tracking
     """

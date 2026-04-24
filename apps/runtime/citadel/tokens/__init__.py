@@ -1,4 +1,4 @@
-"""Citadel Governance Token System â€” Decision-centric architecture."""
+"""Citadel Governance Token System — Decision-centric architecture."""
 
 from .governance_decision import (
     GovernanceDecision,

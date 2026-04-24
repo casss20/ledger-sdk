@@ -1,4 +1,4 @@
-"""Orchestrator â€” High-level goal execution with governance.
+"""Orchestrator — High-level goal execution with governance.
 
 The orchestrator sits above the kernel:
 1. Takes a goal
@@ -176,8 +176,8 @@ class Orchestrator:
            a. Plan next actions
            b. For each proposed action:
               i.  Run through kernel (governance)
-              ii. If blocked â†’ record and continue
-              iii. If approval required â†’ record and continue
+              ii. If blocked → record and continue
+              iii. If approval required → record and continue
               iv. Execute via executor
               v.  Review via critic
               vi. Update state
@@ -190,7 +190,7 @@ class Orchestrator:
             plan = await self.planner.plan(state)
 
             if not plan.actions:
-                # Planner returned nothing â€” mark complete
+                # Planner returned nothing — mark complete
                 state.completed = True
                 break
 

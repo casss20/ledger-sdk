@@ -1,4 +1,4 @@
-# CITADEL Kernel Conformance Tests
+# Citadel Kernel Conformance Tests
 
 Test suite proving the governance kernel enforces all control semantics end-to-end.
 
@@ -14,7 +14,7 @@ Test suite proving the governance kernel enforces all control semantics end-to-e
 | 4 | **Pending Approval** | High-risk actions queue for human review |
 | 5 | **Approval Rejected** | Human rejection blocks action |
 | 6 | **Approval Expired** | Timeouts handled correctly |
-| 7 | **Allowed + Executed** | Happy path: ALLOWED â†’ EXECUTED â†’ result |
+| 7 | **Allowed + Executed** | Happy path: ALLOWED → EXECUTED → result |
 | 8 | **Execution Failed** | Runtime errors captured in decisions |
 | 9 | **Idempotency** | Duplicate keys return cached result |
 | 10 | **Audit Chain Integrity** | Hash chain valid, tamper-evident |
@@ -30,8 +30,8 @@ Test suite proving the governance kernel enforces all control semantics end-to-e
 
 ```bash
 # Setup test database
-createdb citadel_test
-psql citadel_test -f db/schema.sql
+createdb ledger_test
+psql ledger_test -f db/schema.sql
 
 # Run all conformance tests
 pytest tests/test_kernel_conformance.py -v
@@ -40,36 +40,36 @@ pytest tests/test_kernel_conformance.py -v
 pytest tests/test_kernel_conformance.py::TestKernelConformance::test_01_blocked_by_kill_switch -v
 
 # Run with coverage
-pytest tests/test_kernel_conformance.py --cov=CITADEL --cov-report=html
+pytest tests/test_kernel_conformance.py --cov=citadel --cov-report=html
 ```
 
 ## Test Structure
 
 ```
 TestKernelConformance
-â”œâ”€â”€ test_01_blocked_by_kill_switch
-â”œâ”€â”€ test_02_blocked_by_policy
-â”œâ”€â”€ test_03_blocked_by_capability_expiry
-â”œâ”€â”€ test_04_pending_approval
-â”œâ”€â”€ test_05_approval_rejected
-â”œâ”€â”€ test_06_approval_expired
-â”œâ”€â”€ test_07_allowed_and_executed
-â”œâ”€â”€ test_08_execution_failed
-â”œâ”€â”€ test_09_idempotency_duplicate
-â””â”€â”€ test_10_audit_chain_integrity
+├── test_01_blocked_by_kill_switch
+├── test_02_blocked_by_policy
+├── test_03_blocked_by_capability_expiry
+├── test_04_pending_approval
+├── test_05_approval_rejected
+├── test_06_approval_expired
+├── test_07_allowed_and_executed
+├── test_08_execution_failed
+├── test_09_idempotency_duplicate
+└── test_10_audit_chain_integrity
 
 TestReplayDeterminism
-â”œâ”€â”€ test_replay_same_inputs_same_output
-â””â”€â”€ test_concurrent_action_isolation
+├── test_replay_same_inputs_same_output
+└── test_concurrent_action_isolation
 ```
 
 ## What Each Test Verifies
 
 ### Database Writes
 Every test confirms:
-- `actions` â€” canonical request recorded
-- `decisions` â€” terminal outcome written
-- `audit_events` â€” chronological trail with hash chain
+- `actions` — canonical request recorded
+- `decisions` — terminal outcome written
+- `audit_events` — chronological trail with hash chain
 
 ### Specific Checks
 
@@ -119,7 +119,7 @@ Every test confirms:
 
 | Fixture | Purpose |
 |---------|---------|
-| `CITADEL` | Fresh CITADEL instance per test |
+| `citadel` | Fresh Citadel instance per test |
 | `db` | Asyncpg connection for verification |
 | `postgres_dsn` | Database connection string |
 | `clean_database` | Truncate all tables before each test |
@@ -127,11 +127,11 @@ Every test confirms:
 ## Assertions
 
 Each test asserts on:
-1. **Decision status** â€” correct terminal state
-2. **Database state** â€” rows exist with correct values
-3. **Audit trail** â€” events recorded in sequence
-4. **Views** â€” operational views show correct data
-5. **Integrity** â€” hash chain, constraints enforced
+1. **Decision status** — correct terminal state
+2. **Database state** — rows exist with correct values
+3. **Audit trail** — events recorded in sequence
+4. **Views** — operational views show correct data
+5. **Integrity** — hash chain, constraints enforced
 
 ## Expected Runtime
 
@@ -160,18 +160,18 @@ Total suite: ~3-5 seconds
 If tests fail, check:
 
 1. **Database not initialized**: Run `db/schema.sql`
-2. **CITADEL kernel not implemented**: Some tests assume Python methods exist
+2. **Citadel kernel not implemented**: Some tests assume Python methods exist
 3. **Async issues**: Ensure `pytest-asyncio` configured
 4. **Transaction isolation**: Tests clean DB, but concurrent runs may conflict
 
 ## Next Steps
 
 When tests pass, you have proven:
-- âœ… Kernel writes to database correctly
-- âœ… All control paths deterministic
-- âœ… Audit chain integrity maintained
-- âœ… Replay supported via snapshots
-- âœ… Idempotency works
-- âœ… Approval flow functional
+- ✅ Kernel writes to database correctly
+- ✅ All control paths deterministic
+- ✅ Audit chain integrity maintained
+- ✅ Replay supported via snapshots
+- ✅ Idempotency works
+- ✅ Approval flow functional
 
 This turns "strong schema" into "provable kernel."

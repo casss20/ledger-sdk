@@ -9,10 +9,10 @@ This file demonstrates all the patterns copied from Weft:
 """
 
 import asyncio
-from CITADEL.dense import gov
-from CITADEL.mocking import mockable, MockRegistry, Mock
-from CITADEL.validation import validate_at_startup, validate_config
-from CITADEL.sidecar import PostgresSidecar, get_sidecar_registry
+from citadel.dense import gov
+from citadel.mocking import mockable, MockRegistry, Mock
+from citadel.validation import validate_at_startup, validate_config
+from citadel.sidecar import PostgresSidecar, get_sidecar_registry
 from governance import get_sdk
 
 # Initialize governance
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         for issue in issues:
             print(f"  [{issue.severity.value}] {issue.field}: {issue.message}")
             if issue.suggestion:
-                print(f"    ðŸ’¡ {issue.suggestion}")
+                print(f"    💡 {issue.suggestion}")
 
 
 # ============================================================================

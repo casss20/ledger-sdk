@@ -1,5 +1,5 @@
 """
-Dense Syntax â€” Citadel SDK
+Dense Syntax — Citadel SDK
 
 Like Weft's "Dense for AI generation":
 - Constrained grammar so AI writes correct code on first try

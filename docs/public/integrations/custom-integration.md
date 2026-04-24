@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Integrate CITADEL with any agent framework
+- Integrate Citadel with any agent framework
 - Build custom middleware for your stack
 - Handle governance errors in your application
 - Best practices for production integrations
@@ -15,15 +15,15 @@ Every integration follows the same pattern:
 
 ```
 Agent requests action
-    â†“
+    ↓
 [YOUR MIDDLEWARE] Intercept
-    â†“
+    ↓
 Call citadel.govern()
-    â†“
-    â”œâ”€ ALLOWED â†’ Execute original action
-    â”œâ”€ DENIED â†’ Return error to agent
-    â””â”€ APPROVAL_REQUIRED â†’ Queue for review
-    â†“
+    ↓
+    ├─ ALLOWED → Execute original action
+    ├─ DENIED → Return error to agent
+    └─ APPROVAL_REQUIRED → Queue for review
+    ↓
 Return result to agent
 ```
 
@@ -34,11 +34,11 @@ Return result to agent
 ### Python middleware template
 
 ```python
-import citadel_sdk
+import ledger_sdk
 
 class CustomGovernanceMiddleware:
     def __init__(self, api_key, agent_id):
-        self.CITADEL = citadel_sdk.Client(api_key=api_key)
+        self.citadel = ledger_sdk.Client(api_key=api_key)
         self.agent_id = agent_id
 
     def before_action(self, action, params):
@@ -50,13 +50,13 @@ class CustomGovernanceMiddleware:
         try:
             result = governed.execute()
             return {"allowed": True, "token": result.governance_token}
-        except citadel_sdk.PolicyDeniedError as e:
+        except ledger_sdk.PolicyDeniedError as e:
             return {"allowed": False, "error": str(e)}
-        except citadel_sdk.ApprovalRequiredError as e:
+        except ledger_sdk.ApprovalRequiredError as e:
             return {"allowed": False, "approval_url": e.approval_url}
 
     def after_action(self, action, params, outcome, token):
-        self.CITADEL.audit.record_outcome(
+        self.citadel.audit.record_outcome(
             governance_token=token,
             outcome=outcome
         )
@@ -65,14 +65,14 @@ class CustomGovernanceMiddleware:
 ### TypeScript middleware template
 
 ```typescript
-import { CITADELClient, PolicyDeniedError, ApprovalRequiredError } from '@citadel/sdk';
+import { CitadelClient, PolicyDeniedError, ApprovalRequiredError } from '@citadel/sdk';
 
 class CustomGovernanceMiddleware {
-  private CITADEL: CITADELClient;
+  private citadel: CitadelClient;
   private agentId: string;
 
   constructor(apiKey: string, agentId: string) {
-    this.CITADEL = new CITADELClient({ apiKey });
+    this.citadel = new CitadelClient({ apiKey });
     this.agentId = agentId;
   }
 

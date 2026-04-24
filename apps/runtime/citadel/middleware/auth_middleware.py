@@ -2,11 +2,11 @@
 Authentication middleware for FastAPI.
 
 Routes:
-  - POST /auth/login â†’ JWT token
-  - POST /auth/refresh â†’ New JWT
-  - POST /auth/logout â†’ Revoke JWT
-  - POST /auth/keys â†’ Create API key
-  - GET /auth/keys â†’ List API keys
+  - POST /auth/login → JWT token
+  - POST /auth/refresh → New JWT
+  - POST /auth/logout → Revoke JWT
+  - POST /auth/keys → Create API key
+  - GET /auth/keys → List API keys
 """
 
 from fastapi import Request, HTTPException, Depends, FastAPI, Body
@@ -165,7 +165,7 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
         db = Depends(get_db),
     ):
         """
-        Login endpoint â€” authenticate operator and return JWT tokens.
+        Login endpoint — authenticate operator and return JWT tokens.
         """
         operator_service = OperatorService(db)
         operator = await operator_service.authenticate(username, password)
@@ -217,7 +217,7 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
         request: Request,
         cache = Depends(get_cache),
     ):
-        """Logout â€” revoke JWT token"""
+        """Logout — revoke JWT token"""
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]
@@ -241,7 +241,7 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
         return {
             "key_id": response.key_id,
             "key_secret": response.key_secret,
-            "warning": "Save your key secret â€” it won't be shown again"
+            "warning": "Save your key secret — it won't be shown again"
         }
     
     @app.get("/auth/keys")

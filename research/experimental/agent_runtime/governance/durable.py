@@ -1,5 +1,5 @@
 """
-Durable Execution â€” Citadel SDK
+Durable Execution — Citadel SDK
 
 Survives server restarts using Redis.
 Inspired by Weft's durable execution via Restate.
@@ -29,7 +29,7 @@ class DurablePromise:
     """
     A promise that survives server restarts.
     
-    Like Weft's durable execution â€” a human approval that takes 3 days
+    Like Weft's durable execution — a human approval that takes 3 days
     is the same code as one that takes 3 seconds.
     
     Reports DEFERRED state to GOVERNOR for visibility.
@@ -64,7 +64,7 @@ class DurablePromise:
             return
         r = self.get_redis()
         data = json.dumps(asdict(self), default=str)
-        await r.setex(f"CITADEL:promise:{self.promise_id}", ttl_seconds, data)
+        await r.setex(f"citadel:promise:{self.promise_id}", ttl_seconds, data)
         logger.debug(f"[Durable] Persisted {self.promise_id}")
     
     async def wait(self, timeout_sec: float = 300) -> bool:
@@ -109,14 +109,14 @@ class DurablePromise:
                 return False
             
             # Check Redis for state
-            data = await r.get(f"CITADEL:promise:{self.promise_id}")
+            data = await r.get(f"citadel:promise:{self.promise_id}")
             if data:
                 state = json.loads(data)
                 if state.get("state") == "fulfilled":
                     self.result = state.get("result")
                     self.approved_by = state.get("approved_by")
                     self.approved_at = state.get("approved_at")
-                    logger.info(f"[Durable] âœ… Promise fulfilled: {self.promise_id}")
+                    logger.info(f"[Durable] ✅ Promise fulfilled: {self.promise_id}")
                     # Report back to GOVERNOR
                     if self.action_id:
                         try:
@@ -128,7 +128,7 @@ class DurablePromise:
                             pass
                     return True
                 if state.get("state") == "rejected":
-                    logger.info(f"[Durable] âŒ Promise rejected: {self.promise_id}")
+                    logger.info(f"[Durable] ❌ Promise rejected: {self.promise_id}")
                     # Report DENIED to GOVERNOR
                     if self.action_id:
                         try:
@@ -157,7 +157,7 @@ class DurablePromise:
         self.result = result
         
         data = json.dumps(asdict(self), default=str)
-        await r.set(f"CITADEL:promise:{self.promise_id}", data)
+        await r.set(f"citadel:promise:{self.promise_id}", data)
         logger.info(f"[Durable] Promise {self.promise_id} marked as {self.state}")
     
     @classmethod
@@ -166,7 +166,7 @@ class DurablePromise:
         if not HAS_REDIS:
             return []
         r = cls.get_redis()
-        keys = await r.keys("CITADEL:promise:*")
+        keys = await r.keys("citadel:promise:*")
         promises = []
         for key in keys:
             data = await r.get(key)
@@ -182,7 +182,7 @@ class DurablePromise:
         if not HAS_REDIS:
             return None
         r = cls.get_redis()
-        data = await r.get(f"CITADEL:promise:{self.promise_id}")
+        data = await r.get(f"citadel:promise:{self.promise_id}")
         return json.loads(data) if data else None
 
 

@@ -1,221 +1,189 @@
-# Citadel SDK â€” Code Architecture Schema
+# Citadel SDK - Code Architecture Schema
 
 ## High-Level Data Flow
 
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                           EXTERNAL CLIENT                                   â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                      â”‚
-â”‚  â”‚ Python   â”‚  â”‚ Node.js  â”‚  â”‚ AI Agent â”‚  â”‚  CLI     â”‚                      â”‚
-â”‚  â”‚ SDK      â”‚  â”‚ SDK      â”‚  â”‚ Tool     â”‚  â”‚  Script  â”‚                      â”‚
-â”‚  â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜                      â”‚
-â”‚       â”‚             â”‚             â”‚             â”‚                              â”‚
-â”‚       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                              â”‚
-â”‚                     â”‚                                                          â”‚
-â”‚                     â–¼  HTTP + JSON                                             â”‚
-â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚                         API LAYER (FastAPI)                                  â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚  â”‚  POST /v1/actions/execute   â†â”€â”€ The ONE primitive                       â”‚  â”‚
-â”‚  â”‚  GET  /v1/actions/{id}                                                â”‚  â”‚
-â”‚  â”‚  POST /v1/approvals/{id}/approve                                      â”‚  â”‚
-â”‚  â”‚  POST /v1/approvals/{id}/reject                                       â”‚  â”‚
-â”‚  â”‚  GET  /v1/audit/verify                                                â”‚  â”‚
-â”‚  â”‚  GET  /v1/health  /ready  /live                                       â”‚  â”‚
-â”‚  â”‚  GET  /v1/metrics/summary                                             â”‚  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
-â”‚                     â”‚                                                        â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚  MIDDLEWARE                                                           â”‚   â”‚
-â”‚  â”‚  â€¢ Request ID tracing  â€¢ API key auth  â€¢ Error handling  â€¢ CORS      â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                     â”‚                                                        â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                      â”‚
-                      â–¼
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                      KERNEL LAYER (Governance Engine)                        â”‚
-â”‚                                                                              â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”        â”‚
-â”‚  â”‚  Policy Resolver â”‚â”€â”€â”€â–¶â”‚  Precedence      â”‚â”€â”€â”€â–¶â”‚  Decision          â”‚        â”‚
-â”‚  â”‚  (rules engine)  â”‚    â”‚  (deterministic) â”‚    â”‚  (terminal state)  â”‚        â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚
-â”‚           â”‚                      â”‚                      â”‚                    â”‚
-â”‚           â–¼                      â–¼                      â–¼                    â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”        â”‚
-â”‚  â”‚  Capabilities    â”‚    â”‚  Risk Scoring    â”‚    â”‚  Execution         â”‚        â”‚
-â”‚  â”‚  (token check)   â”‚    â”‚  (approval svc)  â”‚    â”‚  (side effects)    â”‚        â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚
-â”‚           â”‚                      â”‚                      â”‚                    â”‚
-â”‚           â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                    â”‚
-â”‚                                  â–¼                                         â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
-â”‚  â”‚  Audit Service                                                       â”‚   â”‚
-â”‚  â”‚  â€¢ Append-only chain  â€¢ SHA-256 hash  â€¢ Trigger-enforced integrity   â”‚   â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
-â”‚                                  â”‚                                         â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                   â”‚
-                                   â–¼  asyncpg pool
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                      DATABASE LAYER (Postgres 15+)                           â”‚
-â”‚                                                                              â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”‚
-â”‚  â”‚   actors   â”‚  â”‚  actions   â”‚  â”‚  decisions â”‚  â”‚  policy_snapshots  â”‚     â”‚
-â”‚  â”‚  (who)     â”‚  â”‚  (what)    â”‚  â”‚  (outcome) â”‚  â”‚  (versioned rules) â”‚     â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â”‚
-â”‚                                                                              â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”‚
-â”‚  â”‚ approvals  â”‚  â”‚ audit_eventsâ”‚  â”‚  kill_switches + capability_tokens â”‚     â”‚
-â”‚  â”‚ (pending)  â”‚  â”‚ (hash chain)â”‚  â”‚  (controls)                        â”‚     â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â”‚
-â”‚                                                                              â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”‚
-â”‚  â”‚  TRIGGERS                                                           â”‚     â”‚
-â”‚  â”‚  â€¢ set_audit_prev_hash()  â†’  links event to previous               â”‚     â”‚
-â”‚  â”‚  â€¢ calculate_event_hash() â†’  SHA-256 of prev_hash + event_data   â”‚     â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```text
++---------------------------------------------------------------------------+
+|                           EXTERNAL CLIENT                                 |
+|                                                                           |
+|  [Python SDK]   [Node.js SDK]   [AI Agent Tool]   [CLI Script]            |
+|         \             |                |                 /                 |
+|          \------------+----------------+----------------/                  |
+|                               |                                           |
+|                               v                                           |
+|                         HTTP + JSON                                       |
++---------------------------------------------------------------------------+
+|                         API LAYER (FastAPI)                               |
+|                                                                           |
+|  POST /v1/actions/execute   <- The ONE primitive                          |
+|  GET  /v1/actions/{id}                                                    |
+|  POST /v1/approvals/{id}/approve                                          |
+|  POST /v1/approvals/{id}/reject                                           |
+|  GET  /v1/audit/verify                                                    |
+|  GET  /v1/health  /ready  /live                                           |
+|  GET  /v1/metrics/summary                                                 |
+|                                                                           |
+|  MIDDLEWARE                                                               |
+|  * Request ID tracing                                                     |
+|  * API key auth                                                           |
+|  * Error handling                                                         |
+|  * CORS                                                                   |
++---------------------------------------------------------------------------+
+|                    KERNEL LAYER (Governance Engine)                       |
+|                                                                           |
+|  Policy Resolver -> Precedence -> Decision                                |
+|       |                 |              |                                  |
+|       v                 v              v                                  |
+|  Capabilities      Risk Scoring    Execution                              |
+|  (token check)     (approval svc)  (side effects)                         |
+|       \                 |              /                                  |
+|        \----------------+-------------/                                   |
+|                         v                                                 |
+|                    Audit Service                                          |
+|                    * Append-only chain                                    |
+|                    * SHA-256 hash                                         |
+|                    * Trigger-enforced integrity                           |
++---------------------------------------------------------------------------+
+|                     DATABASE LAYER (Postgres 15+)                         |
+|                                                                           |
+|  actors   actions   decisions   policy_snapshots                          |
+|  approvals audit_events kill_switches + capability_tokens                 |
+|                                                                           |
+|  TRIGGERS                                                                 |
+|  * set_audit_prev_hash()  -> links event to previous                      |
+|  * calculate_event_hash() -> SHA-256 of prev_hash + event_data            |
++---------------------------------------------------------------------------+
 ```
 
 ## Component Call Graph
 
-```
-CITADEL.execute()                    # SDK entry point
-    â”‚
-    â”œâ”€â”€â–¶ POST /v1/actions/execute   # FastAPI router
-    â”‚       â”‚
-    â”‚       â”œâ”€â”€â–¶ require_api_key()  # Auth dependency
-    â”‚       â”‚
-    â”‚       â”œâ”€â”€â–¶ get_kernel()       # Kernel factory (singleton per app)
-    â”‚       â”‚
-    â”‚       â””â”€â”€â–¶ kernel.handle(action)
-    â”‚               â”‚
-    â”‚               â”œâ”€â”€â–¶ precedence.resolve(action, policy_snapshot)
-    â”‚               â”‚       â”‚
-    â”‚               â”‚       â”œâ”€â”€â–¶ KillSwitch check       â†’ BLOCKED_KILL_SWITCH
-    â”‚               â”‚       â”œâ”€â”€â–¶ Capability check      â†’ MISSING_CAPABILITY
-    â”‚               â”‚       â”œâ”€â”€â–¶ Explicit allow rules    â†’ ALLOWED
-    â”‚               â”‚       â”œâ”€â”€â–¶ Explicit deny rules    â†’ BLOCKED_POLICY
-    â”‚               â”‚       â”œâ”€â”€â–¶ Hard deny rules       â†’ HARD_DENIED
-    â”‚               â”‚       â””â”€â”€â–¶ Default deny           â†’ BLOCKED_DEFAULT
-    â”‚               â”‚
-    â”‚               â”œâ”€â”€â–¶ approval_service.check_risk(action)
-    â”‚               â”‚       â”‚
-    â”‚               â”‚       â””â”€â”€â–¶ high/critical risk â†’ CREATE pending approval
-    â”‚               â”‚
-    â”‚               â”œâ”€â”€â–¶ executor.execute(action, decision)
-    â”‚               â”‚       â”‚
-    â”‚               â”‚       â”œâ”€â”€â–¶ SidecarClient dispatch (async)
-    â”‚               â”‚       â””â”€â”€â–¶ Return result or error
-    â”‚               â”‚
-    â”‚               â””â”€â”€â–¶ audit_service.record(action, decision, result)
-    â”‚                       â”‚
-    â”‚                       â””â”€â”€â–¶ INSERT INTO audit_events
-    â”‚                               (trigger: set_audit_prev_hash)
-    â”‚                               (trigger: calculate_event_hash)
-    â”‚
-    â””â”€â”€â–¶ CITADELResult(action_id, status, rule, reason, executed, result)
+```text
+citadel.execute()                   # SDK entry point
+    |
+    +-> POST /v1/actions/execute    # FastAPI router
+         |
+         +-> require_api_key()      # Auth dependency
+         |
+         +-> get_kernel()           # Kernel factory
+         |
+         +-> kernel.handle(action)
+              |
+              +-> precedence.resolve(action, policy_snapshot)
+              |    |
+              |    +-> KillSwitch check        -> BLOCKED_KILL_SWITCH
+              |    +-> Capability check        -> MISSING_CAPABILITY
+              |    +-> Explicit allow rules    -> ALLOWED
+              |    +-> Explicit deny rules     -> BLOCKED_POLICY
+              |    +-> Hard deny rules         -> HARD_DENIED
+              |    `-> Default deny            -> BLOCKED_DEFAULT
+              |
+              +-> approval_service.check_risk(action)
+              |    |
+              |    `-> high/critical risk -> CREATE pending approval
+              |
+              +-> executor.execute(action, decision)
+              |    |
+              |    +-> SidecarClient dispatch (async)
+              |    `-> Return result or error
+              |
+              `-> audit_service.record(action, decision, result)
+                   |
+                   `-> INSERT INTO audit_events
+                        -> set_audit_prev_hash()
+                        -> calculate_event_hash()
+
+    `-> CitadelResult(action_id, status, rule, reason, executed, result)
 ```
 
 ## Module Dependency Map
 
-```
-src/CITADEL/
-â”‚
-â”œâ”€â”€ __init__.py          # Re-exports: CITADELClient, execute, guard, wrap
-â”‚
-â”œâ”€â”€ sdk.py               # HTTP client (depends on: none)
-â”‚   â””â”€â”€ httpx.AsyncClient
-â”‚
-â”œâ”€â”€ api/                 # FastAPI package (depends on: kernel, config)
-â”‚   â”œâ”€â”€ __init__.py      # App factory (depends on: all routers)
-â”‚   â”œâ”€â”€ dependencies.py  # get_kernel(), require_api_key() (depends on: kernel, config)
-â”‚   â”œâ”€â”€ middleware.py    # LoggingMiddleware (depends on: config)
-â”‚   â””â”€â”€ routers/
-â”‚       â”œâ”€â”€ actions.py   # (depends on: kernel)
-â”‚       â”œâ”€â”€ approvals.py # (depends on: kernel.repo)
-â”‚       â”œâ”€â”€ audit.py     # (depends on: kernel.audit)
-â”‚       â”œâ”€â”€ health.py    # (depends on: kernel.repo.pool)
-â”‚       â””â”€â”€ metrics.py   # (depends on: kernel.repo)
-â”‚
-â”œâ”€â”€ kernel.py            # Core engine (depends on: repository, precedence, executor, approval_service, audit_service)
-â”‚
-â”œâ”€â”€ repository.py        # DB ONLY (depends on: asyncpg, json)
-â”‚
-â”œâ”€â”€ config.py            # Settings (depends on: pydantic-settings)
-â”‚
-â”œâ”€â”€ precedence.py        # Deterministic ordering (depends on: repository)
-â”‚
-â”œâ”€â”€ policy_resolver.py     # Rule matching (depends on: precedence)
-â”‚
-â”œâ”€â”€ approval_service.py    # Risk + approvals (depends on: repository)
-â”‚
-â”œâ”€â”€ audit_service.py       # Hash chain (depends on: repository)
-â”‚
-â”œâ”€â”€ executor.py            # Side effect runner (depends on: repository, sidecar)
-â”‚
-â””â”€â”€ core/                # Subpackage (constitution, governor, runtime, executor)
-    â”œâ”€â”€ constitution.py
-    â”œâ”€â”€ governor.py
-    â”œâ”€â”€ executor.py
-    â””â”€â”€ runtime.py
+```text
+src/citadel/
+|
++-- __init__.py         # Re-exports: CitadelClient, execute, guard, wrap
+|
++-- sdk.py              # HTTP client
+|   `-- httpx.AsyncClient
+|
++-- api/                # FastAPI package
+|   +-- __init__.py     # App factory
+|   +-- dependencies.py # get_kernel(), require_api_key()
+|   +-- middleware.py   # LoggingMiddleware
+|   `-- routers/
+|       +-- actions.py
+|       +-- approvals.py
+|       +-- audit.py
+|       +-- health.py
+|       `-- metrics.py
+|
++-- kernel.py           # Core engine
++-- repository.py       # DB only
++-- config.py           # Settings
++-- precedence.py       # Deterministic ordering
++-- policy_resolver.py  # Rule matching
++-- approval_service.py # Risk + approvals
++-- audit_service.py    # Hash chain
++-- executor.py         # Side effect runner
+`-- core/
+    +-- constitution.py
+    +-- governor.py
+    +-- executor.py
+    `-- runtime.py
 ```
 
 ## Data Flow: Action Lifecycle
 
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  SUBMIT    â”‚â”€â”€â”€â”€â–¶â”‚  DECIDE    â”‚â”€â”€â”€â”€â–¶â”‚  EXECUTE   â”‚â”€â”€â”€â”€â–¶â”‚  AUDIT     â”‚
-â”‚            â”‚     â”‚            â”‚     â”‚            â”‚     â”‚            â”‚
-â”‚  actor_id  â”‚     â”‚  winning   â”‚     â”‚  sidecar   â”‚     â”‚  event_id  â”‚
-â”‚  action    â”‚     â”‚  rule      â”‚     â”‚  dispatch  â”‚     â”‚  prev_hash â”‚
-â”‚  resource  â”‚     â”‚  status    â”‚     â”‚  callback  â”‚     â”‚  event_hashâ”‚
-â”‚  payload   â”‚     â”‚  reason    â”‚     â”‚  result    â”‚     â”‚  action_id â”‚
-â”‚  context   â”‚     â”‚            â”‚     â”‚            â”‚     â”‚  decision  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-     â”‚                   â”‚                   â”‚                   â”‚
-     â–¼                   â–¼                   â–¼                   â–¼
-  actions table     decisions table    (external)         audit_events table
-  (FK â†’ actors)     (FK â†’ actions)                         (trigger-protected)
+```text
+[SUBMIT] -> [DECIDE] -> [EXECUTE] -> [AUDIT]
+
+SUBMIT
+* actor_id
+* action
+* resource
+* payload
+* context
+
+DECIDE
+* winning rule
+* status
+* reason
+
+EXECUTE
+* sidecar dispatch
+* callback
+* result
+
+AUDIT
+* event_id
+* prev_hash
+* event_hash
+* action_id
+* decision
+
+Storage flow:
+actions table -> decisions table -> external execution -> audit_events table
 ```
 
 ## State Machine: Decision Outcomes
 
-```
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚  ACTION RECEIVED â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                             â”‚
-              â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚              â”‚              â”‚
-              â–¼              â–¼              â–¼
-    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-    â”‚  ALLOWED    â”‚  â”‚   BLOCKED   â”‚  â”‚  APPROVAL   â”‚
-    â”‚             â”‚  â”‚   (deny)    â”‚  â”‚  REQUIRED   â”‚
-    â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-           â”‚                â”‚                â”‚
-           â–¼                â–¼                â–¼
-    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-    â”‚  EXECUTE    â”‚  â”‚  REJECT     â”‚  â”‚  CREATE     â”‚
-    â”‚  sidecar    â”‚  â”‚  (terminal) â”‚  â”‚  approval   â”‚
-    â”‚  dispatch   â”‚  â”‚             â”‚  â”‚  record     â”‚
-    â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-           â”‚                                â”‚
-           â–¼                                â–¼
-    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-    â”‚  EXECUTED   â”‚                  â”‚  PENDING    â”‚
-    â”‚  or FAILED  â”‚                  â”‚  APPROVAL   â”‚
-    â”‚             â”‚                  â”‚             â”‚
-    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-                                            â”‚
-                              â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                              â”‚                             â”‚
-                              â–¼                             â–¼
-                       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”              â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                       â”‚  APPROVED   â”‚              â”‚  REJECTED   â”‚
-                       â”‚  â†’ EXECUTE  â”‚              â”‚  â†’ BLOCKED  â”‚
-                       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜              â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```text
+ACTION RECEIVED
+|
++-- ALLOWED
+|   |
+|   `-- EXECUTE
+|       `-- EXECUTED or FAILED
+|
++-- BLOCKED
+|   |
+|   `-- REJECT (terminal)
+|
+`-- APPROVAL REQUIRED
+    |
+    `-- CREATE approval record
+        |
+        +-- APPROVED -> EXECUTE
+        `-- REJECTED -> BLOCKED
 ```
 
 ## Key Invariants
@@ -223,8 +191,8 @@ src/CITADEL/
 | Invariant | Enforced By |
 |-----------|-------------|
 | Single DB access point | `repository.py` only |
-| Append-only audit | Postgres triggers + no UPDATE/DELETE on audit_events |
-| Deterministic precedence | `precedence.py` â€” fixed rule ordering |
+| Append-only audit | Postgres triggers + no UPDATE/DELETE on `audit_events` |
+| Deterministic precedence | `precedence.py` - fixed rule ordering |
 | Audit chain integrity | `calculate_event_hash()` trigger with `prev_hash` linkage |
 | API statelessness | All state in Postgres; API just orchestrates |
 | Auth everywhere | `require_api_key()` dependency on all mutation routes |

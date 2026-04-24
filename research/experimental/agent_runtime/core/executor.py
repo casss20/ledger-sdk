@@ -1,4 +1,4 @@
-"""EXECUTOR â€” Continuous Execution
+"""EXECUTOR — Continuous Execution
 
 Implementation of EXECUTOR.md.
 
@@ -15,7 +15,7 @@ OWNERSHIP:
 EXECUTOR must always defer to CONSTITUTION and GOVERNOR.
 If flow conflicts with safety or priorities, stop and escalate.
 
-SOURCE OF TRUTH: CITADEL/core/EXECUTOR.md
+SOURCE OF TRUTH: citadel/core/EXECUTOR.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -26,7 +26,7 @@ from enum import Enum
 
 T = TypeVar('T')
 
-from CITADEL.core.governor import Governor, EscalationLevel, ExecutionLocked, get_governor
+from citadel.core.governor import Governor, EscalationLevel, ExecutionLocked, get_governor
 from citadel.governance.capability import CapabilityIssuer
 from citadel.governance.risk import classify as classify_risk, Approval
 from citadel.governance.audit import AuditService
@@ -429,7 +429,7 @@ class Executor:
 # Convenience decorator
 def executor(gov: Governor = None, audit_dsn: str = None, agent: str = "default"):
     """Create an executor decorator."""
-    exec_instance = Executor(audit_dsn=audit_dsn or "postgresql://localhost/CITADEL", 
+    exec_instance = Executor(audit_dsn=audit_dsn or "postgresql://localhost/citadel", 
                             agent=agent, governor=gov)
     
     def decorator(fn):

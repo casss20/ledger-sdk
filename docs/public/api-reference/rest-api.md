@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- CITADEL REST API endpoints
+- Citadel REST API endpoints
 - Authentication and headers
 - Request/response formats
 - Pagination and filtering
@@ -13,8 +13,8 @@
 ## Base URL
 
 ```
-Sandbox:    https://api-sandbox.CITADEL.dev/v1
-Production: https://api.CITADEL.dev/v1
+Sandbox:    https://api-sandbox.citadel.dev/v1
+Production: https://api.citadel.dev/v1
 ```
 
 ---

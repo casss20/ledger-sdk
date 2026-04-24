@@ -1,4 +1,4 @@
-"""PRUNE â€” Context Cleanup
+"""PRUNE — Context Cleanup
 
 Implementation of PRUNE.md.
 
@@ -25,7 +25,7 @@ WHAT TO PRESERVE:
 - User preferences
 - Significant outcomes
 
-SOURCE OF TRUTH: CITADEL/governance/PRUNE.md
+SOURCE OF TRUTH: citadel/governance/PRUNE.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -114,7 +114,7 @@ class Prune:
             name="trivial_exchanges",
             target=PruneTarget.MEMORY_FILES,
             older_than_days=30,
-            pattern=r"^(ok|yes|no|thanks|ðŸ‘)$",
+            pattern=r"^(ok|yes|no|thanks|👍)$",
             preserve_if_matches=["decided", "learned", "pattern"]
         ),
         PruneRule(
@@ -215,11 +215,11 @@ class Prune:
 
         # Age-based degradation
         if age_days > 90:
-            # Very old content without meaningful markers â†’ transient
+            # Very old content without meaningful markers → transient
             return DataClass.TRANSIENT
 
         if age_days > 30:
-            # Old content â†’ likely transient unless marked meaningful
+            # Old content → likely transient unless marked meaningful
             return DataClass.TRANSIENT
 
         # Default: meaningful (conservative)
@@ -359,7 +359,7 @@ class Prune:
         """
         Estimate quality of context before pruning.
 
-        More context â‰  better context.
+        More context ≠ better context.
         Clean context enables clear thinking.
         """
         if not items:

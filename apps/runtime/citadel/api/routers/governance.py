@@ -1,14 +1,14 @@
 """
-Governance Router â€” REST API for the decision-centric governance system.
+Governance Router — REST API for the decision-centric governance system.
 
 Endpoints:
-  POST /v1/governance/decisions              â€” Create a governance decision
-  GET  /v1/governance/decisions/{id}         â€” Get decision by ID
-  POST /v1/governance/decisions/{id}/tokens  â€” Derive a capability token
-  GET  /v1/governance/tokens/{token_id}      â€” Get token by ID
-  POST /v1/governance/verify                 â€” Verify a token or decision
-  GET  /v1/governance/audit/verify           â€” Verify governance audit chain
-  GET  /v1/governance/decisions/{id}/audit   â€” Get audit events for a decision
+  POST /v1/governance/decisions              — Create a governance decision
+  GET  /v1/governance/decisions/{id}         — Get decision by ID
+  POST /v1/governance/decisions/{id}/tokens  — Derive a capability token
+  GET  /v1/governance/tokens/{token_id}      — Get token by ID
+  POST /v1/governance/verify                 — Verify a token or decision
+  GET  /v1/governance/audit/verify           — Verify governance audit chain
+  GET  /v1/governance/decisions/{id}/audit   — Get audit events for a decision
 """
 
 from datetime import datetime, timezone, timedelta
@@ -271,7 +271,7 @@ async def derive_token(
     """
     Derive a capability token from a governance decision.
 
-    Tokens are portable proofs â€” they carry the decision's authority.
+    Tokens are portable proofs — they carry the decision's authority.
     """
     pool = await _get_pool(request)
     vault = TokenVault(pool)

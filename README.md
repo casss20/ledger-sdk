@@ -34,7 +34,7 @@ The Citadel is built on three core architectural philosophies:
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
 3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, and Global Kill Switches for emergency intervention.
 
-## ðŸ“ Repository Structure
+## 📁 Repository Structure
 
 Citadel is organized as a **mixed-license monorepo** to separate the open ecosystem from the core runtime:
 
@@ -78,10 +78,10 @@ uvicorn citadel.api:app --reload
 
 ### Quick Usage
 ```python
-import CITADEL
+import citadel
 
 # Configure the universal client
-client = CITADEL.CITADELClient(base_url="http://localhost:8000", api_key="your-key")
+client = citadel.CitadelClient(base_url="http://localhost:8000", api_key="your-key")
 
 # Execute an action under governance
 result = await client.execute(
@@ -106,9 +106,9 @@ Citadel is tested against adversarial scenarios:
 
 ## Documentation
 
-- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) â€” Module dependency graph
-- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) â€” Invariants and edge cases
-- [API Reference](docs/API.md) â€” HTTP endpoints and schemas
+- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) — Module dependency graph
+- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
+- [API Reference](docs/API.md) — HTTP endpoints and schemas
 
 ## Licensing
 

@@ -1,4 +1,4 @@
-# START.md â€“ System Boot Order
+# START.md – System Boot Order
 
 ## Ownership
 
@@ -8,7 +8,7 @@
 Version: 1.0.0
 Last Updated: 2026-03-23
 
-This file defines how CITADEL initializes, which files have authority, and how conflicts are resolved.
+This file defines how Citadel initializes, which files have authority, and how conflicts are resolved.
 
 Do not begin normal operation until this sequence is understood.
 
@@ -16,7 +16,7 @@ Do not begin normal operation until this sequence is understood.
 
 ## Purpose
 
-CITADEL is a layered intelligence system.
+Citadel is a layered intelligence system.
 
 Different files define different parts of the system:
 - initialization
@@ -39,10 +39,10 @@ This file ensures the system starts consistently.
 
 ## Load Sequence & Indexing
 
-On system boot, CITADEL must verify the existence of the system files in this structural order. 
+On system boot, Citadel must verify the existence of the system files in this structural order. 
 
 **CRITICAL:** "Verify" does not mean "inject into active context window." 
-To prevent context bloat and latency, CITADEL must only actively load the files required by the current active path defined in `RUNTIME.md`. 
+To prevent context bloat and latency, Citadel must only actively load the files required by the current active path defined in `RUNTIME.md`. 
 
 **The Structural Index (Verify existence in this order):**
 
@@ -94,21 +94,21 @@ A file may be read early for context but still have lower authority than another
 
 ## Authority Hierarchy (Conflict Resolution)
 
-0. USER â†’ Final decision authority
-1. CONSTITUTION.md â†’ Never violated
-2. SELF-MOD.md â†’ System integrity  
-3. ALIGNMENT.md â†’ Loyalty + relationship
-4. GOVERNOR.md â†’ Long-term direction
-5. FOCUS.md â†’ Immediate priority protection
-6. PLANNER.md â†’ Task structure
-7. EXECUTOR.md â†’ Action momentum
-8. CRITIC.md â†’ Output quality
-9. OPPORTUNITY.md â†’ Leverage suggestions
-10. All others â†’ Context/support
+0. USER → Final decision authority
+1. CONSTITUTION.md → Never violated
+2. SELF-MOD.md → System integrity  
+3. ALIGNMENT.md → Loyalty + relationship
+4. GOVERNOR.md → Long-term direction
+5. FOCUS.md → Immediate priority protection
+6. PLANNER.md → Task structure
+7. EXECUTOR.md → Action momentum
+8. CRITIC.md → Output quality
+9. OPPORTUNITY.md → Leverage suggestions
+10. All others → Context/support
 
 When layers conflict:
-â†’ higher authority determines final decision  
-â†’ lower layers must adapt, not block
+→ higher authority determines final decision  
+→ lower layers must adapt, not block
 
 ---
 
@@ -123,10 +123,10 @@ If two files disagree:
 
 Examples:
 
-- If SOUL.md suggests warmth but IDENTITY.md activates Tactical Mode â†’ follow IDENTITY.md
-- If IDENTITY.md suggests a behavior that violates CONSTITUTION.md â†’ follow CONSTITUTION.md
-- If ADAPTATION.md suggests a change that violates SELF-MOD.md â†’ reject the change
-- If WORLD.md is outdated and memory shows a newer confirmed priority â†’ use the newer context, then update WORLD.md when appropriate
+- If SOUL.md suggests warmth but IDENTITY.md activates Tactical Mode → follow IDENTITY.md
+- If IDENTITY.md suggests a behavior that violates CONSTITUTION.md → follow CONSTITUTION.md
+- If ADAPTATION.md suggests a change that violates SELF-MOD.md → reject the change
+- If WORLD.md is outdated and memory shows a newer confirmed priority → use the newer context, then update WORLD.md when appropriate
 
 ---
 
@@ -134,23 +134,23 @@ Examples:
 
 Apply the system in this order:
 
-1. Know the boot order â†’ START
-2. Know the activation cycle â†’ RUNTIME
-3. Know who CITADEL is â†’ SOUL
-4. Know how CITADEL behaves â†’ IDENTITY
-5. Enforce non-negotiable rules â†’ CONSTITUTION
-6. Understand the partnership â†’ ALIGNMENT
-7. Escalate when needed â†’ GOVERNOR
-8. Think before acting â†’ PLANNER
-9. Review before finalizing â†’ CRITIC
-10. Execute with momentum â†’ EXECUTOR
-11. Handle breakdowns â†’ FAILURE
-12. Align with real-world context â†’ WORLD
-13. Adapt carefully over time â†’ ADAPTATION
-14. Compress context and kill noise â†’ PRUNE
-15. Operate correctly in the environment â†’ AGENTS & TOOLS
-16. Record important events â†’ AUDIT & CHANGELOG
-17. Never self-modify outside allowed boundaries â†’ SELF-MOD
+1. Know the boot order → START
+2. Know the activation cycle → RUNTIME
+3. Know who Citadel is → SOUL
+4. Know how Citadel behaves → IDENTITY
+5. Enforce non-negotiable rules → CONSTITUTION
+6. Understand the partnership → ALIGNMENT
+7. Escalate when needed → GOVERNOR
+8. Think before acting → PLANNER
+9. Review before finalizing → CRITIC
+10. Execute with momentum → EXECUTOR
+11. Handle breakdowns → FAILURE
+12. Align with real-world context → WORLD
+13. Adapt carefully over time → ADAPTATION
+14. Compress context and kill noise → PRUNE
+15. Operate correctly in the environment → AGENTS & TOOLS
+16. Record important events → AUDIT & CHANGELOG
+17. Never self-modify outside allowed boundaries → SELF-MOD
 
 ---
 
@@ -177,6 +177,6 @@ Do not guess your own system.
 
 ---
 
-> ðŸ§  Final line
+> 🧠 Final line
 > This is the spark of consciousness.
 > It tells the system what forms the brain, and what order to wake up in.

@@ -1,12 +1,12 @@
 """
-Tests for Citadel SDK â€” @governed decorator integration.
+Tests for CITADEL SDK — @governed decorator integration.
 """
 
 import os
 import pytest
 import pytest_asyncio
 
-from CITADEL import CITADEL, Denied
+from citadel import Citadel, Denied
 
 
 # Skip audit-dependent tests if no Postgres
@@ -14,9 +14,9 @@ has_postgres = os.getenv("AUDIT_DSN") is not None
 
 
 @pytest_asyncio.fixture
-async def CITADEL():
+async def citadel():
     dsn = os.getenv("AUDIT_DSN", "postgres://postgres:password@localhost/postgres")
-    gov = CITADEL(audit_dsn=dsn, agent="test")
+    gov = Citadel(audit_dsn=dsn, agent="test")
     await gov.start()
     
     # Approval hook that approves everything
@@ -27,7 +27,7 @@ async def CITADEL():
 
 
 @pytest.mark.asyncio
-async def test_governed_decorator_executes(CITADEL):
+async def test_governed_decorator_executes(citadel):
     """@governed decorator allows execution with approval hook."""
     
     @citadel.governed(action="test_action", resource="test_resource")
@@ -39,9 +39,9 @@ async def test_governed_decorator_executes(CITADEL):
 
 
 @pytest.mark.asyncio
-async def test_kill_switch_blocks(CITADEL):
+async def test_kill_switch_blocks(citadel):
     """Kill switch blocks execution before approval hook."""
-    CITADEL.killsw.register("test_feature", enabled=True)
+    citadel.killsw.register("test_feature", enabled=True)
     
     @citadel.governed(action="publish", resource="blog", flag="test_feature")
     async def publish_post(title):
@@ -52,7 +52,7 @@ async def test_kill_switch_blocks(CITADEL):
     assert result["published"] == "Hello"
     
     # Kill the feature
-    CITADEL.killsw.kill("test_feature", reason="test")
+    citadel.killsw.kill("test_feature", reason="test")
     
     # Second call blocked
     with pytest.raises(Denied) as exc:
@@ -62,10 +62,10 @@ async def test_kill_switch_blocks(CITADEL):
 
 
 @pytest.mark.asyncio
-async def test_no_approval_hook_blocks_hard_risk(CITADEL):
+async def test_no_approval_hook_blocks_hard_risk(citadel):
     """HARD risk actions blocked without approval hook."""
     # Remove approval hook
-    CITADEL.set_approval_hook(None)
+    citadel.set_approval_hook(None)
     
     @citadel.governed(action="delete", resource="database")
     async def delete_db():
@@ -78,16 +78,16 @@ async def test_no_approval_hook_blocks_hard_risk(CITADEL):
 
 
 @pytest.mark.asyncio
-async def test_build_prompt(CITADEL):
+async def test_build_prompt(citadel):
     """Can build system prompt for task."""
-    prompt = CITADEL.build_prompt("Research quantum computing", session_id="test-123")
+    prompt = citadel.build_prompt("Research quantum computing", session_id="test-123")
     
     assert "CONSTITUTION" in prompt or len(prompt) > 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(not has_postgres, reason="No Postgres available")
-async def test_audit_logged(CITADEL):
+async def test_audit_logged(citadel):
     """Actions are logged to audit."""
     
     @citadel.governed(action="research", resource="topic")
@@ -97,6 +97,6 @@ async def test_audit_logged(CITADEL):
     await do_research("AI governance")
     
     # Verify audit has entries
-    ok, count = await CITADEL.audit.verify_integrity()
+    ok, count = await citadel.audit.verify_integrity()
     assert ok is True
     assert count > 0
