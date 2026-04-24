@@ -12,6 +12,7 @@ Run: uvicorn citadel.api:app --reload
 """
 
 from contextlib import asynccontextmanager
+import logging
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
@@ -24,20 +25,30 @@ from citadel.billing.routes import router as billing_router
 from citadel.billing.middleware import BillingMiddleware
 from citadel.utils.telemetry import setup_telemetry
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: startup and shutdown."""
     # Startup
-    import asyncpg
     from citadel.api.dependencies import _pool
     
-    _pool = await asyncpg.create_pool(
-        settings.database_dsn,
-        min_size=settings.db_min_size,
-        max_size=settings.db_max_size,
-    )
-    app.state.db_pool = _pool
+    _pool = None
+    try:
+        import asyncpg
+
+        _pool = await asyncpg.create_pool(
+            settings.database_dsn,
+            min_size=settings.db_min_size,
+            max_size=settings.db_max_size,
+        )
+        app.state.db_pool = _pool
+        app.state.db_startup_error = None
+    except Exception as exc:
+        logger.exception("Database pool initialization failed; readiness will report unhealthy")
+        app.state.db_pool = None
+        app.state.db_startup_error = str(exc)
     
     yield
     

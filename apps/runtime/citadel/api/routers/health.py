@@ -45,7 +45,11 @@ async def readiness_check(request: Request):
     """Readiness probe: verify database connectivity."""
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
-        raise HTTPException(status_code=503, detail="Database pool not initialized")
+        startup_error = getattr(request.app.state, "db_startup_error", None)
+        detail = "Database pool not initialized"
+        if startup_error:
+            detail = f"{detail}: {startup_error}"
+        raise HTTPException(status_code=503, detail=detail)
     
     try:
         async with pool.acquire() as conn:
