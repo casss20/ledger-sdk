@@ -90,7 +90,7 @@ class TestPostureScore:
         import asyncpg
 
         # Insert test data
-        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Insert an actor first (FK requirement)

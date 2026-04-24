@@ -21,7 +21,7 @@ class TestAuditExplorer:
     async def setup_test_data(self, db_pool):
         """Insert test audit entries."""
         import asyncpg
-        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Note: governance_audit_log is append-only; cannot delete. Insert with high random IDs to avoid collisions.

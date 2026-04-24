@@ -25,7 +25,7 @@ class TestActivityStream:
         """Insert test audit events."""
         import asyncpg
         import random
-        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Use random base to avoid PK conflicts (governance_audit_log is append-only)

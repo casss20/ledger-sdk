@@ -14,7 +14,7 @@ import httpx
 import citadel.config
 citadel.config.settings.require_auth = True
 citadel.config.settings.api_keys = "test-key"
-citadel.config.settings.database_url = "postgresql://citadel:citadel@localhost:5432/ledger_test"
+citadel.config.settings.database_url = "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 from citadel.api import app
 from citadel.tokens import (
@@ -62,14 +62,14 @@ class TestGovernanceTokenExecution:
             await conn.execute("SELECT set_tenant_context($1)", TENANT)
 
         scoped_pool = await asyncpg.create_pool(
-            "postgresql://citadel:citadel@localhost:5432/ledger_test",
+            "postgresql://citadel:citadel@localhost:5432/citadel_test",
             min_size=1, max_size=2, setup=_setup,
         )
         app.state.db_pool = scoped_pool
         vault = TokenVault(scoped_pool)
 
         # Insert actor first (FK constraint on actions table)
-        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
         await conn.execute(
             """
@@ -285,14 +285,14 @@ class TestGovernanceTokenExecution:
             await conn.execute("SELECT set_tenant_context($1)", TENANT)
 
         scoped_pool = await asyncpg.create_pool(
-            "postgresql://citadel:citadel@localhost:5432/ledger_test",
+            "postgresql://citadel:citadel@localhost:5432/citadel_test",
             min_size=1, max_size=2, setup=_setup,
         )
         app.state.db_pool = scoped_pool
 
         cap_token = f"cap_old_{uuid.uuid4().hex[:12]}"
 
-        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
         # Bypass RLS for direct test insertion
         await conn.execute("SET app.admin_bypass = 'true'")
         # Insert actor first (FK constraint)

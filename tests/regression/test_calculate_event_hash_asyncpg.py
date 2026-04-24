@@ -12,7 +12,7 @@ import asyncpg
 
 
 # Database connection
-DSN = "postgresql://citadel:citadel@127.0.0.1:5432/ledger_test"
+DSN = "postgresql://citadel:citadel@127.0.0.1:5432/citadel_test"
 
 
 def manual_calculate_hash(action_id, event_type, event_ts, payload_json, prev_hash, actor_id):

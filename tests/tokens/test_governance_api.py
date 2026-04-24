@@ -24,7 +24,7 @@ from citadel.tokens import GovernanceDecision, DecisionType
 import citadel.config
 citadel.config.settings.require_auth = True
 citadel.config.settings.api_keys = "test-key"
-citadel.config.settings.database_url = "postgresql://citadel:citadel@localhost:5432/ledger_test"
+citadel.config.settings.database_url = "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 
 @pytest.fixture

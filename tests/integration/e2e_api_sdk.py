@@ -15,7 +15,7 @@ import asyncpg
 async def main():
     tenant_id = "sdk_test_tenant"
     # Setup: create actor in DB
-    conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/ledger_test")
+    conn = await asyncpg.connect("postgresql://citadel:citadel@localhost:5432/citadel_test")
     await conn.execute("SELECT set_tenant_context($1)", tenant_id)
     await conn.execute(
         """
