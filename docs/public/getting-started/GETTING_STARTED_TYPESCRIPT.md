@@ -5,16 +5,16 @@
 - Install Citadel SDK via npm in under 60 seconds
 - Wrap your first async agent action with governance
 - Understand how `gt_` tokens track every decision
-- View governed actions in the CITADEL dashboard
-- Connect CITADEL to an OpenAI Agents SDK project
+- View governed actions in the Citadel dashboard
+- Connect Citadel to an OpenAI Agents SDK project
 
 ## Prerequisites
 
 - Node.js 18 or higher
 - TypeScript 5.0+ (optional but recommended)
-- A CITADEL API key ([get one free](https://dashboard.CITADEL.dev))
+- A Citadel API key ([get one free](https://dashboard.citadel.dev))
 
-> ðŸ’¡ **New to governance?** CITADEL embeds compliance directly into your agent runtime. Every tool call passes through the CITADEL kernel before execution â€” making governance non-bypassable and automatic.
+> 💡 **New to governance?** Citadel embeds compliance directly into your agent runtime. Every tool call passes through the Citadel kernel before execution — making governance non-bypassable and automatic.
 
 ---
 
@@ -31,10 +31,10 @@ pnpm add @citadel/sdk
 Verify the installation:
 
 ```bash
-node -e "const CITADEL = require('@citadel/sdk'); console.log(CITADEL.VERSION)"
+node -e "const citadel = require('@citadel/sdk'); console.log(citadel.VERSION)"
 ```
 
-> âš ï¸ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
+> ⚠️ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
 
 ---
 
@@ -43,8 +43,8 @@ node -e "const CITADEL = require('@citadel/sdk'); console.log(CITADEL.VERSION)"
 Create a `.env` file:
 
 ```bash
-citadel_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
-citadel_ENVIRONMENT=sandbox
+LEDGER_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
+LEDGER_ENVIRONMENT=sandbox
 ```
 
 Load it in your application:
@@ -53,23 +53,23 @@ Load it in your application:
 import 'dotenv/config';
 ```
 
-> ðŸ’¡ **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
+> 💡 **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
 
 ---
 
 ## Step 3: Initialize the client
 
 ```typescript
-import { CITADELClient } from '@citadel/sdk';
+import { CitadelClient } from '@citadel/sdk';
 
-const CITADEL = new CITADELClient({
-  apiKey: process.env.citadel_API_KEY!,
+const citadel = new CitadelClient({
+  apiKey: process.env.LEDGER_API_KEY!,
   environment: 'sandbox'
 });
 
 // Verify connectivity
-await CITADEL.ping();
-console.log('Connected to CITADEL sandbox');
+await citadel.ping();
+console.log('Connected to Citadel sandbox');
 ```
 
 ---
@@ -102,7 +102,7 @@ try {
 ```
 
 **What just happened:**
-1. CITADEL evaluated the action against all active policies
+1. Citadel evaluated the action against all active policies
 2. If allowed, it returned a governance token (`gt_...`)
 3. If denied, it threw `PolicyDeniedError`
 4. If approval required, it threw `ApprovalRequiredError` with a review URL
@@ -118,14 +118,14 @@ console.log(result.governanceToken); // gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 
 These tokens are:
 - **Immutable**: Cannot be altered or deleted once created
-- **Non-portable**: Only resolvable by CITADEL's vault
+- **Non-portable**: Only resolvable by Citadel's vault
 - **Traceable**: Link into a hash chain for audit
 - **Referencable**: Query the audit trail later
 
 Query by token:
 
 ```typescript
-const record = await CITADEL.audit.get('gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh');
+const record = await citadel.audit.get('gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh');
 console.log(record.decision);     // "allowed"
 console.log(record.policyName);   // "email-sending-allowed"
 console.log(record.timestamp);    // ISO 8601
@@ -137,10 +137,10 @@ console.log(record.timestamp);    // ISO 8601
 
 ```typescript
 import { Agent } from 'openai-agents';
-import { CITADELOpenAIIntegration } from '@citadel/sdk/integrations';
+import { LedgerOpenAIIntegration } from '@citadel/sdk/integrations';
 
-const CITADELIntegration = new CITADELOpenAIIntegration({
-  client: CITADEL,
+const ledgerIntegration = new LedgerOpenAIIntegration({
+  client: citadel,
   agentId: 'openai-agent-01'
 });
 
@@ -148,7 +148,7 @@ const agent = new Agent({
   name: 'EmailAgent',
   instructions: 'Send emails to users',
   tools: [sendEmailTool],
-  guardrails: [CITADELIntegration.guardrail()] // <-- Governance here
+  guardrails: [ledgerIntegration.guardrail()] // <-- Governance here
 });
 
 const result = await agent.run('Send welcome email to new@user.com');
@@ -158,7 +158,7 @@ const result = await agent.run('Send welcome email to new@user.com');
 
 ## Step 7: View in dashboard
 
-Open [CITADEL Dashboard](https://dashboard.CITADEL.dev) â†’ **Activity Stream**.
+Open [Citadel Dashboard](https://dashboard.citadel.dev) → **Activity Stream**.
 
 Filter by agent ID:
 ```
@@ -175,12 +175,12 @@ gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 ## Troubleshooting
 
 ### "API key invalid"
-Keys start with `ldk_test_` (sandbox) or `ldk_live_` (production). Generate new keys at [dashboard.CITADEL.dev](https://dashboard.CITADEL.dev).
+Keys start with `ldk_test_` (sandbox) or `ldk_live_` (production). Generate new keys at [dashboard.citadel.dev](https://dashboard.citadel.dev).
 
 ### "Policy denied all actions"
 New projects start with default deny-all. Create an allow policy:
 ```typescript
-await CITADEL.policies.create({
+await citadel.policies.create({
   name: 'allow-email',
   trigger: { action: 'email.send' },
   enforcement: { type: 'allow' }

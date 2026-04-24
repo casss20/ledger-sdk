@@ -11,9 +11,9 @@
 
 ## Overview
 
-Governance tokens (`gt_`) are the atomic unit of accountability in CITADEL. Every time an agent attempts an action, CITADEL creates a token â€” an immutable, cryptographically signed record of the governance decision.
+Governance tokens (`gt_`) are the atomic unit of accountability in Citadel. Every time an agent attempts an action, Citadel creates a token — an immutable, cryptographically signed record of the governance decision.
 
-Think of them like Stripe's `pm_` PaymentMethod tokens: they reference a decision stored in CITADEL's vault, are non-portable to other systems, and accumulate over time to create switching costs.
+Think of them like Stripe's `pm_` PaymentMethod tokens: they reference a decision stored in Citadel's vault, are non-portable to other systems, and accumulate over time to create switching costs.
 
 ---
 
@@ -39,21 +39,21 @@ gt_7Xy9Za0Bc1De2Fg3Hi4Jk5Lm
 
 ```
 Agent requests action
-    â†“
-CITADEL evaluates against policies
-    â†“
+    ↓
+Citadel evaluates against policies
+    ↓
 Decision recorded (allow / deny / approval-required)
-    â†“
+    ↓
 Token minted with SHA-256 hash
-    â†“
+    ↓
 Hash chained to previous token
-    â†“
+    ↓
 Dual-write: immutable archive + searchable index
-    â†“
+    ↓
 Token returned to agent
-    â†“
+    ↓
 Action executed (if allowed)
-    â†“
+    ↓
 Outcome recorded and linked to token
 ```
 
@@ -68,9 +68,9 @@ As your agents run, they generate thousands of `gt_` tokens. Each token referenc
 - The timestamp and context
 - The agent identity
 
-**This accumulation creates data gravity.** Like Stripe's card tokens make migration painful (customers must re-enter cards), CITADEL's governance tokens make migration legally hazardous â€” your entire audit history lives in CITADEL's vault.
+**This accumulation creates data gravity.** Like Stripe's card tokens make migration painful (customers must re-enter cards), Citadel's governance tokens make migration legally hazardous — your entire audit history lives in Citadel's vault.
 
-> ðŸ’¡ **The moat:** After 6 months of operation, an enterprise has 10,000+ governance tokens forming a tamper-evident chain. Migrating to another system means losing that history â€” and regulators require continuous audit evidence.
+> 💡 **The moat:** After 6 months of operation, an enterprise has 10,000+ governance tokens forming a tamper-evident chain. Migrating to another system means losing that history — and regulators require continuous audit evidence.
 
 ---
 
@@ -79,19 +79,19 @@ As your agents run, they generate thousands of `gt_` tokens. Each token referenc
 ### By token ID
 
 ```python
-record = CITADEL.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
+record = citadel.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
 ```
 
 ### By agent
 
 ```python
-records = CITADEL.audit.query(agent_id="email-agent-01", limit=100)
+records = citadel.audit.query(agent_id="email-agent-01", limit=100)
 ```
 
 ### By time range
 
 ```python
-records = CITADEL.audit.query(
+records = citadel.audit.query(
     agent_id="email-agent-01",
     start="2026-01-01T00:00:00Z",
     end="2026-01-31T23:59:59Z"
@@ -101,7 +101,7 @@ records = CITADEL.audit.query(
 ### By policy
 
 ```python
-records = CITADEL.audit.query(policy_name="refund-approval-over-1000")
+records = citadel.audit.query(policy_name="refund-approval-over-1000")
 ```
 
 ---
@@ -112,14 +112,14 @@ Verify a token's integrity independently:
 
 ```python
 # Fetch the token record
-record = CITADEL.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
+record = citadel.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
 
 # Verify hash chain integrity
-is_valid = CITADEL.audit.verify_chain(record)
+is_valid = citadel.audit.verify_chain(record)
 print(f"Chain integrity: {is_valid}")  # True / False
 
 # Verify individual record hash
-is_tampered = CITADEL.audit.verify_hash(record)
+is_tampered = citadel.audit.verify_hash(record)
 print(f"Record integrity: {is_tampered}")  # True = not tampered
 ```
 
@@ -135,7 +135,7 @@ print(f"Record integrity: {is_tampered}")  # True = not tampered
 
 Configure in your organization settings:
 ```python
-CITADEL.config.set_retention_policy({
+citadel.config.set_retention_policy({
     hot_days=90,
     warm_years=7,
     cold_indefinite=True
@@ -146,6 +146,6 @@ CITADEL.config.set_retention_policy({
 
 ## Next steps
 
-- [Policies](./policies.md) â€” Write policies that govern token creation
-- [Audit Trail](./audit-trail.md) â€” Understand the full hash chain
-- [Recipe: Compliance Proof Generation](../recipes/compliance-proof-generation.md) â€” Generate regulator-ready exports
+- [Policies](./policies.md) — Write policies that govern token creation
+- [Audit Trail](./audit-trail.md) — Understand the full hash chain
+- [Recipe: Compliance Proof Generation](../recipes/compliance-proof-generation.md) — Generate regulator-ready exports

@@ -1,15 +1,15 @@
-"""CITADEL Core â€” Fundamental governance components.
+"""Citadel Core — Fundamental governance components.
 
 Implements:
-- START.md â†’ start.py (boot orchestration)
-- RUNTIME.md â†’ runtime.py (activation cycle)
-- CONSTITUTION.md â†’ constitution.py (behavioral constraints)
-- GOVERNOR.md â†’ governor.py (strategic oversight, intervention)
-- EXECUTOR.md â†’ executor.py (execution momentum)
+- START.md → start.py (boot orchestration)
+- RUNTIME.md → runtime.py (activation cycle)
+- CONSTITUTION.md → constitution.py (behavioral constraints)
+- GOVERNOR.md → governor.py (strategic oversight, intervention)
+- EXECUTOR.md → executor.py (execution momentum)
 
 These are the foundation. All other layers depend on core.
 
-SOURCE OF TRUTH: CITADEL/core/*.md files
+SOURCE OF TRUTH: citadel/core/*.md files
 If Python code contradicts MD files, MD files are correct.
 """
 

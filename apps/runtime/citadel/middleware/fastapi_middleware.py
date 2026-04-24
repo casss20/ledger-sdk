@@ -1,5 +1,5 @@
 """
-FastAPI middleware â€” injects tenant context on every request.
+FastAPI middleware — injects tenant context on every request.
 
 This is the KEY security layer. Without this, RLS doesn't work.
 """
@@ -90,8 +90,8 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
                         "http.method": request.method,
                         "http.url": str(request.url),
                         "http.route": request.url.path,
-                        "Citadel.tenant_id": tenant_id,
-                        "Citadel.user_id": user_id or "anonymous"
+                        "citadel.tenant_id": tenant_id,
+                        "citadel.user_id": user_id or "anonymous"
                     }
                 ):
                     async with tenant_scope(

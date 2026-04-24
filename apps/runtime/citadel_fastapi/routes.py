@@ -1,27 +1,27 @@
 """
-CITADEL FastAPI Routes â€” Core API endpoints (trimmed to 5).
+Citadel FastAPI Routes — Core API endpoints (trimmed to 5).
 
 Endpoints:
-    GET  /health          â†’ Health check
-    GET  /status          â†’ CITADEL status
-    POST /classify        â†’ Classify task risk
-    POST /execute         â†’ Execute governed action
-    POST /killswitch      â†’ Trigger/reset kill switches
+    GET  /health          → Health check
+    GET  /status          → Citadel status
+    POST /classify        → Classify task risk
+    POST /execute         → Execute governed action
+    POST /killswitch      → Trigger/reset kill switches
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 
-from CITADEL.sdk import CITADEL
-from CITADEL.schema import AgentOutput, OutputType
-from CITADEL.router import CITADELRouter, RoutingDecision
+from citadel.sdk import Citadel
+from citadel.schema import AgentOutput, OutputType
+from citadel.router import CitadelRouter, RoutingDecision
 from citadel.governance.risk import classify as classify_risk, Approval
 from citadel.governance.killswitch import KillSwitch
 from .middleware import get_current_user, TokenPayload
 
 
-router = APIRouter(prefix="/CITADEL", tags=["CITADEL"])
+router = APIRouter(prefix="/citadel", tags=["citadel"])
 
 
 # ============================================================================
@@ -79,26 +79,26 @@ class KillswitchResponse(BaseModel):
 # ============================================================================
 
 # Global instances (in production, use proper dependency injection)
-_CITADEL: Optional[CITADEL] = None
-_router: Optional[CITADELRouter] = None
+_ledger: Optional[Citadel] = None
+_router: Optional[CitadelRouter] = None
 
 
-def get_CITADEL() -> CITADEL:
-    """Get or create CITADEL instance."""
-    global _CITADEL
-    if _CITADEL is None:
+def get_ledger() -> Citadel:
+    """Get or create Citadel instance."""
+    global _ledger
+    if _ledger is None:
         # Requires AUDIT_DSN env var
         import os
         dsn = os.getenv("AUDIT_DSN", "postgres://postgres:password@localhost/postgres")
-        _CITADEL = CITADEL(audit_dsn=dsn, agent="api")
-    return _CITADEL
+        _ledger = Citadel(audit_dsn=dsn, agent="api")
+    return _ledger
 
 
-def get_router() -> CITADELRouter:
-    """Get or create CITADELRouter instance."""
+def get_router() -> CitadelRouter:
+    """Get or create CitadelRouter instance."""
     global _router
     if _router is None:
-        _router = CITADELRouter()
+        _router = CitadelRouter()
     return _router
 
 
@@ -108,18 +108,18 @@ def get_router() -> CITADELRouter:
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint â€” public, no auth."""
+    """Health check endpoint — public, no auth."""
     return HealthResponse(status="healthy", version="0.1.0")
 
 
 @router.get("/status", response_model=StatusResponse)
-async def CITADEL_status(user: TokenPayload = Depends(get_current_user)):
-    """Get CITADEL governance status."""
-    CITADEL = get_CITADEL()
+async def ledger_status(user: TokenPayload = Depends(get_current_user)):
+    """Get Citadel governance status."""
+    citadel = get_ledger()
     return StatusResponse(
-        agent=CITADEL.agent,
-        capabilities=len(CITADEL.caps._tokens) if hasattr(CITADEL.caps, '_tokens') else 0,
-        kill_switches=list(CITADEL.killsw._switches.keys()) if hasattr(CITADEL.killsw, '_switches') else []
+        agent=citadel.agent,
+        capabilities=len(citadel.caps._tokens) if hasattr(citadel.caps, '_tokens') else 0,
+        kill_switches=list(citadel.killsw._switches.keys()) if hasattr(citadel.killsw, '_switches') else []
     )
 
 
@@ -129,10 +129,10 @@ async def classify_task(
     user: TokenPayload = Depends(get_current_user)
 ):
     """Classify a task's risk level."""
-    CITADEL = get_CITADEL()
+    citadel = get_ledger()
     
-    # Use CITADEL's internal classifier
-    path = CITADEL.build_prompt(request.task).split("\n")[0] if hasattr(CITADEL, 'build_prompt') else "standard"
+    # Use citadel's internal classifier
+    path = citadel.build_prompt(request.task).split("\n")[0] if hasattr(citadel, 'build_prompt') else "standard"
     
     # Classify risk
     risk, approval = classify_risk(request.task)
@@ -152,21 +152,21 @@ async def execute_action(
     """
     Execute a governed action.
     
-    This is a simulation endpoint â€” in practice, actions are decorated
+    This is a simulation endpoint — in practice, actions are decorated
     with @citadel.governed() and called directly.
     """
-    CITADEL = get_CITADEL()
+    citadel = get_ledger()
     
     # Check kill switch
-    if request.flag and CITADEL.killsw.is_killed(request.flag):
+    if request.flag and citadel.killsw.is_killed(request.flag):
         return ExecuteResponse(
             success=False,
             error=f"Action blocked: kill switch '{request.flag}' is active"
         )
     
     # Log to audit
-    if CITADEL.audit:
-        await CITADEL.audit.log(
+    if citadel.audit:
+        await citadel.audit.log(
             actor=user.sub,
             action=request.action,
             resource=request.resource,
@@ -184,7 +184,7 @@ async def trigger_killswitch(
     user: TokenPayload = Depends(get_current_user)
 ):
     """Trigger a kill switch to disable a feature."""
-    CITADEL = get_CITADEL()
+    citadel = get_ledger()
     
     # Only admins can trigger killswitches
     if user.role != "admin":
@@ -193,7 +193,7 @@ async def trigger_killswitch(
             detail="Admin role required"
         )
     
-    CITADEL.killsw.kill(request.name, reason=request.reason)
+    citadel.killsw.kill(request.name, reason=request.reason)
     
     return KillswitchResponse(
         name=request.name,
@@ -208,7 +208,7 @@ async def reset_killswitch(
     user: TokenPayload = Depends(get_current_user)
 ):
     """Reset (disable) a kill switch."""
-    CITADEL = get_CITADEL()
+    citadel = get_ledger()
     
     if user.role != "admin":
         raise HTTPException(
@@ -216,7 +216,7 @@ async def reset_killswitch(
             detail="Admin role required"
         )
     
-    CITADEL.killsw.reset(name)
+    citadel.killsw.reset(name)
     
     return KillswitchResponse(
         name=name,

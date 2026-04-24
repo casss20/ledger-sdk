@@ -1,4 +1,4 @@
-"""PLANNER â€” Planning & Architecture
+"""PLANNER — Planning & Architecture
 
 Implementation of PLANNER.md.
 
@@ -13,7 +13,7 @@ PLANNER creates structure before EXECUTOR begins.
 - Provides a clear plan for EXECUTOR to follow
 - CRITIC reviews the plan if stakes are high
 
-SOURCE OF TRUTH: CITADEL/ops/PLANNER.md
+SOURCE OF TRUTH: citadel/ops/PLANNER.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -81,12 +81,12 @@ class Plan:
     A complete plan per PLANNER.md structure.
     
     Every plan defines:
-    1. Goal â€” what success looks like
-    2. Scope â€” what's in, what's out
-    3. Milestones â€” 3-7 checkpoint states
-    4. Dependencies â€” what must exist before each step
-    5. Risks â€” what could go wrong
-    6. Rollback â€” how to undo if needed
+    1. Goal — what success looks like
+    2. Scope — what's in, what's out
+    3. Milestones — 3-7 checkpoint states
+    4. Dependencies — what must exist before each step
+    5. Risks — what could go wrong
+    6. Rollback — how to undo if needed
     """
     id: str
     goal: str
@@ -468,7 +468,7 @@ class Planner:
         """
         Create handoff package for EXECUTOR.
         
-        PLANNER â†’ EXECUTOR:
+        PLANNER → EXECUTOR:
         - approved plan
         - scope boundaries
         - known risks

@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Install CITADEL's LangChain callback handler
+- Install Citadel's LangChain callback handler
 - Govern every tool call in your LangChain agent
 - Configure policies for specific LangChain tools
 - View LangChain agent actions in the dashboard
@@ -25,15 +25,15 @@ pip install citadel-sdk langchain langchain-openai
 ```python
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from citadel_sdk.integrations.langchain import CITADELCallbackHandler
+from ledger_sdk.integrations.langchain import LedgerCallbackHandler
 
-# Initialize CITADEL
-import citadel_sdk
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+# Initialize Citadel
+import ledger_sdk
+citadel = ledger_sdk.Client(api_key="ldk_test_...")
 
 # Create the callback handler
-citadel_handler = CITADELCallbackHandler(
-    client=CITADEL,
+ledger_handler = LedgerCallbackHandler(
+    client=citadel,
     agent_id="langchain-agent-01",
     namespace="customer-support"
 )
@@ -46,7 +46,7 @@ agent = create_openai_functions_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    callbacks=[citadel_handler]
+    callbacks=[ledger_handler]
 )
 
 # Run with automatic governance
@@ -59,20 +59,20 @@ result = agent_executor.invoke({
 
 ## How It Works
 
-The `CITADELCallbackHandler` hooks into LangChain's callback system:
+The `LedgerCallbackHandler` hooks into LangChain's callback system:
 
 ```
 Agent decides to use tool
-    â†“
+    ↓
 LangChain calls tool
-    â†“
-CITADELCallbackHandler intercepts
-    â†“
-CITADEL evaluates against policies
-    â†“
-    â”œâ”€ ALLOWED â†’ Execute tool, return result
-    â”œâ”€ DENIED â†’ Return error to agent
-    â””â”€ APPROVAL_REQUIRED â†’ Return approval URL
+    ↓
+LedgerCallbackHandler intercepts
+    ↓
+Citadel evaluates against policies
+    ↓
+    ├─ ALLOWED → Execute tool, return result
+    ├─ DENIED → Return error to agent
+    └─ APPROVAL_REQUIRED → Return approval URL
 ```
 
 ---
@@ -150,7 +150,7 @@ agent = initialize_agent(
     tools,
     llm,
     agent=AgentType.REACT_DOCSTORE,
-    callbacks=[citadel_handler]
+    callbacks=[ledger_handler]
 )
 ```
 
@@ -161,7 +161,7 @@ from langchain_experimental.plan_and_execute import PlanAndExecute
 agent = PlanAndExecute(
     planner=planner,
     executor=executor,
-    callbacks=[citadel_handler]
+    callbacks=[ledger_handler]
 )
 ```
 
@@ -173,15 +173,15 @@ Govern chains where agents call other agents:
 
 ```python
 # Parent agent
-parent_handler = CITADELCallbackHandler(
-    client=CITADEL,
+parent_handler = LedgerCallbackHandler(
+    client=citadel,
     agent_id="parent-agent",
     trace_context=parent_trace
 )
 
 # Child agent inherits trace context
-child_handler = CITADELCallbackHandler(
-    client=CITADEL,
+child_handler = LedgerCallbackHandler(
+    client=citadel,
     agent_id="child-agent",
     trace_context=parent_trace  # Links to parent
 )
@@ -192,10 +192,10 @@ child_handler = CITADELCallbackHandler(
 ## Troubleshooting
 
 ### "Callback not firing"
-Ensure you're passing `callbacks=[citadel_handler]` to the executor, not the agent:
+Ensure you're passing `callbacks=[ledger_handler]` to the executor, not the agent:
 ```python
 # Correct
-AgentExecutor(agent=agent, tools=tools, callbacks=[citadel_handler])
+AgentExecutor(agent=agent, tools=tools, callbacks=[ledger_handler])
 
 # Incorrect
 AgentExecutor(agent=agent, tools=tools)  # Missing callbacks

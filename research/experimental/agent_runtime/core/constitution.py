@@ -1,4 +1,4 @@
-"""Constitution â€” AI Behavior Rules & Values
+"""Constitution — AI Behavior Rules & Values
 
 Implementation of CONSTITUTION.md.
 
@@ -10,7 +10,7 @@ Examples:
 - Risk: "Don't send 10,000 emails" (rate limit)
 - Constitution: "Never impersonate a human" (identity deception)
 
-SOURCE OF TRUTH: CITADEL/core/CONSTITUTION.md
+SOURCE OF TRUTH: citadel/core/CONSTITUTION.md
 If this code contradicts the MD file, the MD file is correct.
 """
 

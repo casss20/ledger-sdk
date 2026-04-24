@@ -1,5 +1,5 @@
 """
-Recursive Groups â€” Citadel SDK
+Recursive Groups — Citadel SDK
 
 Like Weft's recursive composability:
 - Any set of nodes becomes a group
@@ -84,7 +84,7 @@ class ActionNode:
 class ActionGroup:
     """
     Recursive group of actions.
-    Like Weft's groups â€” can contain nodes and other groups.
+    Like Weft's groups — can contain nodes and other groups.
     """
     id: str
     name: str
@@ -222,7 +222,7 @@ class ActionGroup:
     def get_edges(self) -> List[dict]:
         """
         Generate edges between children.
-        Simplified â€” real implementation would use port connections.
+        Simplified — real implementation would use port connections.
         """
         edges = []
         

@@ -1,40 +1,40 @@
 #!/usr/bin/env python3
 """
-CITADEL Quickstart: 10-minute onboarding for founders.
+Citadel Quickstart: 10-minute onboarding for founders.
 
-This script demonstrates CITADEL's core value: governance for AI actions.
+This script demonstrates Citadel's core value: governance for AI actions.
 It initializes a test environment, executes a governed action, and
 proves it was logged immutably.
 
-Why this matters: when your agent makes decisions, CITADEL checks them
+Why this matters: when your agent makes decisions, Citadel checks them
 before execution. This script shows exactly how.
 """
 
-import asyncio  # Why: async is required for CITADEL's async kernel
+import asyncio  # Why: async is required for Citadel's async kernel
 import hashlib  # Why: API keys are hashed for secure storage
 import secrets  # Why: cryptographically secure random key generation
-import sys  # Why: modify Python path to find CITADEL package
-import uuid  # Why: CITADEL uses UUIDs for all primary identifiers
+import sys  # Why: modify Python path to find citadel package
+import uuid  # Why: Citadel uses UUIDs for all primary identifiers
 from datetime import datetime  # Why: audit trail requires timestamps
 from pathlib import Path  # Why: resolve src/ directory for imports
 
-# Why: add src/ to Python path so `import CITADEL` works from repo root
+# Why: add src/ to Python path so `import citadel` works from repo root
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
 import asyncpg  # Why: direct PostgreSQL access for quickstart setup
 
-# Why: import CITADEL's core governance engine
-from CITADEL import Kernel, Repository, Action
-from CITADEL.execution.executor import Executor
-from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
-from CITADEL.precedence import Precedence
-from CITADEL.approval_service import ApprovalService
-from CITADEL.audit_service import AuditService
-from CITADEL.capability_service import CapabilityService
+# Why: import Citadel's core governance engine
+from citadel import Kernel, Repository, Action
+from citadel.execution.executor import Executor
+from citadel.policy_resolver import PolicyResolver, PolicyEvaluator
+from citadel.precedence import Precedence
+from citadel.approval_service import ApprovalService
+from citadel.audit_service import AuditService
+from citadel.capability_service import CapabilityService
 
-# Why: test database â€” quickstart uses same local Postgres as tests
-DSN = "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
+# Why: test database — quickstart uses same local Postgres as tests
+DSN = "postgresql://citadel:citadel@localhost:5432/ledger_test"
 
 
 async def initialize_test_tenant():
@@ -59,7 +59,7 @@ async def seed_api_key(tenant_id):
 
 
 async def execute_sample_action(tenant_id, api_key):
-    """Execute a governed action. Why: this is CITADEL's core purpose."""
+    """Execute a governed action. Why: this is Citadel's core purpose."""
     pool = await asyncpg.create_pool(DSN, setup=lambda conn: conn.execute("SELECT set_tenant_context($1)", tenant_id))  # Why: set tenant context on every connection
     repo = Repository(pool)  # Why: repository handles all database access
     policy_eval = PolicyEvaluator()  # Why: evaluates policy rules against actions
@@ -73,14 +73,14 @@ async def execute_sample_action(tenant_id, api_key):
         audit_service=AuditService(repo),
         executor=Executor(),
     )
-    action = Action(  # Why: canonical action interface â€” all paths use this
+    action = Action(  # Why: canonical action interface — all paths use this
         action_id=uuid.uuid4(),
         actor_id=tenant_id,
         actor_type="agent",
         action_name="file.write",
-        resource="/tmp/citadel_test.txt",
+        resource="/tmp/ledger_test.txt",
         tenant_id=tenant_id,
-        payload={"content": "CITADEL governed this action."},
+        payload={"content": "Citadel governed this action."},
         context={"source": "quickstart"},
         session_id=None,
         request_id=None,
@@ -105,7 +105,7 @@ async def verify_audit(action_id, tenant_id):
 
 
 async def main():
-    """Run quickstart. Why: founders run this to see CITADEL work."""
+    """Run quickstart. Why: founders run this to see Citadel work."""
     tenant_id = await initialize_test_tenant()  # Why: create isolated namespace
     print(f"Tenant created: {tenant_id}")  # Why: deterministic output line 1
     api_key = await seed_api_key(tenant_id)  # Why: credentials for testing

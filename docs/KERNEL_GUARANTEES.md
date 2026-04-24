@@ -1,16 +1,16 @@
-# CITADEL Kernel Guarantees
+# Citadel Kernel Guarantees
 
-> Internal contract for the CITADEL governance kernel.
+> Internal contract for the Citadel governance kernel.
 > Version: v0.1.0-kernel-green
 > Last updated: 2026-04-21
 
-## What CITADEL Guarantees
+## What Citadel Guarantees
 
 ### 1. Deterministic Decision Paths
 Every action processed by the kernel follows the **exact same precedence chain**:
 
 ```
-Kill Switch â†’ Capability â†’ Policy â†’ Approval â†’ Execution
+Kill Switch → Capability → Policy → Approval → Execution
 ```
 
 No action can bypass an earlier stage. No policy can override a kill switch.
@@ -53,24 +53,24 @@ Capability use counting is atomic. Concurrent requests for the same capability c
 
 ---
 
-## What CITADEL Does NOT Guarantee
+## What Citadel Does NOT Guarantee
 
 ### 1. Execution Safety
-CITADEL guarantees the **decision** to execute, not the **outcome** of execution. A `FAILED_EXECUTION` means the governed function threw â€” CITADEL does not recover the function's side effects.
+Citadel guarantees the **decision** to execute, not the **outcome** of execution. A `FAILED_EXECUTION` means the governed function threw — Citadel does not recover the function's side effects.
 
 ### 2. Real-time Kill Switch
 Kill switches are checked at action entry, not continuously. A kill switch activated *after* an action enters the kernel does not affect in-flight actions.
 
 ### 3. Network Partition Tolerance
-CITADEL requires database connectivity. During a partition:
+Citadel requires database connectivity. During a partition:
 - Actions cannot be submitted
 - Pending approvals cannot be resolved
 - Audit events cannot be written
 
-CITADEL **fails closed**: no decision without DB confirmation.
+Citadel **fails closed**: no decision without DB confirmation.
 
 ### 4. Byzantine Actors
-CITADEL assumes actors are who they claim (via `actor_id`). It does not authenticate requests â€” that is the responsibility of the upstream gateway.
+Citadel assumes actors are who they claim (via `actor_id`). It does not authenticate requests — that is the responsibility of the upstream gateway.
 
 ### 5. Clock Synchronization
 Capability expiry and approval deadlines rely on database `NOW()`. Clock skew between application servers and Postgres can cause off-by-seconds behavior.

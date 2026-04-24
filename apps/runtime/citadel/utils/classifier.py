@@ -1,5 +1,5 @@
 """
-Path selector â€” determines runtime path from task keywords.
+Path selector — determines runtime path from task keywords.
 """
 
 import re

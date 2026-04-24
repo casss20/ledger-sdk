@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CITADEL Canonical Demo: db.delete
+Citadel Canonical Demo: db.delete
 
 Shows the complete governance lifecycle:
 1. Action submitted
@@ -17,18 +17,18 @@ from datetime import datetime, timedelta
 
 import asyncpg
 
-from CITADEL.kernel import Kernel, Action, KernelStatus
-from CITADEL.repository import Repository
-from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
-from CITADEL.precedence import Precedence
-from CITADEL.approval_service import ApprovalService
-from CITADEL.capability_service import CapabilityService
-from CITADEL.audit_service import AuditService
-from CITADEL.executor import Executor as ActionExecutor
-from CITADEL.status import ActorType
+from citadel.kernel import Kernel, Action, KernelStatus
+from citadel.repository import Repository
+from citadel.policy_resolver import PolicyResolver, PolicyEvaluator
+from citadel.precedence import Precedence
+from citadel.approval_service import ApprovalService
+from citadel.capability_service import CapabilityService
+from citadel.audit_service import AuditService
+from citadel.executor import Executor as ActionExecutor
+from citadel.status import ActorType
 
 
-DEMO_DSN = "postgresql://CITADEL:CITADEL@127.0.0.1:5432/CITADEL_test"
+DEMO_DSN = "postgresql://citadel:citadel@127.0.0.1:5432/ledger_test"
 
 
 async def setup_demo_data(pool: asyncpg.Pool):
@@ -68,12 +68,12 @@ async def setup_demo_data(pool: asyncpg.Pool):
             """
         )
         
-        print("âœ… Demo data ready")
+        print("✅ Demo data ready")
 
 
 async def demo_allowed_fast_path(kernel: Kernel):
-    """Demo: Service with capability â€” fast path, no approval."""
-    print("\nðŸš€ DEMO 1: Fast Path (capability present)")
+    """Demo: Service with capability — fast path, no approval."""
+    print("\n🚀 DEMO 1: Fast Path (capability present)")
     print("-" * 50)
     
     action = Action(
@@ -102,8 +102,8 @@ async def demo_allowed_fast_path(kernel: Kernel):
 
 
 async def demo_pending_approval(kernel: Kernel):
-    """Demo: No capability â€” requires human approval."""
-    print("\nâ³ DEMO 2: Pending Approval (no capability)")
+    """Demo: No capability — requires human approval."""
+    print("\n⏳ DEMO 2: Pending Approval (no capability)")
     print("-" * 50)
     
     action = Action(
@@ -142,7 +142,7 @@ async def demo_pending_approval(kernel: Kernel):
 
 async def demo_kill_switch(kernel: Kernel):
     """Demo: Kill switch blocks everything."""
-    print("\nðŸ›‘ DEMO 3: Kill Switch (emergency stop)")
+    print("\n🛑 DEMO 3: Kill Switch (emergency stop)")
     print("-" * 50)
     
     # Activate kill switch
@@ -187,7 +187,7 @@ async def demo_kill_switch(kernel: Kernel):
 
 async def demo_audit_verification(kernel: Kernel):
     """Demo: Verify the audit chain."""
-    print("\nðŸ” DEMO 4: Audit Verification")
+    print("\n🔍 DEMO 4: Audit Verification")
     print("-" * 50)
     
     async with kernel.repo.pool.acquire() as conn:
@@ -197,9 +197,9 @@ async def demo_audit_verification(kernel: Kernel):
     print(f"Events checked:  {result['checked_count']}")
     
     if result['broken_at_event_id']:
-        print(f"âš ï¸  Broken at:     {result['broken_at_event_id']}")
+        print(f"⚠️  Broken at:     {result['broken_at_event_id']}")
     else:
-        print("âœ… Chain integrity confirmed")
+        print("✅ Chain integrity confirmed")
     
     # Show recent events
     async with kernel.repo.pool.acquire() as conn:
@@ -215,7 +215,7 @@ async def demo_audit_verification(kernel: Kernel):
 async def main():
     """Run all demos."""
     print("=" * 60)
-    print("CITADEL GOVERNANCE KERNEL â€” Canonical Demo")
+    print("CITADEL GOVERNANCE KERNEL — Canonical Demo")
     print("Action: db.delete (production database deletion)")
     print("=" * 60)
     

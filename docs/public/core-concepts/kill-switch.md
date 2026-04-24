@@ -12,11 +12,11 @@
 
 ## Overview
 
-The kill switch is CITADEL's emergency halt mechanism. It can stop any agent, any agent group, or all agents in an organization â€” within 100ms.
+The kill switch is Citadel's emergency halt mechanism. It can stop any agent, any agent group, or all agents in an organization — within 100ms.
 
 This isn't a monitoring alert or a dashboard button that "suggests" stopping. It's a kernel-level circuit breaker that physically prevents agent execution.
 
-> ðŸ’¡ **Regulatory context:** EU AI Act Article 14(4)(e) requires "a stop button or similar procedure" for high-risk AI systems. CITADEL's kill switch satisfies this requirement architecturally â€” not as a bolt-on feature.
+> 💡 **Regulatory context:** EU AI Act Article 14(4)(e) requires "a stop button or similar procedure" for high-risk AI systems. Citadel's kill switch satisfies this requirement architecturally — not as a bolt-on feature.
 
 ---
 
@@ -27,7 +27,7 @@ This isn't a monitoring alert or a dashboard button that "suggests" stopping. It
 Stop a single agent:
 
 ```python
-CITADEL.kill_switch.activate(
+citadel.kill_switch.activate(
     agent_id="email-agent-01",
     reason="Suspicious activity detected",
     duration="1h"  # Auto-resume after 1 hour, or "indefinite"
@@ -39,7 +39,7 @@ CITADEL.kill_switch.activate(
 Stop all agents in a namespace:
 
 ```python
-CITADEL.kill_switch.activate(
+citadel.kill_switch.activate(
     namespace="payments",
     reason="Finance system maintenance",
     duration="4h"
@@ -51,7 +51,7 @@ CITADEL.kill_switch.activate(
 Emergency stop everything:
 
 ```python
-CITADEL.kill_switch.activate(
+citadel.kill_switch.activate(
     scope="organization",
     reason="Security breach investigation",
     duration="indefinite",
@@ -63,18 +63,18 @@ CITADEL.kill_switch.activate(
 
 ## How It Works
 
-The kill switch operates at the **kernel level** â€” below your application code:
+The kill switch operates at the **kernel level** — below your application code:
 
 ```
 Agent requests action
-    â†“
+    ↓
 Kill Switch Check (first gate, <1ms)
-    â†“
-    [STOPPED?] â†’ Return KillSwitchActivatedError
-    [RUNNING?] â†’ Continue to policy evaluation
-    â†“
+    ↓
+    [STOPPED?] → Return KillSwitchActivatedError
+    [RUNNING?] → Continue to policy evaluation
+    ↓
 Policy evaluation
-    â†“
+    ↓
 Action execution
 ```
 
@@ -85,16 +85,16 @@ Because the check happens before policy evaluation, a stopped agent cannot bypas
 ## Activation Methods
 
 ### Via dashboard
-Navigate to **Kill Switch Panel** â†’ Select agent/namespace â†’ Enter reason â†’ Confirm with MFA.
+Navigate to **Kill Switch Panel** → Select agent/namespace → Enter reason → Confirm with MFA.
 
 ### Via API
 ```python
-CITADEL.kill_switch.activate(agent_id="...", reason="...")
+citadel.kill_switch.activate(agent_id="...", reason="...")
 ```
 
 ### Via CLI
 ```bash
-CITADEL kill-switch activate --agent-id email-agent-01 --reason "Suspicious patterns"
+citadel kill-switch activate --agent-id email-agent-01 --reason "Suspicious patterns"
 ```
 
 ### Via webhook (automated)
@@ -116,13 +116,13 @@ automated_triggers:
 Resume an agent:
 
 ```python
-CITADEL.kill_switch.deactivate(
+citadel.kill_switch.deactivate(
     agent_id="email-agent-01",
     reason="Investigation complete, false positive"
 )
 ```
 
-> âš ï¸ **Security note:** Organization-wide kill switches require CSO approval to deactivate. This prevents a single compromised admin account from reactivate a stopped system.
+> ⚠️ **Security note:** Organization-wide kill switches require CSO approval to deactivate. This prevents a single compromised admin account from reactivate a stopped system.
 
 ---
 
@@ -132,26 +132,26 @@ Test in staging without affecting production:
 
 ```python
 # Staging environment test
-CITADEL = citadel_sdk.Client(
+citadel = ledger_sdk.Client(
     api_key="ldk_test_...",
     environment="sandbox"
 )
 
 # Activate kill switch
-CITADEL.kill_switch.activate(agent_id="test-agent", reason="Test")
+citadel.kill_switch.activate(agent_id="test-agent", reason="Test")
 
 # Attempt action (should fail)
 try:
     action = citadel.govern(agent_id="test-agent", action="test.action")
     action.execute()
-except citadel_sdk.KillSwitchActivatedError:
+except ledger_sdk.KillSwitchActivatedError:
     print("Kill switch working correctly")
 
 # Deactivate
-CITADEL.kill_switch.deactivate(agent_id="test-agent", reason="Test complete")
+citadel.kill_switch.deactivate(agent_id="test-agent", reason="Test complete")
 ```
 
-> ðŸ’¡ **Best practice:** Run kill switch tests monthly in staging. Add to your CI/CD pipeline.
+> 💡 **Best practice:** Run kill switch tests monthly in staging. Add to your CI/CD pipeline.
 
 ---
 
@@ -160,7 +160,7 @@ CITADEL.kill_switch.deactivate(agent_id="test-agent", reason="Test complete")
 Every kill switch activation/deactivation is recorded:
 
 ```python
-records = CITADEL.audit.query(action="kill_switch.activate")
+records = citadel.audit.query(action="kill_switch.activate")
 for record in records:
     print(f"{record.timestamp}: {record.actor} stopped {record.target}")
     print(f"  Reason: {record.reason}")
@@ -182,6 +182,6 @@ for record in records:
 
 ## Next steps
 
-- [Incident Response Guide](../guides/incident-response.md) â€” Full incident playbook
+- [Incident Response Guide](../guides/incident-response.md) — Full incident playbook
 - [Recipe: Emergency Shutdown Procedure](../recipes/emergency-shutdown-procedure.md)
 - [Security Best Practices](../guides/security-best-practices.md)

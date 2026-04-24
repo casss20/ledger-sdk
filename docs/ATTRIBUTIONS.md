@@ -5,7 +5,7 @@
 The Citadel SDK project uses a dual-license commercial strategy:
 
 - **SDKs, Client Libraries, and Integration Tooling**: Licensed under the **Apache License 2.0**. This allows for maximum interoperability and free integration into any application.
-- **Core Governance Runtime & Kernel**: Licensed under a **Business Source License (BSL-style)**. This allows for free internal use, testing, and self-hosting, while protecting the commercial interests of the hosted CITADEL Cloud platform.
+- **Core Governance Runtime & Kernel**: Licensed under a **Business Source License (BSL-style)**. This allows for free internal use, testing, and self-hosting, while protecting the commercial interests of the hosted Citadel Cloud platform.
 
 See the full [LICENSE](LICENSE) file for legal details.
 
@@ -19,15 +19,15 @@ This document also contains attribution for third-party software and architectur
 - **License**: MIT License
 - **Copyright**: Copyright (c) Microsoft Corporation
 
-Portions of the Citadel SDK's governance runtime are inspired by and adapted from Microsoft's Agent Governance Toolkit (AGT), released under the MIT license. The following patterns were analyzed and reimplemented in CITADEL's architecture, conventions, and design principles:
+Portions of the Citadel SDK's governance runtime are inspired by and adapted from Microsoft's Agent Governance Toolkit (AGT), released under the MIT license. The following patterns were analyzed and reimplemented in Citadel's architecture, conventions, and design principles:
 
-- Trust scoring methodology (0â€“1000 scale with composite sub-scores)
+- Trust scoring methodology (0–1000 scale with composite sub-scores)
 - Delegation chain tracking for agent authority
 - Audit sink protocol design (write / write_batch / verify_integrity)
 - Policy rule priority evaluation (first-match-wins)
 - OWASP Agentic Top 10 risk mapping
 
-**Important**: No AGT source code was copied directly into the Citadel SDK. All implementation was written from scratch for CITADEL's specific architecture (async Python, PostgreSQL with strict Row-Level Security, tenant isolation). AGT was used as an architectural reference only.
+**Important**: No AGT source code was copied directly into the Citadel SDK. All implementation was written from scratch for Citadel's specific architecture (async Python, PostgreSQL with strict Row-Level Security, tenant isolation). AGT was used as an architectural reference only.
 
 ### MIT License Text
 
@@ -57,7 +57,7 @@ SOFTWARE.
 
 ---
 
-## Stripe, Inc. â€” Architectural Patterns
+## Stripe, Inc. — Architectural Patterns
 
 - **Source**: Public documentation and PCI Security Standards Council materials
 - **License**: Architectural concepts are public knowledge; no code used
@@ -68,7 +68,7 @@ The Citadel SDK adapts the following **publicly documented** architectural patte
 
 ---
 
-## Datadog, Inc. â€” Architectural Patterns
+## Datadog, Inc. — Architectural Patterns
 
 - **Source**: Public documentation and blog posts
 - **License**: Architectural concepts are public knowledge; no code used
@@ -85,7 +85,7 @@ The Citadel SDK adapts the following **publicly documented** architectural patte
 - **Source**: https://www.postgresql.org/
 - **License**: PostgreSQL License (permissive, BSD-style)
 
-CITADEL uses PostgreSQL's native Row-Level Security (RLS) feature for tenant isolation. RLS is a built-in PostgreSQL feature used according to its public documentation.
+Citadel uses PostgreSQL's native Row-Level Security (RLS) feature for tenant isolation. RLS is a built-in PostgreSQL feature used according to its public documentation.
 
 ---
 
@@ -100,7 +100,7 @@ The Citadel SDK adapts the following **publicly documented** architectural patte
 - **Fan-out exporter pattern**: For dual-write pipeline (archive + index)
 - **Immutable SpanContext**: As model for immutable governance audit entries
 
-No OpenTelemetry source code was copied. Patterns were reimplemented for CITADEL's specific use case.
+No OpenTelemetry source code was copied. Patterns were reimplemented for Citadel's specific use case.
 
 ---
 
@@ -109,7 +109,7 @@ No OpenTelemetry source code was copied. Patterns were reimplemented for CITADEL
 - **Source**: https://www.rfc-editor.org/rfc/rfc8785
 - **License**: Public standard (IETF)
 
-CITADEL implements JSON Canonicalization Scheme as described in RFC 8785 for deterministic SHA-256 hashing of governance audit payloads.
+Citadel implements JSON Canonicalization Scheme as described in RFC 8785 for deterministic SHA-256 hashing of governance audit payloads.
 
 ---
 
@@ -121,4 +121,4 @@ CITADEL implements JSON Canonicalization Scheme as described in RFC 8785 for det
 
 ---
 
-*This file is maintained as part of Citadel SDK open source compliance. For questions about third-party usage, contact the CITADEL maintainers.*
+*This file is maintained as part of Citadel SDK open source compliance. For questions about third-party usage, contact the Citadel maintainers.*

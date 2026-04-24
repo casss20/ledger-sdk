@@ -1,13 +1,13 @@
 """
-Decision Engine â€” Layer 1: Authorization decisions.
+Decision Engine — Layer 1: Authorization decisions.
 
 Why: Policy evaluation produces a first-class GovernanceDecision.
 Tokens are optional derivations. Every decision is auditable.
 Layered enforcement:
-  1. Policy engine (this module) â†’ authorization decision
-  2. Execution middleware â†’ verify decision/token at runtime
-  3. RLS â†’ data isolation at database layer
-  4. OTel context â†’ cross-service correlation
+  1. Policy engine (this module) → authorization decision
+  2. Execution middleware → verify decision/token at runtime
+  3. RLS → data isolation at database layer
+  4. OTel context → cross-service correlation
 """
 
 import uuid

@@ -1,5 +1,5 @@
 """
-Compile-Time Validation â€” Citadel SDK
+Compile-Time Validation — Citadel SDK
 
 Like Weft's "If it compiles, the architecture is sound":
 - Validate connections at startup
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 class ValidationSeverity(Enum):
     """Severity levels for validation issues."""
-    ERROR = "error"      # Fatal â€” cannot proceed
-    WARNING = "warning"  # Non-fatal â€” proceed with caution
+    ERROR = "error"      # Fatal — cannot proceed
+    WARNING = "warning"  # Non-fatal — proceed with caution
     INFO = "info"        # Suggestion for improvement
 
 
@@ -67,7 +67,7 @@ class GovernanceConfig(BaseModel):
     def validate_flag(cls, v, values):
         action = values.get('action', '')
         if v == action:
-            logger.warning(f"[Validation] Flag '{v}' is same as action â€” consider shorter flag")
+            logger.warning(f"[Validation] Flag '{v}' is same as action — consider shorter flag")
         return v
     
     @validator('max_daily', 'max_hourly')
@@ -186,7 +186,7 @@ class Validator:
         Validate entire catalog at startup.
         Returns True if valid, False if errors found.
         """
-        # NOTE: Catalog validation disabled â€” catalog module moved to experimental.
+        # NOTE: Catalog validation disabled — catalog module moved to experimental.
         # Re-enable when integrating with experimental/agent_runtime/catalog.py
         logger.info("[Validator] Catalog validation skipped (catalog module in experimental)")
         return True
@@ -217,18 +217,18 @@ class Validator:
         print("="*60)
         
         if not self.issues:
-            print("âœ… All checks passed â€” architecture is sound")
+            print("✅ All checks passed — architecture is sound")
         else:
             if errors:
-                print(f"\nâŒ ERRORS ({len(errors)}):")
+                print(f"\n❌ ERRORS ({len(errors)}):")
                 for issue in errors:
                     print(f"  [{issue.action}] {issue.field}")
                     print(f"    {issue.message}")
                     if issue.suggestion:
-                        print(f"    ðŸ’¡ {issue.suggestion}")
+                        print(f"    💡 {issue.suggestion}")
             
             if warnings:
-                print(f"\nâš ï¸ WARNINGS ({len(warnings)}):")
+                print(f"\n⚠️ WARNINGS ({len(warnings)}):")
                 for issue in warnings:
                     print(f"  [{issue.action}] {issue.field}: {issue.message}")
         

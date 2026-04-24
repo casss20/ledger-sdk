@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Secure your CITADEL deployment
+- Secure your Citadel deployment
 - Manage API keys
 - Configure network security
 - Audit security events
@@ -13,17 +13,17 @@
 
 ### Rotate keys every 90 days
 ```bash
-CITADEL keys rotate --env production
+citadel keys rotate --env production
 ```
 
 ### Use separate keys per environment
-- `ldk_test_*` â€” Development only
-- `ldk_live_*` â€” Production only
+- `ldk_test_*` — Development only
+- `ldk_live_*` — Production only
 - Never commit keys to version control
 
 ### Enable key restrictions
 ```python
-CITADEL.config.set_key_restrictions(
+citadel.config.set_key_restrictions(
     ip_allowlist=["10.0.0.0/8"],
     time_window={"start": "08:00", "end": "18:00"}
 )
@@ -50,8 +50,8 @@ Monitor these events:
 
 Forward to SIEM:
 ```python
-CITADEL.config.set_webhook(
-    url="https://siem.company.com/CITADEL",
+citadel.config.set_webhook(
+    url="https://siem.company.com/citadel",
     events=["kill_switch.activated", "policy.modified"]
 )
 ```
@@ -62,7 +62,7 @@ CITADEL.config.set_webhook(
 
 Test monthly in staging:
 ```bash
-CITADEL kill-switch test --env staging --scope all
+citadel kill-switch test --env staging --scope all
 ```
 
 ---

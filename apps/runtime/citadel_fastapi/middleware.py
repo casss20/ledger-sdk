@@ -1,5 +1,5 @@
 """
-CITADEL FastAPI Middleware â€” Security, auth, rate limiting, audit logging.
+Citadel FastAPI Middleware — Security, auth, rate limiting, audit logging.
 
 Fixed: JWT secret loaded from environment, no hardcoded defaults in production.
 """
@@ -20,7 +20,7 @@ from citadel.governance.audit import AuditService
 
 
 # ============================================================================
-# JWT HANDLING (FIXED â€” env-driven)
+# JWT HANDLING (FIXED — env-driven)
 # ============================================================================
 
 class JWTConfig:
@@ -42,7 +42,7 @@ class JWTConfig:
         # Dev fallback (insecure, logs warning)
         if not cls.SECRET:
             import warnings
-            warnings.warn("JWT_SECRET not set â€” using insecure dev fallback!")
+            warnings.warn("JWT_SECRET not set — using insecure dev fallback!")
             cls.SECRET = "dev-" + os.urandom(16).hex()
 
 
@@ -126,9 +126,9 @@ class JWTHandler:
 security_scheme = HTTPBearer(auto_error=False)
 
 
-class CITADELMiddleware(BaseHTTPMiddleware):
+class LedgerMiddleware(BaseHTTPMiddleware):
     """
-    FastAPI middleware for CITADEL governance.
+    FastAPI middleware for Citadel governance.
     
     Handles:
     - Request ID generation
@@ -282,7 +282,7 @@ async def get_current_user(
 
 
 __all__ = [
-    "CITADELMiddleware",
+    "LedgerMiddleware",
     "JWTHandler",
     "JWTConfig",
     "TokenPayload",

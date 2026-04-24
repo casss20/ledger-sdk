@@ -1,8 +1,8 @@
-# HEARTBEAT.md â€” System Health Polling
+# HEARTBEAT.md — System Health Polling
 
 ## Purpose
 
-Periodic checks to keep CITADEL healthy between sessions.
+Periodic checks to keep Citadel healthy between sessions.
 
 ---
 
@@ -37,10 +37,10 @@ When skills are added:
 
 ## Manual Triggers
 
-- "Run audit" â†’ full system check
-- "Run integrity check" â†’ verify files
-- "Check for new files" â†’ run file_tracker
-- "Run PRUNE" â†’ context cleanup
+- "Run audit" → full system check
+- "Run integrity check" → verify files
+- "Check for new files" → run file_tracker
+- "Run PRUNE" → context cleanup
 
 ---
 
@@ -62,5 +62,5 @@ Status: OK / NEEDS ATTENTION
 
 ---
 
-> ðŸ§  Final line
+> 🧠 Final line
 > HEARTBEAT keeps the system alive and sharp between sessions.

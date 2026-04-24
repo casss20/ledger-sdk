@@ -19,15 +19,15 @@ import uuid
 from datetime import datetime, timedelta
 
 import asyncpg
-from CITADEL.actions import Action, KernelStatus
-from CITADEL.execution.kernel import Kernel
-from CITADEL.repository import Repository
-from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
-from CITADEL.precedence import Precedence
-from CITADEL.approval_service import ApprovalService
-from CITADEL.capability_service import CapabilityService
-from CITADEL.audit_service import AuditService
-from CITADEL.execution.executor import Executor
+from citadel.actions import Action, KernelStatus
+from citadel.execution.kernel import Kernel
+from citadel.repository import Repository
+from citadel.policy_resolver import PolicyResolver, PolicyEvaluator
+from citadel.precedence import Precedence
+from citadel.approval_service import ApprovalService
+from citadel.capability_service import CapabilityService
+from citadel.audit_service import AuditService
+from citadel.execution.executor import Executor
 
 
 async def _repo_for_tenant(postgres_dsn: str, tenant_id: str):
@@ -175,7 +175,7 @@ async def test_cross_tenant_action_read_blocked(postgres_dsn, db):
     data_a = await _setup_tenant_data(db, tenant_a, actor_a)
     data_b = await _setup_tenant_data(db, tenant_b, actor_b)
 
-    # Tenant A tries to read Tenant B's action â€” must fail
+    # Tenant A tries to read Tenant B's action — must fail
     repo_a, pool_a = await _repo_for_tenant(postgres_dsn, tenant_a)
     try:
         action_b = await repo_a.get_action(data_b['action_id'], tenant_id=tenant_a)

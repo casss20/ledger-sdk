@@ -5,16 +5,16 @@
 - Install Citadel SDK in under 60 seconds
 - Wrap your first agent action with governance
 - Understand how `gt_` tokens track every decision
-- View your governed actions in the CITADEL dashboard
-- Connect CITADEL to a real LangChain agent
+- View your governed actions in the Citadel dashboard
+- Connect Citadel to a real LangChain agent
 
 ## Prerequisites
 
 - Python 3.9 or higher
-- A CITADEL API key ([get one free](https://dashboard.CITADEL.dev))
+- A Citadel API key ([get one free](https://dashboard.citadel.dev))
 - Basic familiarity with Python async/await (optional but recommended)
 
-> ðŸ’¡ **New to governance?** CITADEL embeds compliance directly into your agent runtime. Every tool call passes through the CITADEL kernel before execution â€” making governance non-bypassable and automatic.
+> 💡 **New to governance?** Citadel embeds compliance directly into your agent runtime. Every tool call passes through the Citadel kernel before execution — making governance non-bypassable and automatic.
 
 ---
 
@@ -27,10 +27,10 @@ pip install citadel-sdk
 Verify the installation:
 
 ```bash
-python -c "import citadel_sdk; print(citadel_sdk.__version__)"
+python -c "import ledger_sdk; print(ledger_sdk.__version__)"
 ```
 
-> âš ï¸ **Note:** If you see `ModuleNotFoundError`, ensure your virtual environment is activated:
+> ⚠️ **Note:** If you see `ModuleNotFoundError`, ensure your virtual environment is activated:
 > ```bash
 > python -m venv .venv && source .venv/bin/activate  # Linux/Mac
 > python -m venv .venv && .venv\Scripts\activate    # Windows
@@ -43,8 +43,8 @@ python -c "import citadel_sdk; print(citadel_sdk.__version__)"
 Create a `.env` file in your project root:
 
 ```bash
-citadel_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
-citadel_ENVIRONMENT=sandbox
+LEDGER_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
+LEDGER_ENVIRONMENT=sandbox
 ```
 
 Load it in Python:
@@ -54,23 +54,23 @@ from dotenv import load_dotenv
 load_dotenv()
 ```
 
-> ðŸ’¡ **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when you're ready to deploy.
+> 💡 **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when you're ready to deploy.
 
 ---
 
 ## Step 3: Initialize the client
 
 ```python
-import CITADEL
+import citadel
 
-client = CITADEL.CITADELClient(
-    base_url="https://api.CITADEL.dev",
+client = citadel.CitadelClient(
+    base_url="https://api.citadel.dev",
     api_key="ldk_live_xxxxxxxxxxxxxxxx"
 )
 
 # Verify connectivity
 await client.ping()
-print("Connected to CITADEL production")
+print("Connected to Citadel production")
 ```
 
 ---
@@ -105,8 +105,8 @@ except Exception as e:
 ```
 
 **What just happened:**
-1. CITADEL evaluated your action against all active policies
-2. If allowed, it returned a governance token (`gt_...`) â€” an immutable reference to this decision
+1. Citadel evaluated your action against all active policies
+2. If allowed, it returned a governance token (`gt_...`) — an immutable reference to this decision
 3. If denied, it raised `PolicyDeniedError` with the blocking policy name
 4. If approval is required, it returned an approval URL for human review
 
@@ -123,14 +123,14 @@ print(result.governance_token)  # gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 
 These tokens are:
 - **Immutable**: Once created, they cannot be altered or deleted
-- **Non-portable**: Only resolvable by CITADEL's vault (like Stripe's `pm_` tokens)
+- **Non-portable**: Only resolvable by Citadel's vault (like Stripe's `pm_` tokens)
 - **Traceable**: Link together into a hash chain for audit purposes
 - **Referencable**: Use them to query the audit trail later
 
 Query an action by its token:
 
 ```python
-audit_record = CITADEL.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
+audit_record = citadel.audit.get("gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh")
 print(audit_record.decision)      # "allowed"
 print(audit_record.policy_name)   # "email-sending-allowed"
 print(audit_record.timestamp)     # ISO 8601 timestamp
@@ -140,16 +140,16 @@ print(audit_record.timestamp)     # ISO 8601 timestamp
 
 ## Step 6: Connect to LangChain
 
-CITADEL integrates seamlessly with LangChain via a callback handler:
+Citadel integrates seamlessly with LangChain via a callback handler:
 
 ```python
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from citadel_sdk.integrations.langchain import CITADELCallbackHandler
+from ledger_sdk.integrations.langchain import LedgerCallbackHandler
 
-# Initialize CITADEL handler
-citadel_handler = CITADELCallbackHandler(
-    client=CITADEL,
+# Initialize Citadel handler
+ledger_handler = LedgerCallbackHandler(
+    client=citadel,
     agent_id="langchain-agent-01"
 )
 
@@ -160,20 +160,20 @@ agent = create_openai_functions_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    callbacks=[citadel_handler]  # <-- This enables governance
+    callbacks=[ledger_handler]  # <-- This enables governance
 )
 
-# Every tool call now passes through CITADEL
+# Every tool call now passes through Citadel
 result = agent_executor.invoke({"input": "Send a welcome email to new@user.com"})
 ```
 
-> ðŸ’¡ **What happens:** The `CITADELCallbackHandler` intercepts every tool call before it reaches the tool implementation. CITADEL evaluates the call against your policies, logs the decision, and either allows execution or raises an exception.
+> 💡 **What happens:** The `LedgerCallbackHandler` intercepts every tool call before it reaches the tool implementation. Citadel evaluates the call against your policies, logs the decision, and either allows execution or raises an exception.
 
 ---
 
 ## Step 7: View in dashboard
 
-Open the [CITADEL Dashboard](https://dashboard.CITADEL.dev) and navigate to **Activity Stream**.
+Open the [Citadel Dashboard](https://dashboard.citadel.dev) and navigate to **Activity Stream**.
 
 You'll see:
 - Every action your agent attempted
@@ -196,12 +196,12 @@ gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 ## Troubleshooting
 
 ### "API key invalid" error
-Verify your key starts with `ldk_test_` for sandbox or `ldk_live_` for production. Generate a new key at [dashboard.CITADEL.dev](https://dashboard.CITADEL.dev).
+Verify your key starts with `ldk_test_` for sandbox or `ldk_live_` for production. Generate a new key at [dashboard.citadel.dev](https://dashboard.citadel.dev).
 
 ### "Policy denied all actions"
 New projects start with a default deny-all policy. Create an allow policy:
 ```python
-CITADEL.policies.create({
+citadel.policies.create({
     "name": "allow-email",
     "trigger": {"action": "email.send"},
     "enforcement": {"type": "allow"}
@@ -218,9 +218,9 @@ Ensure your `agent_id` matches between code and dashboard filter. Agent IDs are 
 
 ## Next steps
 
-- [Core Concepts: Governance Tokens](../core-concepts/governance-tokens.md) â€” Deep dive into `gt_` tokens
-- [Core Concepts: Policies](../core-concepts/policies.md) â€” Write your first YAML policy
-- [Recipe: Email Sending Rate Limit](../recipes/email-sending-rate-limit.md) â€” Prevent email spam
-- [Integration: LangChain](../integrations/langchain.md) â€” Full LangChain integration guide
+- [Core Concepts: Governance Tokens](../core-concepts/governance-tokens.md) — Deep dive into `gt_` tokens
+- [Core Concepts: Policies](../core-concepts/policies.md) — Write your first YAML policy
+- [Recipe: Email Sending Rate Limit](../recipes/email-sending-rate-limit.md) — Prevent email spam
+- [Integration: LangChain](../integrations/langchain.md) — Full LangChain integration guide
 
-**Questions?** Join our [Discord community](https://discord.gg/CITADEL) or email support@CITADEL.dev.
+**Questions?** Join our [Discord community](https://discord.gg/citadel) or email support@citadel.dev.

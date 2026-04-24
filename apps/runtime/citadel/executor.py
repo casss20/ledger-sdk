@@ -1,7 +1,7 @@
 """
-Backward compatibility shim â€” re-exports from citadel.execution.executor.
+Backward compatibility shim — re-exports from citadel.execution.executor.
 
-Executor was moved to Citadel.execution.executor during the package refactor.
+Executor was moved to citadel.execution.executor during the package refactor.
 This shim ensures all existing imports continue to work.
 """
 
