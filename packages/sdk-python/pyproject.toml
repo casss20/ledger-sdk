@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "citadel-sdk"
+name = "citadel-governance"
 version = "0.1.0"
 description = "AI Governance: Constitution + Audit for Agent Builders"
 readme = "README.md"
