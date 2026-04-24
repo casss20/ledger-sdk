@@ -6,7 +6,7 @@ Target: 6 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from CITADEL.dashboard.audit_explorer import (
+from citadel.dashboard.audit_explorer import (
     AuditExplorerService, AuditFilters, AuditSearchResult,
 )
 

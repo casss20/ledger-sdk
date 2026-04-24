@@ -23,16 +23,16 @@ sys.path.insert(0, 'src')
 import asyncpg
 
 # Kernel components
-from CITADEL.actions import Action, KernelStatus, KernelResult
-from CITADEL.execution.kernel import Kernel
-from CITADEL.repository import Repository
-from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
-from CITADEL.precedence import Precedence
-from CITADEL.approval_service import ApprovalService
-from CITADEL.capability_service import CapabilityService
-from CITADEL.audit_service import AuditService
-from CITADEL.execution.executor import Executor as ActionExecutor
-from CITADEL.status import ActorType
+from citadel.actions import Action, KernelStatus, KernelResult
+from citadel.execution.kernel import Kernel
+from citadel.repository import Repository
+from citadel.policy_resolver import PolicyResolver, PolicyEvaluator
+from citadel.precedence import Precedence
+from citadel.approval_service import ApprovalService
+from citadel.capability_service import CapabilityService
+from citadel.audit_service import AuditService
+from citadel.execution.executor import Executor as ActionExecutor
+from citadel.status import ActorType
 
 
 @pytest.fixture

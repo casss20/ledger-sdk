@@ -2,7 +2,7 @@
 import asyncio
 import httpx
 import asyncpg
-from CITADEL.config import settings
+from citadel.config import settings
 
 async def simulate():
     print("--- Billing Quota Lockout Simulation ---")

@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from CITADEL.tokens import (
+from citadel.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,

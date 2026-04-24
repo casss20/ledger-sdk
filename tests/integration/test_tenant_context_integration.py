@@ -5,7 +5,7 @@ RLS filters data, response goes out.
 
 import pytest
 from fastapi.testclient import TestClient
-from CITADEL.api import app
+from citadel.api import app
 import uuid
 
 # We MUST override the db_pool dependency for TestClient if we don't have

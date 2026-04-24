@@ -9,8 +9,8 @@ import pytest
 import uuid
 from datetime import datetime
 
-from CITADEL.actions import Action
-from CITADEL.policy_resolver import PolicyEvaluator, PolicySnapshot
+from citadel.actions import Action
+from citadel.policy_resolver import PolicyEvaluator, PolicySnapshot
 
 
 def test_dict_condition_always_true():

@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from CITADEL.middleware.tenant_context import (
+from citadel.middleware.tenant_context import (
     tenant_scope,
     get_tenant_context,
     get_tenant_id,

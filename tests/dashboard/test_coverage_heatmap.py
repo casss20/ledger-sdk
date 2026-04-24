@@ -5,7 +5,7 @@ Target: 4 tests passing.
 """
 
 import pytest
-from CITADEL.dashboard.coverage_heatmap import HeatmapGenerator, CoverageHeatmap, HeatmapCell
+from citadel.dashboard.coverage_heatmap import HeatmapGenerator, CoverageHeatmap, HeatmapCell
 
 
 TENANT = "test_tenant"

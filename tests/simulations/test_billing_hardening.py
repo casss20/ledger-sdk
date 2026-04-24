@@ -2,10 +2,10 @@
 import pytest
 import json
 from datetime import datetime, timezone, timedelta
-from CITADEL.billing.models import BillingStatus
-from CITADEL.billing.entitlement_service import EntitlementService
-from CITADEL.billing.usage_service import UsageService
-from CITADEL.billing.repository import BillingRepository
+from citadel.billing.models import BillingStatus
+from citadel.billing.entitlement_service import EntitlementService
+from citadel.billing.usage_service import UsageService
+from citadel.billing.repository import BillingRepository
 
 class MockPool:
     async def fetchrow(self, query, *args):

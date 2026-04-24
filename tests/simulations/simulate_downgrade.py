@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import asyncpg
 import json
-from CITADEL.config import settings
+from citadel.config import settings
 
 async def simulate():
     print("--- Billing Downgrade Simulation ---")

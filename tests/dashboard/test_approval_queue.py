@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from CITADEL.dashboard.approval_queue import (
+from citadel.dashboard.approval_queue import (
     ApprovalQueueService, ApprovalStatus, ApprovalRequest,
 )
 import uuid

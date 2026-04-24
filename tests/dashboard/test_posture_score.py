@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from CITADEL.dashboard.posture_score import PostureScoreService, PostureScore
+from citadel.dashboard.posture_score import PostureScoreService, PostureScore
 
 
 TENANT = "test_tenant"

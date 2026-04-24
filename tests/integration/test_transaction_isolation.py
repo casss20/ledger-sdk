@@ -1,7 +1,7 @@
 import pytest
 import asyncpg
 import asyncio
-from CITADEL.middleware.tenant_context import (
+from citadel.middleware.tenant_context import (
     tenant_scope,
     TenantAwarePool,
     get_tenant_id,

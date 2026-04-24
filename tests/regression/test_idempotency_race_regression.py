@@ -13,15 +13,15 @@ import uuid
 from datetime import datetime
 
 import asyncpg
-from CITADEL.actions import Action, KernelStatus, KernelResult
-from CITADEL.execution.kernel import Kernel
-from CITADEL.repository import Repository
-from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
-from CITADEL.precedence import Precedence
-from CITADEL.approval_service import ApprovalService
-from CITADEL.capability_service import CapabilityService
-from CITADEL.audit_service import AuditService
-from CITADEL.execution.executor import Executor
+from citadel.actions import Action, KernelStatus, KernelResult
+from citadel.execution.kernel import Kernel
+from citadel.repository import Repository
+from citadel.policy_resolver import PolicyResolver, PolicyEvaluator
+from citadel.precedence import Precedence
+from citadel.approval_service import ApprovalService
+from citadel.capability_service import CapabilityService
+from citadel.audit_service import AuditService
+from citadel.execution.executor import Executor
 
 
 @pytest.fixture

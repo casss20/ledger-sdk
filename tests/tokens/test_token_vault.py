@@ -5,7 +5,7 @@ import uuid
 import asyncpg
 import pytest
 
-from CITADEL.tokens import (
+from citadel.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,

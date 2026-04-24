@@ -1,8 +1,8 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from CITADEL.middleware.fastapi_middleware import setup_tenant_middleware
-from CITADEL.middleware.tenant_context import get_tenant_id
+from citadel.middleware.fastapi_middleware import setup_tenant_middleware
+from citadel.middleware.tenant_context import get_tenant_id
 
 # Create a test app
 app = FastAPI()
