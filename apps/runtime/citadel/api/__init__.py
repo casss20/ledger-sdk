@@ -28,6 +28,52 @@ from citadel.utils.telemetry import setup_telemetry
 logger = logging.getLogger(__name__)
 
 
+async def _run_migrations(pool):
+    """Run SQL migrations on startup."""
+    import os
+    import glob
+    
+    migrations_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "db", "migrations")
+    if not os.path.exists(migrations_dir):
+        migrations_dir = "/app/db/migrations"
+    
+    if not os.path.exists(migrations_dir):
+        logger.warning(f"Migrations directory not found: {migrations_dir}")
+        return
+    
+    migration_files = sorted(glob.glob(os.path.join(migrations_dir, "*.sql")))
+    
+    async with pool.acquire() as conn:
+        # Create migrations tracking table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS _migrations (
+                filename TEXT PRIMARY KEY,
+                applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        
+        for filepath in migration_files:
+            filename = os.path.basename(filepath)
+            already_applied = await conn.fetchval(
+                "SELECT 1 FROM _migrations WHERE filename = $1", filename
+            )
+            if already_applied:
+                continue
+            
+            with open(filepath, "r") as f:
+                sql = f.read()
+            
+            try:
+                await conn.execute(sql)
+                await conn.execute(
+                    "INSERT INTO _migrations (filename) VALUES ($1)", filename
+                )
+                logger.info(f"Applied migration: {filename}")
+            except Exception as e:
+                logger.warning(f"Migration {filename} failed: {e}")
+                # Continue - some migrations may fail if objects already exist
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: startup and shutdown."""
@@ -45,6 +91,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         app.state.db_pool = _pool
         app.state.db_startup_error = None
+        
+        # Run migrations on startup
+        try:
+            await _run_migrations(_pool)
+        except Exception as mig_exc:
+            logger.warning(f"Migration runner warning: {mig_exc}")
         
         # Seed default admin if operators table exists and is empty
         try:
@@ -98,16 +150,6 @@ def create_app() -> FastAPI:
     from citadel.auth.api_key import APIKeyService
     
     # Middleware: logging, errors, CORS, request IDs
-    from fastapi.middleware.cors import CORSMiddleware
-    
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:3000"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
     setup_middleware(app)
     
     # Setup Auth services
