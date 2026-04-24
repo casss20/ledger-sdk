@@ -1,32 +1,38 @@
-app = "ledger-sdk"
-primary_region = "iad"
+# fly.toml app configuration file generated for ledger-sdk on 2026-04-24T08:23:13Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'ledger-sdk'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  LOG_LEVEL = "INFO"
-  METRICS_ENABLED = "true"
-  RATE_LIMIT_REQUESTS = "100"
-  RATE_LIMIT_WINDOW_SECONDS = "60"
-  REQUIRE_AUTH = "true"
+  LOG_LEVEL = 'INFO'
+  METRICS_ENABLED = 'true'
+  RATE_LIMIT_REQUESTS = '100'
+  RATE_LIMIT_WINDOW_SECONDS = '60'
+  REQUIRE_AUTH = 'true'
 
 [http_service]
-  internal_port = 8000
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
 
-[[http_service.checks]]
-  grace_period = "5s"
-  interval = "30s"
-  method = "GET"
-  timeout = "5s"
-  path = "/v1/health/live"
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '5s'
+    method = 'GET'
+    path = '/v1/health/live'
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
