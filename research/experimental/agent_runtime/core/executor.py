@@ -1,4 +1,4 @@
-"""EXECUTOR — Continuous Execution
+"""EXECUTOR â€” Continuous Execution
 
 Implementation of EXECUTOR.md.
 
@@ -15,7 +15,7 @@ OWNERSHIP:
 EXECUTOR must always defer to CONSTITUTION and GOVERNOR.
 If flow conflicts with safety or priorities, stop and escalate.
 
-SOURCE OF TRUTH: ledger/core/EXECUTOR.md
+SOURCE OF TRUTH: CITADEL/core/EXECUTOR.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -26,11 +26,11 @@ from enum import Enum
 
 T = TypeVar('T')
 
-from ledger.core.governor import Governor, EscalationLevel, ExecutionLocked, get_governor
-from ledger.governance.capability import CapabilityIssuer
-from ledger.governance.risk import classify as classify_risk, Approval
-from ledger.governance.audit import AuditService
-from ledger.governance.killswitch import KillSwitch
+from CITADEL.core.governor import Governor, EscalationLevel, ExecutionLocked, get_governor
+from citadel.governance.capability import CapabilityIssuer
+from citadel.governance.risk import classify as classify_risk, Approval
+from citadel.governance.audit import AuditService
+from citadel.governance.killswitch import KillSwitch
 
 
 class ExecutionMode(Enum):
@@ -239,7 +239,7 @@ class Executor:
         flag: Optional[str]
     ) -> T:
         """Execute function with full governance checks."""
-        from ledger.governor import ActionState
+        from citadel.governor import ActionState
         
         action_id = str(uuid.uuid4())
         risk, approval = classify_risk(action)
@@ -429,7 +429,7 @@ class Executor:
 # Convenience decorator
 def executor(gov: Governor = None, audit_dsn: str = None, agent: str = "default"):
     """Create an executor decorator."""
-    exec_instance = Executor(audit_dsn=audit_dsn or "postgresql://localhost/ledger", 
+    exec_instance = Executor(audit_dsn=audit_dsn or "postgresql://localhost/CITADEL", 
                             agent=agent, governor=gov)
     
     def decorator(fn):

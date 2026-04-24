@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from ledger.dashboard.approval_queue import (
+from CITADEL.dashboard.approval_queue import (
     ApprovalQueueService, ApprovalStatus, ApprovalRequest,
 )
 import uuid
@@ -27,7 +27,7 @@ class TestApprovalQueue:
     async def setup_test_data(self, db_pool):
         """Insert test approval requests."""
         import asyncpg
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Clear old test data
@@ -160,7 +160,7 @@ class TestApprovalQueue:
         assert expired_count >= 1
 
         # Verify app_4 is now expired
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
         row = await conn.fetchrow(
             "SELECT status FROM approvals WHERE approval_id = $1",

@@ -18,7 +18,7 @@ Prevent agents from leaking sensitive data to external systems or exfiltrating c
 
 ### Block large exports
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: block-large-exports
@@ -32,7 +32,7 @@ spec:
 
 ### Alert on external transfers
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: external-transfer-alert
@@ -53,13 +53,13 @@ spec:
 ```python
 # Attempt export
 try:
-    action = ledger.govern(
+    action = citadel.govern(
         agent_id="analytics-agent",
         action="data.export",
         params={"table": "customers", "format": "csv"}
     )
     result = action.execute()
-except ledger_sdk.PolicyDeniedError:
+except CITADEL_sdk.PolicyDeniedError:
     print("Export blocked - exceeds size limit")
     # Escalate to security team
 ```

@@ -12,10 +12,10 @@
 
 ## Policy Structure
 
-Every Ledger policy is a YAML document with four sections:
+Every CITADEL policy is a YAML document with four sections:
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: refund-approval-over-1000
@@ -143,7 +143,7 @@ metadata:
 Test before deploying:
 
 ```python
-result = ledger.policies.test(
+result = CITADEL.policies.test(
     policy=policy_yaml,
     sample_actions=[
         {"action": "refund.create", "params": {"amount": 500}},
@@ -165,13 +165,13 @@ refund-approval-over-1000@v2  # Updated threshold
 
 Roll back:
 ```python
-ledger.policies.rollback("refund-approval-over-1000", to_version="v1")
+CITADEL.policies.rollback("refund-approval-over-1000", to_version="v1")
 ```
 
 ---
 
 ## Next steps
 
-- [Kill Switch](./kill-switch.md) — Emergency override for policies
-- [Trust Scoring](./trust-scoring.md) — Dynamic policy based on agent behavior
+- [Kill Switch](./kill-switch.md) â€” Emergency override for policies
+- [Trust Scoring](./trust-scoring.md) â€” Dynamic policy based on agent behavior
 - [Recipe: Refund Approval Over $1,000](../recipes/refund-approval-over-1000.md)

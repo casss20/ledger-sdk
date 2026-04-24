@@ -1,8 +1,8 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ledger.middleware.fastapi_middleware import setup_tenant_middleware
-from ledger.middleware.tenant_context import get_tenant_id
+from CITADEL.middleware.fastapi_middleware import setup_tenant_middleware
+from CITADEL.middleware.tenant_context import get_tenant_id
 
 # Create a test app
 app = FastAPI()

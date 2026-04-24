@@ -1,11 +1,11 @@
 import asyncio
 import os
 import asyncpg
-from ledger.auth.operator import OperatorService
+from CITADEL.auth.operator import OperatorService
 
 async def seed():
     # Load env variables
-    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ledger")
+    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/CITADEL")
     
     print(f"Connecting to {db_url}...")
     pool = await asyncpg.create_pool(db_url)
@@ -32,7 +32,7 @@ async def seed():
         else:
             op_id = await service.create_operator(
                 username="admin",
-                email="admin@ledger.internal",
+                email="admin@CITADEL.internal",
                 password="admin", # In production, use a strong password
                 tenant_id="acme",
                 role="admin"

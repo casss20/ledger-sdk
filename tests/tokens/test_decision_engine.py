@@ -1,8 +1,8 @@
-"""Tests for decision engine — produces GovernanceDecisions."""
+"""Tests for decision engine â€” produces GovernanceDecisions."""
 
 import pytest
 
-from ledger.tokens import (
+from CITADEL.tokens import (
     DecisionEngine,
     DecisionType,
     KillSwitch,

@@ -1,8 +1,8 @@
-# Ledger SDK
+# Citadel SDK
 
 **Commercial-grade AI Governance: Constitution + Audit for Agent Builders.**
 
-Ledger is a hardened governance engine that intercepts agent actions, applies multi-tenant policies, requires human-in-the-loop approvals for risky tasks, and logs everything to a tamper-proof PostgreSQL audit chain.
+Citadel is a hardened governance engine that intercepts agent actions, applies multi-tenant policies, requires human-in-the-loop approvals for risky tasks, and logs everything to a tamper-proof PostgreSQL audit chain.
 
 ## Core Capabilities
 
@@ -28,15 +28,15 @@ Ledger is a hardened governance engine that intercepts agent actions, applies mu
 
 ## Technical Design Pillars
 
-The Ledger is built on three core architectural philosophies:
+The Citadel is built on three core architectural philosophies:
 
 1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
 3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, and Global Kill Switches for emergency intervention.
 
-## 📁 Repository Structure
+## ðŸ“ Repository Structure
 
-Ledger is organized as a **mixed-license monorepo** to separate the open ecosystem from the core runtime:
+Citadel is organized as a **mixed-license monorepo** to separate the open ecosystem from the core runtime:
 
 - **`apps/runtime/`**: The core governance engine and control plane (**BSL 1.1**).
 - **`apps/dashboard/`**: The React-based management interface.
@@ -51,12 +51,12 @@ Ledger is organized as a **mixed-license monorepo** to separate the open ecosyst
 
 ### Installation
 ```bash
-pip install ledger-sdk
+pip install citadel-sdk
 ```
 
 ### Local Development Setup
 
-To run the Ledger SDK locally (or run the test suite), you must have a PostgreSQL database running with the correct schema.
+To run the Citadel SDK locally (or run the test suite), you must have a PostgreSQL database running with the correct schema.
 
 **1. Start the Database**
 We provide a `docker-compose.yml` to instantly spin up the required PostgreSQL instance and apply the schema:
@@ -73,15 +73,15 @@ pip install -e .
 **3. Run the API Server**
 Start the FastAPI server:
 ```bash
-uvicorn ledger.api:app --reload
+uvicorn citadel.api:app --reload
 ```
 
 ### Quick Usage
 ```python
-import ledger
+import CITADEL
 
 # Configure the universal client
-client = ledger.LedgerClient(base_url="http://localhost:8000", api_key="your-key")
+client = CITADEL.CITADELClient(base_url="http://localhost:8000", api_key="your-key")
 
 # Execute an action under governance
 result = await client.execute(
@@ -99,20 +99,20 @@ elif result.status == "pending_approval":
 
 ## Hardening & Verification
 
-Ledger is tested against adversarial scenarios:
+Citadel is tested against adversarial scenarios:
 - **Simulation Scripts**: Run `python tests/simulations/simulate_lockout.py` to verify quota enforcement.
 - **Audit Verification**: Call `await client.verify_audit()` to check the cryptographic integrity of the entire governance chain.
 - **Race Condition Tests**: Extensive regression suite for concurrent action handling.
 
 ## Documentation
 
-- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) — Module dependency graph
-- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
-- [API Reference](docs/API.md) — HTTP endpoints and schemas
+- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) â€” Module dependency graph
+- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) â€” Invariants and edge cases
+- [API Reference](docs/API.md) â€” HTTP endpoints and schemas
 
 ## Licensing
 
-Ledger uses a mixed-license model to protect its core while enabling broad adoption:
+Citadel uses a mixed-license model to protect its core while enabling broad adoption:
 
 - **Apache 2.0**: SDKs, public schemas, and integration-facing packages in `packages/`.
 - **BSL 1.1 (Source-Available)**: The core self-hostable runtime in `apps/runtime/`.

@@ -5,7 +5,7 @@ Target: 4 tests passing.
 """
 
 import pytest
-from ledger.dashboard.coverage_heatmap import HeatmapGenerator, CoverageHeatmap, HeatmapCell
+from CITADEL.dashboard.coverage_heatmap import HeatmapGenerator, CoverageHeatmap, HeatmapCell
 
 
 TENANT = "test_tenant"

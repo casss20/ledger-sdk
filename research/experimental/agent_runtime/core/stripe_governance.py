@@ -1,5 +1,5 @@
 # Stripe Charge Governance Rule
-# Auto-discovered by ledger.catalog
+# Auto-discovered by CITADEL.catalog
 
 GOVERNANCE = {
     "action": "stripe_charge",

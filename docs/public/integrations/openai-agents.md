@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Add Ledger guardrails to OpenAI Agents SDK
+- Add CITADEL guardrails to OpenAI Agents SDK
 - Govern tool execution in agent loops
 - Configure per-agent policies
 - Audit agent reasoning and actions
@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-npm install @ledger/sdk @ledger/sdk-openai
+npm install @citadel/sdk @citadel/sdk-openai
 ```
 
 ---
@@ -21,11 +21,11 @@ npm install @ledger/sdk @ledger/sdk-openai
 
 ```typescript
 import { Agent } from 'openai-agents';
-import { LedgerGuardrail } from '@ledger/sdk-openai';
+import { CITADELGuardrail } from '@citadel/sdk-openai';
 
-const ledger = new LedgerClient({ apiKey: 'ldk_test_...' });
+const CITADEL = new CITADELClient({ apiKey: 'ldk_test_...' });
 
-const guardrail = new LedgerGuardrail({ client: ledger, agentId: 'openai-agent-01' });
+const guardrail = new CITADELGuardrail({ client: CITADEL, agentId: 'openai-agent-01' });
 
 const agent = new Agent({
   name: 'EmailAgent',
@@ -41,7 +41,7 @@ const result = await agent.run('Send welcome email to new@user.com');
 
 ## Guardrail Behavior
 
-The LedgerGuardrail intercepts at three points:
+The CITADELGuardrail intercepts at three points:
 
 1. Before tool execution: Evaluates tool call against policies
 2. After tool execution: Validates output against post-conditions
@@ -60,7 +60,7 @@ const supportAgent = new Agent({ name: 'Support', guardrails: [guardrail] });
 await handoff({
   from: salesAgent,
   to: supportAgent,
-  authToken: ledger.agents.authenticate('sales', 'support')
+  authToken: CITADEL.agents.authenticate('sales', 'support')
 });
 ```
 

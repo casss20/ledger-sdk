@@ -13,15 +13,15 @@ import uuid
 from datetime import datetime
 
 import asyncpg
-from ledger.actions import Action, KernelStatus
-from ledger.execution.kernel import Kernel
-from ledger.repository import Repository
-from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
-from ledger.precedence import Precedence
-from ledger.approval_service import ApprovalService
-from ledger.capability_service import CapabilityService
-from ledger.audit_service import AuditService
-from ledger.execution.executor import Executor
+from CITADEL.actions import Action, KernelStatus
+from CITADEL.execution.kernel import Kernel
+from CITADEL.repository import Repository
+from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
+from CITADEL.precedence import Precedence
+from CITADEL.approval_service import ApprovalService
+from CITADEL.capability_service import CapabilityService
+from CITADEL.audit_service import AuditService
+from CITADEL.execution.executor import Executor
 
 
 @pytest.fixture
@@ -193,7 +193,7 @@ async def test_consumption_before_execution_semantic(kernel, db, tenant_id):
 
 
 async def test_racing_capability_stress(kernel, db, tenant_id):
-    """Stress: 100 iterations × 10 concurrent workers with max_uses=5. Zero double-consumption."""
+    """Stress: 100 iterations Ã— 10 concurrent workers with max_uses=5. Zero double-consumption."""
     kernel, repo = kernel
 
     actor_id = f"agent_{uuid.uuid4().hex[:8]}"

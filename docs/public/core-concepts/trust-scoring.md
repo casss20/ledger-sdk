@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- How Ledger calculates real-time trust scores
+- How CITADEL calculates real-time trust scores
 - Factors that increase and decrease trust
 - Using trust scores to reduce approval friction
 - Trust-based policy conditions
@@ -12,7 +12,7 @@
 
 ## Overview
 
-Every agent in Ledger has a trust score from 0 to 1000. This score is a real-time measure of the agent's reliability, based on its action history, compliance rate, and anomaly detection.
+Every agent in CITADEL has a trust score from 0 to 1000. This score is a real-time measure of the agent's reliability, based on its action history, compliance rate, and anomaly detection.
 
 Think of it like a credit score for agents:
 - **800-1000**: Highly trusted, minimal oversight needed
@@ -38,7 +38,7 @@ Think of it like a credit score for agents:
 
 ```python
 # Get an agent's current trust score
-score = ledger.trust.get_score(agent_id="email-agent-01")
+score = CITADEL.trust.get_score(agent_id="email-agent-01")
 print(f"Trust score: {score.value} / 1000")
 print(f"Tier: {score.tier}")  # highly_trusted, standard, elevated, untrusted
 print(f"Factors: {score.factors}")
@@ -116,7 +116,7 @@ Trust scores decay if agents become inactive:
 Prevent decay with heartbeat:
 ```python
 # Send periodic heartbeat
-ledger.agents.heartbeat(agent_id="email-agent-01")
+CITADEL.agents.heartbeat(agent_id="email-agent-01")
 ```
 
 ---
@@ -141,6 +141,6 @@ trust_alerts:
 
 ## Next steps
 
-- [Policies](./policies.md) — Write trust-based conditional policies
+- [Policies](./policies.md) â€” Write trust-based conditional policies
 - [Recipe: Agent Sandbox Isolation](../recipes/agent-sandbox-isolation.md)
 - [Security Best Practices](../guides/security-best-practices.md)

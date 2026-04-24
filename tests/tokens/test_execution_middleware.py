@@ -1,8 +1,8 @@
-"""Tests for execution middleware — Layer 2 enforcement."""
+"""Tests for execution middleware â€” Layer 2 enforcement."""
 
 import pytest
 
-from ledger.tokens import (
+from CITADEL.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,

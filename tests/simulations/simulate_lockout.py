@@ -2,7 +2,7 @@
 import asyncio
 import httpx
 import asyncpg
-from ledger.config import settings
+from CITADEL.config import settings
 
 async def simulate():
     print("--- Billing Quota Lockout Simulation ---")

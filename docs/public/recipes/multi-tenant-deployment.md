@@ -18,13 +18,13 @@ You run a SaaS platform where each customer has their own agents. Data and gover
 
 ```python
 # Create tenant
-tenant = ledger.tenants.create(
+tenant = CITADEL.tenants.create(
     name="acme-corp",
     plan="enterprise"
 )
 
 # Set tenant context for all operations
-ledger.context.set_tenant(tenant.id)
+CITADEL.context.set_tenant(tenant.id)
 ```
 
 ---
@@ -34,7 +34,7 @@ ledger.context.set_tenant(tenant.id)
 Policies automatically enforce tenant isolation:
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: tenant-isolation
@@ -54,13 +54,13 @@ spec:
 
 ```python
 # Query only acme-corp's audit trail
-records = ledger.audit.query(
+records = CITADEL.audit.query(
     tenant_id="acme-corp",
     start="2026-04-01"
 )
 
 # Generate tenant-specific compliance report
-report = ledger.compliance.export(
+report = CITADEL.compliance.export(
     tenant_id="acme-corp",
     framework="soc2",
     period="2026-Q1"

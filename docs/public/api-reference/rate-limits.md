@@ -23,11 +23,11 @@ X-RateLimit-Reset: 1713862800
 ```python
 try:
     result = action.execute()
-except ledger_sdk.RateLimitError as e:
+except citadel_sdk.RateLimitError as e:
     time.sleep(e.retry_after)
     result = action.execute()  # Retry
 ```
 
 ## Increasing Limits
 
-Upgrade at [dashboard.ledger.dev](https://dashboard.ledger.dev) or contact sales@ledger.dev for Enterprise.
+Upgrade at [dashboard.CITADEL.dev](https://dashboard.CITADEL.dev) or contact sales@CITADEL.dev for Enterprise.

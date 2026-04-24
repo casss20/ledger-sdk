@@ -1,4 +1,4 @@
-"""AFTER_ACTION — Learning Loop
+"""AFTER_ACTION â€” Learning Loop
 
 Implementation of AFTER_ACTION.md.
 
@@ -27,11 +27,11 @@ Brief summary:
 - Suggested process improvements
 
 INTEGRATION:
-Relevant learnings → MEMORY.md
-Significant events → AUDIT.md
-Process changes → ADAPTATION.md
+Relevant learnings â†’ MEMORY.md
+Significant events â†’ AUDIT.md
+Process changes â†’ ADAPTATION.md
 
-SOURCE OF TRUTH: ledger/governance/AFTER_ACTION.md
+SOURCE OF TRUTH: CITADEL/governance/AFTER_ACTION.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -460,9 +460,9 @@ class AfterAction:
         """
         Integrate findings into other systems.
 
-        Relevant learnings → MEMORY.md
-        Significant events → AUDIT.md
-        Process changes → ADAPTATION.md
+        Relevant learnings â†’ MEMORY.md
+        Significant events â†’ AUDIT.md
+        Process changes â†’ ADAPTATION.md
         """
         # MEMORY.md integration
         if report.memory_update_suggested and self._memory_hook:

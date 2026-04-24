@@ -1,5 +1,5 @@
 # Email Governance Rule
-# Auto-discovered by ledger.catalog
+# Auto-discovered by CITADEL.catalog
 
 GOVERNANCE = {
     "action": "send_email",

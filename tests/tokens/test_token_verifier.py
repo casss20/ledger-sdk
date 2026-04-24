@@ -1,8 +1,8 @@
-"""Tests for token verifier — resolves decisions, checks constraints."""
+"""Tests for token verifier â€” resolves decisions, checks constraints."""
 
 import pytest
 
-from ledger.tokens import (
+from CITADEL.tokens import (
     CapabilityToken,
     DecisionScope,
     DecisionType,

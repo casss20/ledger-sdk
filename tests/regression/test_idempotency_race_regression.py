@@ -13,15 +13,15 @@ import uuid
 from datetime import datetime
 
 import asyncpg
-from ledger.actions import Action, KernelStatus, KernelResult
-from ledger.execution.kernel import Kernel
-from ledger.repository import Repository
-from ledger.policy_resolver import PolicyResolver, PolicyEvaluator
-from ledger.precedence import Precedence
-from ledger.approval_service import ApprovalService
-from ledger.capability_service import CapabilityService
-from ledger.audit_service import AuditService
-from ledger.execution.executor import Executor
+from CITADEL.actions import Action, KernelStatus, KernelResult
+from CITADEL.execution.kernel import Kernel
+from CITADEL.repository import Repository
+from CITADEL.policy_resolver import PolicyResolver, PolicyEvaluator
+from CITADEL.precedence import Precedence
+from CITADEL.approval_service import ApprovalService
+from CITADEL.capability_service import CapabilityService
+from CITADEL.audit_service import AuditService
+from CITADEL.execution.executor import Executor
 
 
 @pytest.fixture

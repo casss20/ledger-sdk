@@ -1,10 +1,10 @@
-# Ledger SDK Compliance Mapping
+# Citadel SDK Compliance Mapping
 
-This document maps Ledger SDK's technical features to common regulatory controls and security frameworks.
+This document maps Citadel SDK's technical features to common regulatory controls and security frameworks.
 
 ## 1. SOC 2 Type II (Common Criteria)
 
-| Control Category | Ledger Feature | Implementation Detail |
+| Control Category | CITADEL Feature | Implementation Detail |
 | :--- | :--- | :--- |
 | **Access Control** (CC6.1) | API Key & JWT Auth | Secure SHA-256 key hashing and scoped permissions. |
 | **Data Isolation** (CC6.1) | PostgreSQL RLS | Strict tenant isolation enforced at the database level. |
@@ -14,7 +14,7 @@ This document maps Ledger SDK's technical features to common regulatory controls
 
 ## 2. GDPR (EU General Data Protection Regulation)
 
-| Article | Requirement | Ledger Solution |
+| Article | Requirement | CITADEL Solution |
 | :--- | :--- | :--- |
 | **Article 25** | Data Protection by Design | RLS ensures developers cannot accidentally access other tenant data. |
 | **Article 30** | Records of Processing | Automatic logging of every agent action and decision. |
@@ -22,7 +22,7 @@ This document maps Ledger SDK's technical features to common regulatory controls
 
 ## 3. EU AI Act
 
-| Section | Requirement | Ledger Solution |
+| Section | Requirement | CITADEL Solution |
 | :--- | :--- | :--- |
 | **Article 12** | Record-Keeping | Full audit trail of AI system decisions and human overrides. |
 | **Article 14** | Human Oversight | Integrated Approval Queue for high-risk autonomous actions. |
@@ -30,7 +30,7 @@ This document maps Ledger SDK's technical features to common regulatory controls
 
 ## 4. ISO/IEC 27001:2022
 
-| Annex A Control | Ledger Feature | Implementation Detail |
+| Annex A Control | CITADEL Feature | Implementation Detail |
 | :--- | :--- | :--- |
 | **A.8.15** | Logging | Comprehensive event logging via the Governance Audit Trail. |
 | **A.8.3** | Identity Management | Unified commercial identity linking billing, auth, and execution. |

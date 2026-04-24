@@ -18,7 +18,7 @@ Test third-party or experimental agents without risking production systems.
 
 ```python
 # Create sandboxed agent context
-sandbox = ledger.agents.create_sandbox(
+sandbox = CITADEL.agents.create_sandbox(
     agent_id="experimental-agent",
     restrictions={
         "network": "none",
@@ -30,7 +30,7 @@ sandbox = ledger.agents.create_sandbox(
 
 # Run agent in sandbox
 with sandbox:
-    action = ledger.govern(
+    action = citadel.govern(
         agent_id="experimental-agent",
         action="code.execute",
         params={"code": "print('hello')"}
@@ -45,7 +45,7 @@ with sandbox:
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: sandbox-policy

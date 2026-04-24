@@ -20,15 +20,15 @@ When Agent A calls Agent B, both must prove their identity to prevent spoofing a
 
 ```python
 # Register both agents
-ledger.agents.register(agent_id="agent-a", role="processor")
-ledger.agents.register(agent_id="agent-b", role="validator")
+CITADEL.agents.register(agent_id="agent-a", role="processor")
+CITADEL.agents.register(agent_id="agent-b", role="validator")
 ```
 
 ### Issue auth token
 
 ```python
 # Agent A requests permission to call Agent B
-auth_token = ledger.agents.authenticate(
+auth_token = CITADEL.agents.authenticate(
     from_agent="agent-a",
     to_agent="agent-b",
     permissions=["read", "write"],
@@ -40,7 +40,7 @@ auth_token = ledger.agents.authenticate(
 
 ```python
 # Agent B verifies the token
-claims = ledger.agents.verify_auth(
+claims = CITADEL.agents.verify_auth(
     agent_id="agent-b",
     token=auth_token
 )
@@ -54,7 +54,7 @@ print(claims.expiry)  # ISO timestamp
 
 ```python
 # Agent B responds with its own token
-response_token = ledger.agents.authenticate(
+response_token = CITADEL.agents.authenticate(
     from_agent="agent-b",
     to_agent="agent-a",
     permissions=["respond"],

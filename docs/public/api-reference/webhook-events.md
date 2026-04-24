@@ -17,8 +17,8 @@
 
 Configure endpoint:
 ```python
-ledger.webhooks.create(
-    url="https://your-app.com/webhooks/ledger",
+CITADEL.webhooks.create(
+    url="https://your-app.com/webhooks/CITADEL",
     events=["governance.action.denied", "governance.approval.required"],
     secret="whsec_..."
 )
@@ -26,7 +26,7 @@ ledger.webhooks.create(
 
 Verify signature:
 ```python
-ledger.webhooks.verify(payload, signature, secret="whsec_...")
+CITADEL.webhooks.verify(payload, signature, secret="whsec_...")
 ```
 
 ## Retry Policy

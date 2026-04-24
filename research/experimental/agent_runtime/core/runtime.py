@@ -1,15 +1,15 @@
-"""RUNTIME — Operating Cycle
+"""RUNTIME â€” Operating Cycle
 
 Implementation of RUNTIME.md.
 
-Defines when Ledger's layers activate and how work moves through the system.
+Defines when CITADEL's layers activate and how work moves through the system.
 
 OWNERSHIP:
 - OWNS: layer activation, execution paths, Fast Path rules
 - DOES NOT OWN: safety rules, execution behavior, escalation, relationship
 
 PURPOSE:
-Ledger operates through selective activation. Some layers are always active,
+CITADEL operates through selective activation. Some layers are always active,
 some are conditional, some are periodic, some are event-driven.
 
 This module prevents unnecessary overhead while preserving safety and alignment.
@@ -19,7 +19,7 @@ Apply the minimum system necessary to produce a correct, aligned result.
 Do not run heavy layers by default. Escalate only when stakes, complexity,
 or drift justify it.
 
-SOURCE OF TRUTH: ledger/core/RUNTIME.md
+SOURCE OF TRUTH: CITADEL/core/RUNTIME.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -299,12 +299,12 @@ class Runtime:
         active = {Layer.CONSTITUTION, Layer.IDENTITY}
         
         if path == PathType.FAST:
-            # FAST: CONSTITUTION → IDENTITY → EXECUTOR → output
+            # FAST: CONSTITUTION â†’ IDENTITY â†’ EXECUTOR â†’ output
             active.add(Layer.EXECUTOR)
             return active
         
         if path == PathType.IDLE:
-            # IDLE: CONSTITUTION → IDENTITY → SOUL → output
+            # IDLE: CONSTITUTION â†’ IDENTITY â†’ SOUL â†’ output
             # (SOUL handled by IDENTITY layer)
             return active
         

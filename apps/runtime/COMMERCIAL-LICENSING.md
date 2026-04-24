@@ -1,13 +1,13 @@
 # Commercial Licensing
 
-The Ledger Runtime (`apps/runtime`) is licensed under the Business Source License 1.1 (BSL). While this allows for free internal use and self-hosting, it **prohibits** using the code to offer a competing managed service.
+The CITADEL Runtime (`apps/runtime`) is licensed under the Business Source License 1.1 (BSL). While this allows for free internal use and self-hosting, it **prohibits** using the code to offer a competing managed service.
 
 ## When do you need a Commercial License?
 
-You require a separate commercial license from the Ledger authors if you intend to:
-- Offer Ledger as a hosted, managed service (Governance-as-a-Service).
-- Embed Ledger into a commercial product where the governance runtime is a primary value proposition sold to third parties.
-- Modify the code and redistribute it under terms that compete with the official Ledger Cloud.
+You require a separate commercial license from the CITADEL authors if you intend to:
+- Offer CITADEL as a hosted, managed service (Governance-as-a-Service).
+- Embed CITADEL into a commercial product where the governance runtime is a primary value proposition sold to third parties.
+- Modify the code and redistribute it under terms that compete with the official CITADEL Cloud.
 
 ## Enterprise Features
 
@@ -20,4 +20,4 @@ A Commercial License also grants access to premium modules in the `enterprise/` 
 ## Contact Us
 
 To discuss commercial licensing or enterprise partnerships, please reach out to:
-**licensing@ledger.example**
+**licensing@CITADEL.example**

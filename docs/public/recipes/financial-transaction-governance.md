@@ -17,7 +17,7 @@ Your billing agent processes payments. Small payments auto-approve. Large paymen
 ## Policies
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: payment-governance
@@ -45,7 +45,7 @@ spec:
 ## Implementation
 
 ```python
-action = ledger.govern(
+action = citadel.govern(
     agent_id="billing-agent",
     action="payment.charge",
     params={"amount": 5000, "customer": "CUST-123"}
@@ -53,7 +53,7 @@ action = ledger.govern(
 
 try:
     result = action.execute()
-except ledger_sdk.ApprovalRequiredError as e:
+except citadel_sdk.ApprovalRequiredError as e:
     print(f"Needs CFO + CEO approval: {e.approval_url}")
 ```
 

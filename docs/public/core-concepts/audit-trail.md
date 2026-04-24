@@ -6,17 +6,17 @@
 - The dual-write architecture (immutable archive + searchable index)
 - Querying and exporting audit records
 - Compliance proof generation for regulators
-- Independent verification without trusting Ledger
+- Independent verification without trusting CITADEL
 
 ---
 
 ## Overview
 
-Ledger's audit trail is an append-only, cryptographically signed log of every governance decision. It's designed to be:
+CITADEL's audit trail is an append-only, cryptographically signed log of every governance decision. It's designed to be:
 
 - **Tamper-evident**: Any modification breaks the hash chain
 - **Immutable**: Records cannot be deleted or altered
-- **Verifiable**: Third parties can verify integrity without trusting Ledger
+- **Verifiable**: Third parties can verify integrity without trusting CITADEL
 - **Correlatable**: W3C trace context links related actions across agents
 
 ---
@@ -36,7 +36,7 @@ Record N:
   - prev_hash: sha256(Record N-1)
   - content_hash: sha256(this record's content)
   - chain_hash: sha256(prev_hash + content_hash)
-  - signature: ECDSA(chain_hash, Ledger private key)
+  - signature: ECDSA(chain_hash, CITADEL private key)
 ```
 
 The chain ensures that modifying any historical record invalidates all subsequent records.
@@ -63,11 +63,11 @@ Every audit record is written to two destinations simultaneously:
 
 ```
 Governed Action
-    ↓
+    â†“
 Record Created
-    ↓
-    ├─→ S3 Object Lock (Immutable Archive)
-    └─→ Elasticsearch (Searchable Index)
+    â†“
+    â”œâ”€â†’ S3 Object Lock (Immutable Archive)
+    â””â”€â†’ Elasticsearch (Searchable Index)
 ```
 
 ---
@@ -76,7 +76,7 @@ Record Created
 
 ### Basic query
 ```python
-records = ledger.audit.query(
+records = CITADEL.audit.query(
     agent_id="email-agent-01",
     start="2026-04-01",
     end="2026-04-30"
@@ -85,7 +85,7 @@ records = ledger.audit.query(
 
 ### Advanced filtering
 ```python
-records = ledger.audit.query(
+records = CITADEL.audit.query(
     decisions=["denied", "approval_required"],
     policies=["refund-approval-over-1000"],
     sort_by="timestamp",
@@ -96,7 +96,7 @@ records = ledger.audit.query(
 
 ### Full-text search
 ```python
-records = ledger.audit.search(
+records = CITADEL.audit.search(
     query="refund AND amount > 500",
     fields=["action", "params", "outcome"]
 )
@@ -109,7 +109,7 @@ records = ledger.audit.search(
 Generate a regulator-ready compliance package:
 
 ```python
-package = ledger.audit.export_compliance_proof(
+package = CITADEL.audit.export_compliance_proof(
     start="2026-01-01",
     end="2026-03-31",
     format="pdf",  # or "json", "csv"
@@ -131,11 +131,11 @@ The package includes:
 
 ## Independent Verification
 
-Verify the hash chain without trusting Ledger:
+Verify the hash chain without trusting CITADEL:
 
 ```python
 # Fetch all records in a time range
-records = ledger.audit.query(start="2026-04-01", end="2026-04-30")
+records = CITADEL.audit.query(start="2026-04-01", end="2026-04-30")
 
 # Verify chain integrity locally
 previous_hash = None
@@ -154,7 +154,7 @@ for record in records:
 print("All records verified. Chain is intact.")
 ```
 
-> 💡 **Why this matters:** Regulators may ask you to prove your audit trail hasn't been tampered with. This verification proves it mathematically — not by trusting Ledger's word.
+> ðŸ’¡ **Why this matters:** Regulators may ask you to prove your audit trail hasn't been tampered with. This verification proves it mathematically â€” not by trusting CITADEL's word.
 
 ---
 
@@ -164,14 +164,14 @@ Distributed agents share trace context:
 
 ```python
 # Agent A initiates action
-action_a = ledger.govern(agent_id="agent-a", action="order.create")
+action_a = citadel.govern(agent_id="agent-a", action="order.create")
 result_a = action_a.execute()
 
 # Pass trace context to Agent B
 trace_context = result_a.trace_context
 
 # Agent B continues the trace
-action_b = ledger.govern(
+action_b = citadel.govern(
     agent_id="agent-b",
     action="inventory.reserve",
     trace_context=trace_context  # Links to parent action
@@ -181,10 +181,10 @@ action_b = ledger.govern(
 View correlated traces in dashboard:
 ```
 Trace: trace-123e4567-e89b-12d3-a456-426614174000
-├─ Agent A: order.create [allowed]
-├─ Agent B: inventory.reserve [allowed]
-├─ Agent C: payment.charge [require_approval]
-└─ Human: approved payment.charge
+â”œâ”€ Agent A: order.create [allowed]
+â”œâ”€ Agent B: inventory.reserve [allowed]
+â”œâ”€ Agent C: payment.charge [require_approval]
+â””â”€ Human: approved payment.charge
 ```
 
 ---
@@ -199,7 +199,7 @@ Trace: trace-123e4567-e89b-12d3-a456-426614174000
 
 Configure in settings:
 ```python
-ledger.config.set_retention({
+CITADEL.config.set_retention({
     "hot_days": 90,
     "warm_years": 7,
     "cold_indefinite": True
@@ -210,6 +210,6 @@ ledger.config.set_retention({
 
 ## Next steps
 
-- [Governance Tokens](./governance-tokens.md) — Understand `gt_` tokens
+- [Governance Tokens](./governance-tokens.md) â€” Understand `gt_` tokens
 - [Recipe: Audit Export for Regulator](../recipes/audit-export-for-regulator.md)
 - [Recipe: Compliance Proof Generation](../recipes/compliance-proof-generation.md)

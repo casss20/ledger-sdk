@@ -1,5 +1,5 @@
 """
-Durable Execution — Ledger SDK
+Durable Execution â€” Citadel SDK
 
 Survives server restarts using Redis.
 Inspired by Weft's durable execution via Restate.
@@ -21,7 +21,7 @@ try:
 except ImportError:
     redis = None
     HAS_REDIS = False
-    logger.warning("[Durable] redis not installed. Durable execution disabled. Install with: pip install ledger-sdk[durable]")
+    logger.warning("[Durable] redis not installed. Durable execution disabled. Install with: pip install citadel-sdk[durable]")
 
 
 @dataclass
@@ -29,7 +29,7 @@ class DurablePromise:
     """
     A promise that survives server restarts.
     
-    Like Weft's durable execution — a human approval that takes 3 days
+    Like Weft's durable execution â€” a human approval that takes 3 days
     is the same code as one that takes 3 seconds.
     
     Reports DEFERRED state to GOVERNOR for visibility.
@@ -52,7 +52,7 @@ class DurablePromise:
     @classmethod
     def get_redis(cls) -> Optional[Any]:
         if not HAS_REDIS:
-            raise ImportError("redis not installed. Install with: pip install ledger-sdk[durable]")
+            raise ImportError("redis not installed. Install with: pip install citadel-sdk[durable]")
         if cls._redis is None:
             cls._redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         return cls._redis
@@ -64,7 +64,7 @@ class DurablePromise:
             return
         r = self.get_redis()
         data = json.dumps(asdict(self), default=str)
-        await r.setex(f"ledger:promise:{self.promise_id}", ttl_seconds, data)
+        await r.setex(f"CITADEL:promise:{self.promise_id}", ttl_seconds, data)
         logger.debug(f"[Durable] Persisted {self.promise_id}")
     
     async def wait(self, timeout_sec: float = 300) -> bool:
@@ -83,7 +83,7 @@ class DurablePromise:
         # Report DEFERRED to GOVERNOR
         if self.action_id:
             try:
-                from ledger.governor import get_governor, ActionState
+                from citadel.governor import get_governor, ActionState
                 gov = get_governor()
                 await gov.defer(
                     self.action_id,
@@ -101,7 +101,7 @@ class DurablePromise:
                 # Report TIMEOUT to GOVERNOR
                 if self.action_id:
                     try:
-                        from ledger.governor import get_governor, ActionState
+                        from citadel.governor import get_governor, ActionState
                         gov = get_governor()
                         await gov.transition(self.action_id, ActionState.TIMEOUT)
                     except Exception:
@@ -109,18 +109,18 @@ class DurablePromise:
                 return False
             
             # Check Redis for state
-            data = await r.get(f"ledger:promise:{self.promise_id}")
+            data = await r.get(f"CITADEL:promise:{self.promise_id}")
             if data:
                 state = json.loads(data)
                 if state.get("state") == "fulfilled":
                     self.result = state.get("result")
                     self.approved_by = state.get("approved_by")
                     self.approved_at = state.get("approved_at")
-                    logger.info(f"[Durable] ✅ Promise fulfilled: {self.promise_id}")
+                    logger.info(f"[Durable] âœ… Promise fulfilled: {self.promise_id}")
                     # Report back to GOVERNOR
                     if self.action_id:
                         try:
-                            from ledger.governor import get_governor, ActionState
+                            from citadel.governor import get_governor, ActionState
                             gov = get_governor()
                             await gov.transition(self.action_id, ActionState.PENDING,
                                                metadata={"promise_fulfilled": True})
@@ -128,11 +128,11 @@ class DurablePromise:
                             pass
                     return True
                 if state.get("state") == "rejected":
-                    logger.info(f"[Durable] ❌ Promise rejected: {self.promise_id}")
+                    logger.info(f"[Durable] âŒ Promise rejected: {self.promise_id}")
                     # Report DENIED to GOVERNOR
                     if self.action_id:
                         try:
-                            from ledger.governor import get_governor, ActionState
+                            from citadel.governor import get_governor, ActionState
                             gov = get_governor()
                             await gov.transition(self.action_id, ActionState.DENIED,
                                                metadata={"promise_rejected": True})
@@ -157,7 +157,7 @@ class DurablePromise:
         self.result = result
         
         data = json.dumps(asdict(self), default=str)
-        await r.set(f"ledger:promise:{self.promise_id}", data)
+        await r.set(f"CITADEL:promise:{self.promise_id}", data)
         logger.info(f"[Durable] Promise {self.promise_id} marked as {self.state}")
     
     @classmethod
@@ -166,7 +166,7 @@ class DurablePromise:
         if not HAS_REDIS:
             return []
         r = cls.get_redis()
-        keys = await r.keys("ledger:promise:*")
+        keys = await r.keys("CITADEL:promise:*")
         promises = []
         for key in keys:
             data = await r.get(key)
@@ -182,7 +182,7 @@ class DurablePromise:
         if not HAS_REDIS:
             return None
         r = cls.get_redis()
-        data = await r.get(f"ledger:promise:{self.promise_id}")
+        data = await r.get(f"CITADEL:promise:{self.promise_id}")
         return json.loads(data) if data else None
 
 

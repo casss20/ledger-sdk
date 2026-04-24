@@ -1,5 +1,5 @@
 -- ============================================================================
--- LEDGER CONTROL-SYSTEM DATABASE SCHEMA (Merged MVP)
+-- CITADEL CONTROL-SYSTEM DATABASE SCHEMA (Merged MVP)
 -- ============================================================================
 -- 
 -- Design: Authoritative state in Postgres, append-only audit, replayable decisions
@@ -659,25 +659,25 @@ $$ LANGUAGE plpgsql;
 REDIS KEY PATTERNS (ephemeral only, Postgres is source of truth):
 
 Rate limiting:
-  ratelimit:{actor_id}:{action} → sorted set of timestamps
-  ratelimit:{tenant_id}:global → global counters
+  ratelimit:{actor_id}:{action} â†’ sorted set of timestamps
+  ratelimit:{tenant_id}:global â†’ global counters
 
 Distributed locks:
-  lock:capability:{token_id} → lock for atomic capability use
-  lock:approval:{approval_id} → approval decision lock
-  lock:action:{action_id} → execution lock
+  lock:capability:{token_id} â†’ lock for atomic capability use
+  lock:approval:{approval_id} â†’ approval decision lock
+  lock:action:{action_id} â†’ execution lock
 
 Hot cache (short TTL):
-  cache:killswitch:{scope} → kill switch status (TTL: 5s)
-  cache:policy:{tenant}:{scope} → active policy (TTL: 30s)
-  cache:actor:{actor_id} → actor status (TTL: 60s)
+  cache:killswitch:{scope} â†’ kill switch status (TTL: 5s)
+  cache:policy:{tenant}:{scope} â†’ active policy (TTL: 30s)
+  cache:actor:{actor_id} â†’ actor status (TTL: 60s)
 
 Approval queue:
-  approvals:pending → pub/sub list
-  approvals:priority:{priority} → priority queues
+  approvals:pending â†’ pub/sub list
+  approvals:priority:{priority} â†’ priority queues
 
 Idempotency:
-  dedupe:{idempotency_key} → "1" (TTL: 5m)
+  dedupe:{idempotency_key} â†’ "1" (TTL: 5m)
 
 NOT in Redis:
   - Audit log (audit_events)

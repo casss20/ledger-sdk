@@ -1,6 +1,6 @@
-Ledger SDK Monorepo
+Citadel SDK Monorepo
 
-Copyright (c) 2026 Ledger SDK Authors.
+Copyright (c) 2026 Citadel SDK Authors.
 
 This repository contains multiple components under different licenses.
 - Packages in `packages/` are licensed under the Apache License 2.0.

@@ -1,8 +1,8 @@
-# Getting Started with Ledger SDK for Go
+# Getting Started with Citadel SDK for Go
 
 ## What you'll learn
 
-- Install Ledger SDK via go get
+- Install Citadel SDK via go get
 - Govern your first agent action
 - Understand `gt_` tokens
 - View actions in the dashboard
@@ -11,19 +11,19 @@
 ## Prerequisites
 
 - Go 1.21 or higher
-- A Ledger API key ([get one free](https://dashboard.ledger.dev))
+- A CITADEL API key ([get one free](https://dashboard.CITADEL.dev))
 
 ---
 
-## Step 1: Install Ledger SDK
+## Step 1: Install Citadel SDK
 
 ```bash
-go get github.com/ledger/sdk-go
+go get github.com/CITADEL/sdk-go
 ```
 
 Verify in `go.mod`:
 ```
-require github.com/ledger/sdk-go v1.x.x
+require github.com/CITADEL/sdk-go v1.x.x
 ```
 
 ---
@@ -39,14 +39,14 @@ import (
     "log"
     "os"
 
-    "github.com/ledger/sdk-go"
+    "github.com/CITADEL/sdk-go"
 )
 
 func main() {
     ctx := context.Background()
 
     client, err := sdk.NewClient(sdk.Config{
-        APIKey:      os.Getenv("LEDGER_API_KEY"),
+        APIKey:      os.Getenv("citadel_API_KEY"),
         Environment: "sandbox",
     })
     if err != nil {
@@ -56,7 +56,7 @@ func main() {
     if err := client.Ping(ctx); err != nil {
         log.Fatal(err)
     }
-    fmt.Println("Connected to Ledger sandbox")
+    fmt.Println("Connected to CITADEL sandbox")
 }
 ```
 
@@ -110,7 +110,7 @@ fmt.Printf("Decision: %s, Policy: %s, Time: %s\n",
 Use middleware to intercept all tool calls:
 
 ```go
-func LedgerMiddleware(client *sdk.Client, agentID string) func(next http.Handler) http.Handler {
+func CITADELMiddleware(client *sdk.Client, agentID string) func(next http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             ctx := r.Context()

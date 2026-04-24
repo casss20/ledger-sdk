@@ -18,7 +18,7 @@ Rotate API keys every 90 days without breaking agent functionality.
 
 ```python
 # Rotate key for an agent
-new_key = ledger.agents.rotate_key(
+new_key = CITADEL.agents.rotate_key(
     agent_id="payment-agent",
     grace_period="24h"  # Old key valid for 24h
 )
@@ -27,7 +27,7 @@ new_key = ledger.agents.rotate_key(
 agent.update_key(new_key)
 
 # Verify old key is invalidated
-old_key_valid = ledger.keys.verify(old_key)
+old_key_valid = CITADEL.keys.verify(old_key)
 assert old_key_valid is False
 ```
 
@@ -36,7 +36,7 @@ assert old_key_valid is False
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: key-rotation

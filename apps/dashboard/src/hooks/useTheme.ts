@@ -5,7 +5,7 @@ type Theme = "light" | "dark";
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("ledger-theme") as Theme;
+      const saved = localStorage.getItem("CITADEL-theme") as Theme;
       if (saved) return saved;
       return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
@@ -16,7 +16,7 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("ledger-theme", theme);
+    localStorage.setItem("CITADEL-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

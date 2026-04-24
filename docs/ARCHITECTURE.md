@@ -1,26 +1,26 @@
-# Ledger: AI Governance Architecture
+# CITADEL: AI Governance Architecture
 
 ## Positioning Statement
 
-**Ledger is AI governance infrastructure for production AI systems.**
+**CITADEL is AI governance infrastructure for production AI systems.**
 
-Its kernel is runtime enforcement, so governance is not just observed — it is enforced.
+Its kernel is runtime enforcement, so governance is not just observed â€” it is enforced.
 
 ---
 
 ## The Three-Layer Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GOVERNANCE INTELLIGENCE                   │
-│     (Alignment, Planning, Adaptation, Focus, Learning)      │
-├─────────────────────────────────────────────────────────────┤
-│                    GOVERNANCE FRAMEWORK                      │
-│     (Policy, Identity, Approvals, Lifecycle, Versioning)    │
-├─────────────────────────────────────────────────────────────┤
-│                    GOVERNANCE KERNEL                         │
-│     (Enforcement, Deterministic Policy, Audit, Kill)        │
-└─────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    GOVERNANCE INTELLIGENCE                   â”‚
+â”‚     (Alignment, Planning, Adaptation, Focus, Learning)      â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚                    GOVERNANCE FRAMEWORK                      â”‚
+â”‚     (Policy, Identity, Approvals, Lifecycle, Versioning)    â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚                    GOVERNANCE KERNEL                         â”‚
+â”‚     (Enforcement, Deterministic Policy, Audit, Kill)        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -69,7 +69,7 @@ Its kernel is runtime enforcement, so governance is not just observed — it is 
 
 ### Framework Features
 
-- Policy hierarchy (Constitution → World → User Request)
+- Policy hierarchy (Constitution â†’ World â†’ User Request)
 - Role/actor boundaries
 - Escalation rules (Level 0-3)
 - Human oversight hooks
@@ -110,13 +110,13 @@ Its kernel is runtime enforcement, so governance is not just observed — it is 
 
 ## The Three Product Surfaces
 
-Ledger exposes three surfaces to users:
+CITADEL exposes three surfaces to users:
 
 ### Surface 1: Governance Controls
 **What policy exists?**
 
 ```python
-from ledger import Constitution, Governor, Alignment
+from CITADEL import Constitution, Governor, Alignment
 
 # Define behavioral constraints
 constitution = Constitution([
@@ -153,17 +153,17 @@ alignment = Alignment(
 **How policy is applied in real time.**
 
 ```python
-from ledger import Ledger, ExecutionMode
+from CITADEL import CITADEL, ExecutionMode
 
-ledger = Ledger(audit_dsn="postgresql://...")
+CITADEL = CITADEL(audit_dsn="postgresql://...")
 
 # Runtime enforcement at action boundary
-@ledger.governed(action="send_email", resource="outbound")
+@citadel.governed(action="send_email", resource="outbound")
 async def send_email(to: str, body: str):
     return await smtp.send(to, body)
 
 # Mode switching based on risk
-ledger.set_mode(ExecutionMode.STRICT)  # High-risk scenario
+CITADEL.set_mode(ExecutionMode.STRICT)  # High-risk scenario
 ```
 
 **Features:**
@@ -180,7 +180,7 @@ ledger.set_mode(ExecutionMode.STRICT)  # High-risk scenario
 **How you prove it worked.**
 
 ```python
-from ledger import AuditService, AfterAction
+from CITADEL import AuditService, AfterAction
 
 # Every decision logged with hash chain
 audit = AuditService(dsn="postgresql://...")
@@ -226,10 +226,10 @@ This includes:
 
 ### The Wrong Definitions (What We Avoid)
 
-- ❌ "Monitoring" — too passive, no enforcement
-- ❌ "Guardrails" — too vague, not systematic
-- ❌ "Runtime blocking only" — too narrow, misses framework
-- ❌ "Policy theater" — documentation without enforcement
+- âŒ "Monitoring" â€” too passive, no enforcement
+- âŒ "Guardrails" â€” too vague, not systematic
+- âŒ "Runtime blocking only" â€” too narrow, misses framework
+- âŒ "Policy theater" â€” documentation without enforcement
 
 ---
 
@@ -239,36 +239,36 @@ This includes:
 
 ```
 Without Runtime:
-├─ Policy exists in documents
-├─ Violations are logged
-├─ Humans review after the fact
-└─ Governance = observation
+â”œâ”€ Policy exists in documents
+â”œâ”€ Violations are logged
+â”œâ”€ Humans review after the fact
+â””â”€ Governance = observation
 
 With Runtime:
-├─ Policy is code
-├─ Violations are blocked
-├─ Approvals happen before execution
-└─ Governance = enforcement
+â”œâ”€ Policy is code
+â”œâ”€ Violations are blocked
+â”œâ”€ Approvals happen before execution
+â””â”€ Governance = enforcement
 ```
 
 ### Runtime Enforcement Points
 
 ```
-Agent → Action Request
-        ↓
-   [GOVERNOR] ← Escalation check
-        ↓
-   [CONSTITUTION] ← Behavioral rules
-        ↓
-   [ALIGNMENT] ← Long-term goal check
-        ↓
-   [RISK] ← Classification (SOFT/HARD)
-        ↓
-   [CAPABILITY] ← Token issuance
-        ↓
-   [EXECUTOR] ← Execution with monitoring
-        ↓
-   [AUDIT] ← Immutable log
+Agent â†’ Action Request
+        â†“
+   [GOVERNOR] â† Escalation check
+        â†“
+   [CONSTITUTION] â† Behavioral rules
+        â†“
+   [ALIGNMENT] â† Long-term goal check
+        â†“
+   [RISK] â† Classification (SOFT/HARD)
+        â†“
+   [CAPABILITY] â† Token issuance
+        â†“
+   [EXECUTOR] â† Execution with monitoring
+        â†“
+   [AUDIT] â† Immutable log
 ```
 
 ---
@@ -276,33 +276,33 @@ Agent → Action Request
 ## Code Organization by Layer
 
 ```
-ledger/
-├── core/                    # GOVERNANCE KERNEL
-│   ├── governor.py          # Strategic oversight
-│   ├── executor.py          # Execution enforcement
-│   ├── runtime.py           # Activation cycle
-│   └── constitution.py      # Behavioral constraints
-│
-├── governance/              # KERNEL + FRAMEWORK + INTELLIGENCE
-│   ├── capability.py        # Kernel: tokens
-│   ├── risk.py              # Kernel: classification
-│   ├── audit.py             # Kernel + Evidence: logging
-│   ├── killswitch.py        # Kernel: emergency stop
-│   ├── rate_limit.py        # Framework: throttling
-│   ├── durable.py           # Framework: approvals
-│   ├── alignment.py         # Framework: loyalty
-│   ├── critic.py            # Intelligence: quality
-│   ├── prune.py             # Intelligence: cleanup
-│   └── after_action.py      # Intelligence: learning
-│
-├── ops/                     # INTELLIGENCE
-│   ├── planner.py           # Structured planning
-│   ├── failure.py           # Recovery protocol
-│   ├── adaptation.py        # Behavioral adjustment
-│   └── opportunity.py       # Leverage detection
-│
-└── system/                  # INTELLIGENCE
-    └── focus.py             # Anti-distraction
+CITADEL/
+â”œâ”€â”€ core/                    # GOVERNANCE KERNEL
+â”‚   â”œâ”€â”€ governor.py          # Strategic oversight
+â”‚   â”œâ”€â”€ executor.py          # Execution enforcement
+â”‚   â”œâ”€â”€ runtime.py           # Activation cycle
+â”‚   â””â”€â”€ constitution.py      # Behavioral constraints
+â”‚
+â”œâ”€â”€ governance/              # KERNEL + FRAMEWORK + INTELLIGENCE
+â”‚   â”œâ”€â”€ capability.py        # Kernel: tokens
+â”‚   â”œâ”€â”€ risk.py              # Kernel: classification
+â”‚   â”œâ”€â”€ audit.py             # Kernel + Evidence: logging
+â”‚   â”œâ”€â”€ killswitch.py        # Kernel: emergency stop
+â”‚   â”œâ”€â”€ rate_limit.py        # Framework: throttling
+â”‚   â”œâ”€â”€ durable.py           # Framework: approvals
+â”‚   â”œâ”€â”€ alignment.py         # Framework: loyalty
+â”‚   â”œâ”€â”€ critic.py            # Intelligence: quality
+â”‚   â”œâ”€â”€ prune.py             # Intelligence: cleanup
+â”‚   â””â”€â”€ after_action.py      # Intelligence: learning
+â”‚
+â”œâ”€â”€ ops/                     # INTELLIGENCE
+â”‚   â”œâ”€â”€ planner.py           # Structured planning
+â”‚   â”œâ”€â”€ failure.py           # Recovery protocol
+â”‚   â”œâ”€â”€ adaptation.py        # Behavioral adjustment
+â”‚   â””â”€â”€ opportunity.py       # Leverage detection
+â”‚
+â””â”€â”€ system/                  # INTELLIGENCE
+    â””â”€â”€ focus.py             # Anti-distraction
 ```
 
 ---
@@ -323,7 +323,7 @@ Result: 18+ months to full platform
          28 months to 50 controls
 ```
 
-### Ledger
+### CITADEL
 
 ```
 Approach: Governance architecture first
@@ -343,7 +343,7 @@ Advantage: 36 MD files = governance rules written
 
 ## Implementation Status
 
-### ✅ Complete (Production Ready)
+### âœ… Complete (Production Ready)
 
 **Kernel:**
 - [x] Governor (escalation, intervention)
@@ -371,7 +371,7 @@ Advantage: 36 MD files = governance rules written
 - [x] Opportunity (leverage detection)
 - [x] Failure (recovery protocol)
 
-### ⏳ Pending (Defined in MD files)
+### â³ Pending (Defined in MD files)
 
 - [ ] HEARTBEAT (system health polling)
 - [ ] SELF-MOD (policy evolution)
@@ -385,9 +385,9 @@ Advantage: 36 MD files = governance rules written
 ## Usage: Full Stack Example
 
 ```python
-from ledger import (
+from CITADEL import (
     # Kernel
-    Ledger, Governor, Constitution, ExecutionMode,
+    CITADEL, Governor, Constitution, ExecutionMode,
     # Framework
     Alignment, InitiativeLevel,
     # Intelligence
@@ -411,15 +411,15 @@ alignment = Alignment(
     initiative_level=InitiativeLevel.GUIDED
 )
 
-# 3. Create Ledger (Enforcement Surface)
-ledger = Ledger(
-    audit_dsn="postgresql://localhost/ledger",
+# 3. Create CITADEL (Enforcement Surface)
+CITADEL = CITADEL(
+    audit_dsn="postgresql://localhost/CITADEL",
     governor=gov,
     constitution=constitution
 )
 
 # 4. Define Governed Action
-@ledger.governed(action="deploy", resource="production")
+@citadel.governed(action="deploy", resource="production")
 async def deploy_to_production(image: str):
     # Runtime enforcement happens here:
     # - Governor checks escalation level
@@ -463,11 +463,11 @@ focus.enter_focus(
 
 ## Summary
 
-Ledger is **AI governance infrastructure** with three layers:
+CITADEL is **AI governance infrastructure** with three layers:
 
-1. **Kernel** — Runtime enforcement (has teeth)
-2. **Framework** — Policy structure (scales)
-3. **Intelligence** — Behavioral learning (improves)
+1. **Kernel** â€” Runtime enforcement (has teeth)
+2. **Framework** â€” Policy structure (scales)
+3. **Intelligence** â€” Behavioral learning (improves)
 
 This gives you:
 - Big company category (AI governance)
@@ -476,7 +476,7 @@ This gives you:
 - Fast expansion (1 week per new tool)
 
 **Positioning:**
-> Ledger defines, enforces, and proves what AI systems are allowed to do.
+> CITADEL defines, enforces, and proves what AI systems are allowed to do.
 
 **Technical:**
-> At its core, Ledger uses runtime enforcement to make governance actionable at the execution boundary.
+> At its core, CITADEL uses runtime enforcement to make governance actionable at the execution boundary.

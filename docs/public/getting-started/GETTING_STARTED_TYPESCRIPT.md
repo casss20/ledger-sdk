@@ -1,40 +1,40 @@
-# Getting Started with Ledger SDK for TypeScript/Node.js
+# Getting Started with Citadel SDK for TypeScript/Node.js
 
 ## What you'll learn
 
-- Install Ledger SDK via npm in under 60 seconds
+- Install Citadel SDK via npm in under 60 seconds
 - Wrap your first async agent action with governance
 - Understand how `gt_` tokens track every decision
-- View governed actions in the Ledger dashboard
-- Connect Ledger to an OpenAI Agents SDK project
+- View governed actions in the CITADEL dashboard
+- Connect CITADEL to an OpenAI Agents SDK project
 
 ## Prerequisites
 
 - Node.js 18 or higher
 - TypeScript 5.0+ (optional but recommended)
-- A Ledger API key ([get one free](https://dashboard.ledger.dev))
+- A CITADEL API key ([get one free](https://dashboard.CITADEL.dev))
 
-> 💡 **New to governance?** Ledger embeds compliance directly into your agent runtime. Every tool call passes through the Ledger kernel before execution — making governance non-bypassable and automatic.
+> ðŸ’¡ **New to governance?** CITADEL embeds compliance directly into your agent runtime. Every tool call passes through the CITADEL kernel before execution â€” making governance non-bypassable and automatic.
 
 ---
 
-## Step 1: Install Ledger SDK
+## Step 1: Install Citadel SDK
 
 ```bash
-npm install @ledger/sdk
+npm install @citadel/sdk
 # or
-yarn add @ledger/sdk
+yarn add @citadel/sdk
 # or
-pnpm add @ledger/sdk
+pnpm add @citadel/sdk
 ```
 
 Verify the installation:
 
 ```bash
-node -e "const ledger = require('@ledger/sdk'); console.log(ledger.VERSION)"
+node -e "const CITADEL = require('@citadel/sdk'); console.log(CITADEL.VERSION)"
 ```
 
-> ⚠️ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
+> âš ï¸ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
 
 ---
 
@@ -43,8 +43,8 @@ node -e "const ledger = require('@ledger/sdk'); console.log(ledger.VERSION)"
 Create a `.env` file:
 
 ```bash
-LEDGER_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
-LEDGER_ENVIRONMENT=sandbox
+citadel_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
+citadel_ENVIRONMENT=sandbox
 ```
 
 Load it in your application:
@@ -53,23 +53,23 @@ Load it in your application:
 import 'dotenv/config';
 ```
 
-> 💡 **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
+> ðŸ’¡ **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
 
 ---
 
 ## Step 3: Initialize the client
 
 ```typescript
-import { LedgerClient } from '@ledger/sdk';
+import { CITADELClient } from '@citadel/sdk';
 
-const ledger = new LedgerClient({
-  apiKey: process.env.LEDGER_API_KEY!,
+const CITADEL = new CITADELClient({
+  apiKey: process.env.citadel_API_KEY!,
   environment: 'sandbox'
 });
 
 // Verify connectivity
-await ledger.ping();
-console.log('Connected to Ledger sandbox');
+await CITADEL.ping();
+console.log('Connected to CITADEL sandbox');
 ```
 
 ---
@@ -78,7 +78,7 @@ console.log('Connected to Ledger sandbox');
 
 ```typescript
 // Define what your agent wants to do
-const action = ledger.govern({
+const action = citadel.govern({
   agentId: 'email-agent-01',
   action: 'email.send',
   params: {
@@ -102,7 +102,7 @@ try {
 ```
 
 **What just happened:**
-1. Ledger evaluated the action against all active policies
+1. CITADEL evaluated the action against all active policies
 2. If allowed, it returned a governance token (`gt_...`)
 3. If denied, it threw `PolicyDeniedError`
 4. If approval required, it threw `ApprovalRequiredError` with a review URL
@@ -118,14 +118,14 @@ console.log(result.governanceToken); // gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 
 These tokens are:
 - **Immutable**: Cannot be altered or deleted once created
-- **Non-portable**: Only resolvable by Ledger's vault
+- **Non-portable**: Only resolvable by CITADEL's vault
 - **Traceable**: Link into a hash chain for audit
 - **Referencable**: Query the audit trail later
 
 Query by token:
 
 ```typescript
-const record = await ledger.audit.get('gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh');
+const record = await CITADEL.audit.get('gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh');
 console.log(record.decision);     // "allowed"
 console.log(record.policyName);   // "email-sending-allowed"
 console.log(record.timestamp);    // ISO 8601
@@ -137,10 +137,10 @@ console.log(record.timestamp);    // ISO 8601
 
 ```typescript
 import { Agent } from 'openai-agents';
-import { LedgerOpenAIIntegration } from '@ledger/sdk/integrations';
+import { CITADELOpenAIIntegration } from '@citadel/sdk/integrations';
 
-const ledgerIntegration = new LedgerOpenAIIntegration({
-  client: ledger,
+const CITADELIntegration = new CITADELOpenAIIntegration({
+  client: CITADEL,
   agentId: 'openai-agent-01'
 });
 
@@ -148,7 +148,7 @@ const agent = new Agent({
   name: 'EmailAgent',
   instructions: 'Send emails to users',
   tools: [sendEmailTool],
-  guardrails: [ledgerIntegration.guardrail()] // <-- Governance here
+  guardrails: [CITADELIntegration.guardrail()] // <-- Governance here
 });
 
 const result = await agent.run('Send welcome email to new@user.com');
@@ -158,7 +158,7 @@ const result = await agent.run('Send welcome email to new@user.com');
 
 ## Step 7: View in dashboard
 
-Open [Ledger Dashboard](https://dashboard.ledger.dev) → **Activity Stream**.
+Open [CITADEL Dashboard](https://dashboard.CITADEL.dev) â†’ **Activity Stream**.
 
 Filter by agent ID:
 ```
@@ -175,12 +175,12 @@ gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
 ## Troubleshooting
 
 ### "API key invalid"
-Keys start with `ldk_test_` (sandbox) or `ldk_live_` (production). Generate new keys at [dashboard.ledger.dev](https://dashboard.ledger.dev).
+Keys start with `ldk_test_` (sandbox) or `ldk_live_` (production). Generate new keys at [dashboard.CITADEL.dev](https://dashboard.CITADEL.dev).
 
 ### "Policy denied all actions"
 New projects start with default deny-all. Create an allow policy:
 ```typescript
-await ledger.policies.create({
+await CITADEL.policies.create({
   name: 'allow-email',
   trigger: { action: 'email.send' },
   enforcement: { type: 'allow' }
@@ -191,7 +191,7 @@ await ledger.policies.create({
 First call incurs ~50ms for policy compilation. Subsequent calls use cached policies and take <5ms.
 
 ### TypeScript type errors
-Ensure `@ledger/sdk` types are installed: `npm install -D @ledger/sdk-types`
+Ensure `@citadel/sdk` types are installed: `npm install -D @citadel/sdk-types`
 
 ---
 

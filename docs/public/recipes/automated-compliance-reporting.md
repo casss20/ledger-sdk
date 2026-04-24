@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 def weekly_compliance_report():
     last_week = datetime.now() - timedelta(days=7)
 
-    report = ledger.compliance.generate_report(
+    report = CITADEL.compliance.generate_report(
         period_start=last_week,
         period_end=datetime.now(),
         frameworks=["eu_ai_act", "soc2"],
@@ -51,7 +51,7 @@ def weekly_compliance_report():
 
 Add to your Stream 3b dashboard:
 ```python
-ledger.dashboard.add_widget(
+CITADEL.dashboard.add_widget(
     type="compliance_report",
     schedule="weekly",
     recipients=["compliance@company.com"]

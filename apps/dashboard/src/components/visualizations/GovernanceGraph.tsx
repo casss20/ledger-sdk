@@ -14,7 +14,7 @@ import 'reactflow/dist/style.css';
 import { CustomNode } from './CustomNode';
 import { ApprovalEdge } from './ApprovalEdge';
 import { KillSwitchNode } from './KillSwitchNode';
-import { useLedgerStats } from '../../hooks/useLedgerStats';
+import { useCITADELStats } from '../../hooks/useCITADELStats';
 import { Button } from '../ui/Button';
 import { Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -99,7 +99,7 @@ const initialNodes: Node[] = [
       label: 'Send Email',
       icon: 'Mail',
       color: '#ef4444',
-      description: 'HIGH risk • HARD approval',
+      description: 'HIGH risk â€¢ HARD approval',
       status: 'blocked',
       group: 'communication',
     },
@@ -112,7 +112,7 @@ const initialNodes: Node[] = [
       label: 'Stripe Charge',
       icon: 'CreditCard',
       color: '#22c55e',
-      description: 'HIGH risk • HARD approval',
+      description: 'HIGH risk â€¢ HARD approval',
       status: 'blocked',
       group: 'payment',
     },
@@ -125,7 +125,7 @@ const initialNodes: Node[] = [
       label: 'DB Write',
       icon: 'Database',
       color: '#3b82f6',
-      description: 'MEDIUM risk • HARD approval',
+      description: 'MEDIUM risk â€¢ HARD approval',
       status: 'allowed',
       group: 'database',
     },
@@ -167,7 +167,7 @@ export function GovernanceGraph() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
-  const { data: stats } = useLedgerStats();
+  const { data: stats } = useCITADELStats();
 
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),

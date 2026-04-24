@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Replace AutoGen's built-in logging with Ledger
+- Replace AutoGen's built-in logging with CITADEL
 - Govern agent conversations
 - Migrate group chat monitoring
 - Maintain conversation history
@@ -11,19 +11,19 @@
 
 ## Migration Steps
 
-### Step 1: Install Ledger
+### Step 1: Install CITADEL
 ```bash
-pip install ledger-sdk[autogen]
+pip install citadel-sdk[autogen]
 ```
 
-### Step 2: Add Ledger interceptor
+### Step 2: Add CITADEL interceptor
 ```python
 from autogen import ConversableAgent
-from ledger_sdk.integrations.autogen import LedgerAgentInterceptor
+from citadel_sdk.integrations.autogen import CITADELAgentInterceptor
 
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
-interceptor = LedgerAgentInterceptor(
-    client=ledger,
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+interceptor = CITADELAgentInterceptor(
+    client=CITADEL,
     conversation_id="migrated-chat-01"
 )
 
@@ -36,7 +36,7 @@ agent = ConversableAgent(
 
 ### Step 3: Migrate conversation history
 ```python
-ledger.migration.import_conversations(
+CITADEL.migration.import_conversations(
     source="autogen",
     path="/path/to/autogen/logs",
     conversation_id="migrated-chat-01"
@@ -46,7 +46,7 @@ ledger.migration.import_conversations(
 ### Step 4: Enable governance
 ```python
 # Start with monitoring only
-ledger.policies.create({
+CITADEL.policies.create({
     name: "autogen-monitor",
     trigger: {"action": "*"},
     enforcement: {"type": "alert_only"}

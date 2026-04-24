@@ -1,4 +1,4 @@
-"""Agent — Agent Lifecycle Management
+"""Agent â€” Agent Lifecycle Management
 
 High-level agent management that combines Identity, Constitution, and Governance.
 
@@ -6,7 +6,7 @@ This is the main interface developers use to create and manage AI agents
 with full governance, identity, and constitutional constraints.
 
 Usage:
-    from ledger import Agent
+    from CITADEL import Agent
     
     # Create a governed agent
     agent = Agent(
@@ -36,10 +36,10 @@ import asyncio
 
 from .identity import AgentIdentity, AgentRegistry, get_registry, register_agent
 from .core import Constitution, ConstitutionViolation, DEFAULT_CONSTITUTION
-from .sdk import LedgerClient
+from .sdk import CITADELClient
 
 # Backward compatibility alias
-Ledger = LedgerClient
+CITADEL = CITADELClient
 from .governor import get_governor, ActionState
 
 
@@ -86,7 +86,7 @@ class Agent:
     
     # Internal
     _identity: Optional[AgentIdentity] = field(default=None, repr=False)
-    _ledger: Optional[Ledger] = field(default=None, repr=False)
+    _CITADEL: Optional[CITADEL] = field(default=None, repr=False)
     _registered: bool = field(default=False, repr=False)
     
     def __post_init__(self):
@@ -106,8 +106,8 @@ class Agent:
             capabilities=self.capabilities.copy()
         )
         
-        # Create ledger for this agent
-        self._ledger = Ledger(
+        # Create CITADEL for this agent
+        self._CITADEL = CITADEL(
             agent=self.agent_id,
             constitution=self.constitution
         )
@@ -123,9 +123,9 @@ class Agent:
         return self._identity
     
     @property
-    def ledger(self) -> Ledger:
-        """Get agent's ledger instance."""
-        return self._ledger
+    def CITADEL(self) -> CITADEL:
+        """Get agent's CITADEL instance."""
+        return self._CITADEL
     
     @property
     def fingerprint(self) -> str:
@@ -180,8 +180,8 @@ class Agent:
                 return await smtp.send(to, body)
         """
         def decorator(func: Callable[P, T]) -> Callable[P, T]:
-            # First apply ledger governance
-            governed_func = self._ledger.governed(
+            # First apply CITADEL governance
+            governed_func = self._citadel.governed(
                 action=action,
                 resource=resource or action,
                 flag=flag

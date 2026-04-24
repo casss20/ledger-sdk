@@ -17,7 +17,7 @@ Your agents call GPT-4, Claude, and other models. Costs can spiral. Set per-agen
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: cost-control
@@ -42,7 +42,7 @@ spec:
 
 ```python
 # Track cost per call
-action = ledger.govern(
+action = citadel.govern(
     agent_id="research-agent",
     action="llm.call",
     params={"model": "gpt-4", "tokens": 2000}

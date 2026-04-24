@@ -1,6 +1,6 @@
-# Ledger Open Specification
+# Citadel Open Specification
 
-This directory contains the public schemas, policy formats, token specifications (`gt_`), and interface definitions for the Ledger ecosystem.
+This directory contains the public schemas, policy formats, token specifications (`gt_`), and interface definitions for the Citadel ecosystem.
 
 ## License
 

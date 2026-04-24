@@ -25,10 +25,10 @@
 ### Step 1: Assess
 ```python
 # Check kill switch status
-status = ledger.kill_switch.get_status()
+status = CITADEL.kill_switch.get_status()
 
 # Check recent denials
-denials = ledger.audit.query(
+denials = CITADEL.audit.query(
     decisions=["denied"],
     start="now-1h"
 )
@@ -37,7 +37,7 @@ denials = ledger.audit.query(
 ### Step 2: Contain
 ```python
 # Activate kill switch if needed
-ledger.kill_switch.activate(
+CITADEL.kill_switch.activate(
     scope="organization",
     reason="Investigating unauthorized data access",
     duration="indefinite"
@@ -47,14 +47,14 @@ ledger.kill_switch.activate(
 ### Step 3: Investigate
 ```python
 # Query audit trail for affected actions
-records = ledger.audit.query(
+records = CITADEL.audit.query(
     agent_id="compromised-agent",
     start="incident_start",
     end="incident_end"
 )
 
 # Generate incident report
-report = ledger.compliance.generate_report(
+report = CITADEL.compliance.generate_report(
     period_start=incident_start,
     period_end=incident_end,
     include_verification=True
@@ -64,10 +64,10 @@ report = ledger.compliance.generate_report(
 ### Step 4: Resolve
 ```python
 # Fix root cause (e.g., update policy)
-ledger.policies.update(name="fixed-policy", spec=new_spec)
+CITADEL.policies.update(name="fixed-policy", spec=new_spec)
 
 # Gradually resume agents
-ledger.kill_switch.deactivate(
+CITADEL.kill_switch.deactivate(
     agent_id="low-risk-agent",
     reason="Root cause resolved"
 )
@@ -76,7 +76,7 @@ ledger.kill_switch.deactivate(
 ### Step 5: Document
 ```python
 # Archive incident report
-ledger.incidents.create({
+CITADEL.incidents.create({
     id: "INC-2026-001",
     severity: "P1",
     summary: "...",

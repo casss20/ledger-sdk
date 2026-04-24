@@ -1,6 +1,6 @@
 # FORGE Expansion Roadmap
 
-## Phase 1: The Sharp Wedge (Month 1-3) — 4 Core Controls
+## Phase 1: The Sharp Wedge (Month 1-3) â€” 4 Core Controls
 
 Start narrow. Nail it.
 
@@ -22,29 +22,29 @@ Block code commits (GitHub)
 
 ---
 
-## Phase 2: Add More Tools (Month 4-6) — Leverage Ledger's Stack
+## Phase 2: Add More Tools (Month 4-6) â€” Leverage CITADEL's Stack
 
-Once 4 core controls are solid, Ledger gives you **everything else for free**.
+Once 4 core controls are solid, CITADEL gives you **everything else for free**.
 
-Your ledger/core/*.md files already define governance for ALL of these:
+Your CITADEL/core/*.md files already define governance for ALL of these:
 
 ### Tier 1: Production Risk (Immediate value, 2 weeks each)
 
 ```
-✅ Done: Email blocking
-✅ Done: Database writes
-✅ Done: Stripe charges
-✅ Done: GitHub commits
+âœ… Done: Email blocking
+âœ… Done: Database writes
+âœ… Done: Stripe charges
+âœ… Done: GitHub commits
 
 Now add (Month 4-6):
-🔜 Slack messaging (from COMMUNICATION.md rules)
-🔜 API rate limiting (from EXECUTOR.md + AUTONOMY.md)
-🔜 Data export/download (from FOCUS.md scope rules)
-🔜 CRM record updates (from TOOLS.md policy)
-🔜 External API calls (from CONSTITUTION.md external guardrail)
+ðŸ”œ Slack messaging (from COMMUNICATION.md rules)
+ðŸ”œ API rate limiting (from EXECUTOR.md + AUTONOMY.md)
+ðŸ”œ Data export/download (from FOCUS.md scope rules)
+ðŸ”œ CRM record updates (from TOOLS.md policy)
+ðŸ”œ External API calls (from CONSTITUTION.md external guardrail)
 ```
 
-**How it works:** Each new tool = new policy pack from ledger/core/. Load the right markdown, reuse the approval engine.
+**How it works:** Each new tool = new policy pack from CITADEL/core/. Load the right markdown, reuse the approval engine.
 
 **Example: Slack messaging**
 
@@ -55,8 +55,8 @@ async def send_slack_message(channel: str, body: str) -> dict:
     # "External actions require approval"
     #
     # Read from COMMUNICATION.md (new):
-    # "Messages > 5k chars → content review"
-    # "Messages to #general or #leadership → approval required"
+    # "Messages > 5k chars â†’ content review"
+    # "Messages to #general or #leadership â†’ approval required"
     #
     # Read from TOOLS.md:
     # "Slack posting limited to 100 msgs/hour"
@@ -71,14 +71,14 @@ async def send_slack_message(channel: str, body: str) -> dict:
 
 ### Tier 2: Compliance + Identity (Month 7-9)
 
-Your ledger already has MEMORY.md + USER.md + IDENTITY.md:
+Your CITADEL already has MEMORY.md + USER.md + IDENTITY.md:
 
 ```
-🔜 Customer data access (from MEMORY.md scope rules)
-🔜 PII redaction checks (from USER.md + GDPR rules)
-🔜 Agent identity switching (from IDENTITY.md modes)
-🔜 Multi-agent coordination (from AGENTS.md)
-🔜 Cross-agent approvals (from GOVERNOR.md escalation)
+ðŸ”œ Customer data access (from MEMORY.md scope rules)
+ðŸ”œ PII redaction checks (from USER.md + GDPR rules)
+ðŸ”œ Agent identity switching (from IDENTITY.md modes)
+ðŸ”œ Multi-agent coordination (from AGENTS.md)
+ðŸ”œ Cross-agent approvals (from GOVERNOR.md escalation)
 ```
 
 **Example: Customer data access**
@@ -87,10 +87,10 @@ Your ledger already has MEMORY.md + USER.md + IDENTITY.md:
 @gov.governed(action="query_customer_data", resource="customer_db")
 async def get_customer_data(customer_id: str, fields: list[str]) -> dict:
     # Read from MEMORY.md:
-    # "High-value customers (revenue > $10k) → manual approval for data access"
+    # "High-value customers (revenue > $10k) â†’ manual approval for data access"
     #
     # Read from USER.md:
-    # "Personal data (SSN, CC, DOB) → always approval required"
+    # "Personal data (SSN, CC, DOB) â†’ always approval required"
     #
     # Risk scoring based on data sensitivity
 
@@ -101,14 +101,14 @@ async def get_customer_data(customer_id: str, fields: list[str]) -> dict:
 
 ### Tier 3: Operational Efficiency (Month 10-12)
 
-Your ledger has RUNTIME.md + FAILURE.md + AUTONOMY.md:
+Your CITADEL has RUNTIME.md + FAILURE.md + AUTONOMY.md:
 
 ```
-🔜 LLM cost control (from AUTONOMY.md budget rules)
-🔜 API quota enforcement (from RUNTIME.md selective loading)
-🔜 Cascading loop detection (from FAILURE.md cascade rules)
-🔜 Agent timeout override (from EXECUTOR.md modes)
-🔜 Resource limits (CPU/RAM)(from PRUNE.md cleanup)
+ðŸ”œ LLM cost control (from AUTONOMY.md budget rules)
+ðŸ”œ API quota enforcement (from RUNTIME.md selective loading)
+ðŸ”œ Cascading loop detection (from FAILURE.md cascade rules)
+ðŸ”œ Agent timeout override (from EXECUTOR.md modes)
+ðŸ”œ Resource limits (CPU/RAM)(from PRUNE.md cleanup)
 ```
 
 **Example: LLM cost control**
@@ -134,14 +134,14 @@ async def call_gpt4(prompt: str, tokens: int) -> dict:
 
 ### Tier 4: Shadow Agent Discovery + Security (Month 13+)
 
-Your ledger has AGENTS.md + SECURITY.md patterns:
+Your CITADEL has AGENTS.md + SECURITY.md patterns:
 
 ```
-🔜 Agent inventory (all tool calls logged → who's running?)
-🔜 Unauthorized agent spawn (from FOCUS.md bouncer protocol)
-🔜 Prompt injection defense (from CONSTITUTION.md guardrails)
-🔜 Tool call anomalies (from GOVERNOR.md pattern detection)
-🔜 Agent jailbreak attempts (from FAILURE.md failure handling)
+ðŸ”œ Agent inventory (all tool calls logged â†’ who's running?)
+ðŸ”œ Unauthorized agent spawn (from FOCUS.md bouncer protocol)
+ðŸ”œ Prompt injection defense (from CONSTITUTION.md guardrails)
+ðŸ”œ Tool call anomalies (from GOVERNOR.md pattern detection)
+ðŸ”œ Agent jailbreak attempts (from FAILURE.md failure handling)
 ```
 
 ---
@@ -152,17 +152,17 @@ Your ledger has AGENTS.md + SECURITY.md patterns:
 
 ```
 Agent calls tool
- │
- ▼
+ â”‚
+ â–¼
 FORGE GATEWAY
- │
- ├─ Identify tool type
- ├─ Load policy from ledger/core/*.md
- ├─ Score risk (GOVERNOR.md)
- ├─ Apply enforcement (allow/block/approve)
- ├─ Log to audit trail
- │
- └─ Execute or route
+ â”‚
+ â”œâ”€ Identify tool type
+ â”œâ”€ Load policy from CITADEL/core/*.md
+ â”œâ”€ Score risk (GOVERNOR.md)
+ â”œâ”€ Apply enforcement (allow/block/approve)
+ â”œâ”€ Log to audit trail
+ â”‚
+ â””â”€ Execute or route
 
 Same engine.
 Same approval queue.
@@ -176,14 +176,14 @@ Different policy packs.
 
 ```
 Step 1: Identify the policy
- Read ledger/core/COMMUNICATION.md (already written for Slack)
- Read ledger/core/CONSTITUTION.md (external action rules)
+ Read CITADEL/core/COMMUNICATION.md (already written for Slack)
+ Read CITADEL/core/CONSTITUTION.md (external action rules)
 
 Step 2: Create the policy pack
  slug: "slack_messaging"
  rules: [
-   "Messages to #general → approval required",
-   "Messages > 5k chars → content review",
+   "Messages to #general â†’ approval required",
+   "Messages > 5k chars â†’ content review",
    "Rate limit: 100 msgs/hour per agent"
  ]
 
@@ -193,7 +193,7 @@ Step 3: Wire the tool
      return await slack.post(channel, body)
 
 Step 4: Test
- Agent calls Slack → blocked → routed to approval → log written
+ Agent calls Slack â†’ blocked â†’ routed to approval â†’ log written
 
 Done. Time: 1 day.
 ```
@@ -214,15 +214,15 @@ Competitor: 2+ months per tool.
 
 ---
 
-## Ledger's Hidden Superpowers (You don't have to build these, you inherit them)
+## CITADEL's Hidden Superpowers (You don't have to build these, you inherit them)
 
 ### From GOVERNOR.md
 ```
 Escalation levels 0-3
-├─ Level 0: Auto-allow (fast, obvious tasks)
-├─ Level 1: Log + alert (medium risk)
-├─ Level 2: Require approval (high risk)
-└─ Level 3: Lock execution + human intervention (critical)
+â”œâ”€ Level 0: Auto-allow (fast, obvious tasks)
+â”œâ”€ Level 1: Log + alert (medium risk)
+â”œâ”€ Level 2: Require approval (high risk)
+â””â”€ Level 3: Lock execution + human intervention (critical)
 
 Applies to ALL tools.
 ```
@@ -230,10 +230,10 @@ Applies to ALL tools.
 ### From RUNTIME.md
 ```
 Path selection
-├─ Fast path (email to trusted contact → no approval)
-├─ Standard (email to unknown → approval)
-├─ Structured (bulk email > 100 → approval + content review)
-└─ High-risk (email + suspicious content → approval + security review)
+â”œâ”€ Fast path (email to trusted contact â†’ no approval)
+â”œâ”€ Standard (email to unknown â†’ approval)
+â”œâ”€ Structured (bulk email > 100 â†’ approval + content review)
+â””â”€ High-risk (email + suspicious content â†’ approval + security review)
 
 Same logic works for all tools.
 ```
@@ -241,12 +241,12 @@ Same logic works for all tools.
 ### From AUDIT.md
 ```
 Every decision logged:
-├─ Who (agent name + identity mode)
-├─ What (tool, action, args)
-├─ When (timestamp)
-├─ Why (policy, risk score, decision)
-├─ Who approved (human name + time)
-└─ Hash chain (tamper-proof)
+â”œâ”€ Who (agent name + identity mode)
+â”œâ”€ What (tool, action, args)
+â”œâ”€ When (timestamp)
+â”œâ”€ Why (policy, risk score, decision)
+â”œâ”€ Who approved (human name + time)
+â””â”€ Hash chain (tamper-proof)
 
 Same format for all tools.
 All searchable. All compliant.
@@ -255,11 +255,11 @@ All searchable. All compliant.
 ### From SELF-MOD.md
 ```
 Policies can be updated without redeployment:
-├─ User writes new policy in UI
-├─ System stages it
-├─ User approves
-├─ Policy live in 30 seconds
-└─ No code deploy, no restart
+â”œâ”€ User writes new policy in UI
+â”œâ”€ System stages it
+â”œâ”€ User approves
+â”œâ”€ Policy live in 30 seconds
+â””â”€ No code deploy, no restart
 
 Works for all tools.
 ```
@@ -270,27 +270,27 @@ Works for all tools.
 
 ```
 Month 1-3: Core 4 (email, DB, Stripe, GitHub)
-└─ $10k MRR
+â””â”€ $10k MRR
 
 Month 4-6: Add 8 more tools
-├─ Slack, API calls, CRM, data export, rate limiting, ...
-└─ $30k MRR
+â”œâ”€ Slack, API calls, CRM, data export, rate limiting, ...
+â””â”€ $30k MRR
 
 Month 7-9: Add compliance tier (customer data, PII, identity modes)
-├─ +6 controls
-├─ Target: Regulated industries (finance, healthcare)
-└─ $75k MRR
+â”œâ”€ +6 controls
+â”œâ”€ Target: Regulated industries (finance, healthcare)
+â””â”€ $75k MRR
 
 Month 10-12: Add operational tier (costs, quotas, loops, timeouts)
-├─ +6 controls
-├─ Target: Large enterprises running 50+ agents
-└─ $150k MRR
+â”œâ”€ +6 controls
+â”œâ”€ Target: Large enterprises running 50+ agents
+â””â”€ $150k MRR
 
 Year 2: Add shadow discovery + security tier
-├─ +12 controls
-├─ Agent inventory, anomaly detection, jailbreak defense
-├─ Target: Security + compliance teams
-└─ $500k+ MRR
+â”œâ”€ +12 controls
+â”œâ”€ Agent inventory, anomaly detection, jailbreak defense
+â”œâ”€ Target: Security + compliance teams
+â””â”€ $500k+ MRR
 ```
 
 ---
@@ -299,17 +299,17 @@ Year 2: Add shadow discovery + security tier
 
 ```
 Month 3:
- 5 customers × 5 agents × $99 = $2,475/month = $30k/year
+ 5 customers Ã— 5 agents Ã— $99 = $2,475/month = $30k/year
 
 Month 6:
- 10 customers × 15 agents × $99 = $14,850/month = $178k/year
+ 10 customers Ã— 15 agents Ã— $99 = $14,850/month = $178k/year
 
 Month 9:
- 20 customers × 25 agents × $149 (Pro+ tier) = $74,500/month = $900k/year
+ 20 customers Ã— 25 agents Ã— $149 (Pro+ tier) = $74,500/month = $900k/year
  (Customers upgrade to Pro+ for compliance controls)
 
 Month 12:
- 30 customers × 40 agents × $199 (Enterprise-lite) = $239,600/month = $2.8M/year
+ 30 customers Ã— 40 agents Ã— $199 (Enterprise-lite) = $239,600/month = $2.8M/year
  (Customers upgrade for shadow discovery + security)
 ```
 
@@ -322,48 +322,48 @@ Month 12:
 
 ## What NOT to Do
 
-### ❌ Build all 50 at once
+### âŒ Build all 50 at once
 You'll be done in year 3. Competitors will have launched by then.
 
-### ❌ Add random tools
+### âŒ Add random tools
 Add based on customer demand, not your ideas. Let the market tell you what hurts.
 
-### ❌ Forget the ledger
-Every tool should map back to a ledger/*.md file. If it doesn't, you're building off-brand.
+### âŒ Forget the CITADEL
+Every tool should map back to a CITADEL/*.md file. If it doesn't, you're building off-brand.
 
-### ❌ Drop the wedge
-Never stop iterating on the core 4. They're your revenue engine. Optimizing approval workflows, reducing false positives, improving UX—this never stops.
+### âŒ Drop the wedge
+Never stop iterating on the core 4. They're your revenue engine. Optimizing approval workflows, reducing false positives, improving UXâ€”this never stops.
 
 ---
 
 ## What TO Do
 
-### ✅ Perfect the wedge first
+### âœ… Perfect the wedge first
 Month 1-3: Make the core 4 *bulletproof*.
 - 0% false positives (customers trust it)
 - <100ms latency (no slowdown)
 - 99.9% uptime (never breaks)
 
-### ✅ Let customers drive expansion
+### âœ… Let customers drive expansion
 "Which tool would you want Forge to control next?"
 Listen. Don't guess.
 
-### ✅ Reuse the ledger
+### âœ… Reuse the CITADEL
 Every new tool = read the markdown you already wrote.
-Markdown → Policy pack → Wire tool → Done in 1 week.
+Markdown â†’ Policy pack â†’ Wire tool â†’ Done in 1 week.
 
-### ✅ Price the value
+### âœ… Price the value
 Email control = $99/agent. Data control = $199/agent. Security control = $399/agent.
 More tools = higher tier = more revenue per customer.
 
-### ✅ Market the expansion
+### âœ… Market the expansion
 "We now control 12 types of agent actions."
 "We now support 25+ integrations."
 "We're the most comprehensive AI agent governance platform."
 
 ---
 
-## The Ledger Advantage: Why You Win Long-Term
+## The CITADEL Advantage: Why You Win Long-Term
 
 ### Competitors (Credo, Arthur, Lakera)
 ```
@@ -386,7 +386,7 @@ Year 2: 50+ controls, full platform
 Cost: $500k engineering
 Time: 6 months to full platform
 
-Why? You already wrote the governance rules in ledger/core/*.md.
+Why? You already wrote the governance rules in CITADEL/core/*.md.
 You're not inventing policies. You're implementing them.
 ```
 
@@ -436,17 +436,17 @@ Database control: $0 (included in base)
 Payment control: $0 (included in base)
 Code commit control: $0 (included in base)
 
-Add Slack control: +$20/agent/month → Pro+ tier
-Add CRM control: +$20/agent/month → Pro+ tier
-Add API rate limit: +$20/agent/month → Pro+ tier
+Add Slack control: +$20/agent/month â†’ Pro+ tier
+Add CRM control: +$20/agent/month â†’ Pro+ tier
+Add API rate limit: +$20/agent/month â†’ Pro+ tier
 
-= Pro tier ($99) → Pro+ tier ($159)
+= Pro tier ($99) â†’ Pro+ tier ($159)
 
-Add GDPR compliance: +$50/agent/month → Enterprise tier
-Add audit reports: +$50/agent/month → Enterprise tier
-Add agent inventory: +$50/agent/month → Enterprise tier
+Add GDPR compliance: +$50/agent/month â†’ Enterprise tier
+Add audit reports: +$50/agent/month â†’ Enterprise tier
+Add agent inventory: +$50/agent/month â†’ Enterprise tier
 
-= Pro+ tier ($159) → Enterprise tier ($299)
+= Pro+ tier ($159) â†’ Enterprise tier ($299)
 ```
 
 **5 tools added = 3x pricing = 3x revenue per customer.**
@@ -459,7 +459,7 @@ Add agent inventory: +$50/agent/month → Enterprise tier
 
 The wedge (4 core tools) gets you in the door.
 
-The ledger (your 36 markdown files + 8-layer architecture) lets you scale to 50+ controls *without rewriting the governance engine*.
+The CITADEL (your 36 markdown files + 8-layer architecture) lets you scale to 50+ controls *without rewriting the governance engine*.
 
 Competitors see 50 separate problems.
 You see 1 governance framework, 50 policy packs.

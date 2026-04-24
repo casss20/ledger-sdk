@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
-import ledger
+import CITADEL
 
-# 1. Configure the Ledger SDK
-ledger.configure(
+# 1. Configure the Citadel SDK
+CITADEL.configure(
     base_url="http://localhost:8000",
     api_key="your-dev-key",
     tenant_id="acme_corp"
@@ -16,10 +16,10 @@ class QueryRequest(BaseModel):
     agent_id: str
 
 @app.post("/query")
-@ledger.guard(action="agent.query", resource="llm.gpt4")
+@CITADEL.guard(action="agent.query", resource="llm.gpt4")
 async def handle_query(request: QueryRequest):
     """
-    This endpoint is automatically protected by Ledger.
+    This endpoint is automatically protected by CITADEL.
     - Policy evaluation happens BEFORE the function body runs.
     - If blocked, it returns 403.
     - If approval is required, it returns 202 with a token.

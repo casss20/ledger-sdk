@@ -6,7 +6,7 @@ Target: 6 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from ledger.dashboard.kill_switch_panel import (
+from CITADEL.dashboard.kill_switch_panel import (
     KillSwitchPanelService, KillSwitchScope, KillSwitchStatus,
 )
 

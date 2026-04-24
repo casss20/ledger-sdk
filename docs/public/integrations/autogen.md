@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Install Ledger's AutoGen conversation interceptors
+- Install CITADEL's AutoGen conversation interceptors
 - Govern agent-to-agent messages
 - Control tool access per agent in a group chat
 - Audit entire agent conversations
@@ -12,9 +12,9 @@
 ## Installation
 
 ```bash
-pip install ledger-sdk[autogen]
+pip install citadel-sdk[autogen]
 # or
-pip install ledger-sdk pyautogen
+pip install citadel-sdk pyautogen
 ```
 
 ---
@@ -23,15 +23,15 @@ pip install ledger-sdk pyautogen
 
 ```python
 from autogen import ConversableAgent, GroupChat
-from ledger_sdk.integrations.autogen import LedgerAgentInterceptor
+from citadel_sdk.integrations.autogen import CITADELAgentInterceptor
 
-# Initialize Ledger
-import ledger_sdk
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
+# Initialize CITADEL
+import citadel_sdk
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
 
 # Create interceptor
-interceptor = LedgerAgentInterceptor(
-    client=ledger,
+interceptor = CITADELAgentInterceptor(
+    client=CITADEL,
     conversation_id="planning-meeting-01"
 )
 
@@ -61,7 +61,7 @@ All messages and tool calls are logged:
 
 ```python
 # Query conversation audit
-records = ledger.audit.query(
+records = CITADEL.audit.query(
     conversation_id="planning-meeting-01"
 )
 

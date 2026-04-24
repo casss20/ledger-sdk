@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Map Ledger to regulatory frameworks
+- Map CITADEL to regulatory frameworks
 - Generate compliance evidence
 - Prepare for audits
 - Handle regulatory inquiries
@@ -11,11 +11,11 @@
 
 ## Framework Quick Reference
 
-| Framework | Ledger Features | Evidence |
+| Framework | CITADEL Features | Evidence |
 |-----------|---------------|----------|
 | EU AI Act | Hash audit, kill switch, approvals | Article 12, 14 compliance exports |
 | SOC 2 | Immutable logs, RBAC, monitoring | CC7.1, CC7.2 evidence |
-| HIPAA | Separate audit trail, BAA | §164.312(b) audit controls |
+| HIPAA | Separate audit trail, BAA | Â§164.312(b) audit controls |
 | NIST AI RMF | Trust scoring, policy-as-code | Govern 1.1, 2.1 evidence |
 
 ---
@@ -33,7 +33,7 @@ Before August 2, 2026:
 
 Generate checklist report:
 ```python
-ledger.compliance.checklist(framework="eu_ai_act")
+CITADEL.compliance.checklist(framework="eu_ai_act")
 ```
 
 ---
@@ -42,7 +42,7 @@ ledger.compliance.checklist(framework="eu_ai_act")
 
 ```python
 # Generate evidence package
-package = ledger.compliance.export(
+package = CITADEL.compliance.export(
     framework="soc2",
     period="2026-Q1",
     include_verification=True,
@@ -50,7 +50,7 @@ package = ledger.compliance.export(
 )
 
 # Grant auditor read-only access
-ledger.users.create_auditor(
+CITADEL.users.create_auditor(
     email="auditor@firm.com",
     scope="2026-Q1",
     expiry="30d"

@@ -1,4 +1,4 @@
-"""GOVERNOR – Strategic Oversight
+"""GOVERNOR â€“ Strategic Oversight
 
 Implementation of GOVERNOR.md.
 
@@ -14,7 +14,7 @@ Enforces and operationalizes the Intervention Rule from CONSTITUTION.md.
 CONSTITUTION.md defines *when* intervention is required.
 GOVERNOR defines *how strongly* to intervene and how escalation evolves.
 
-SOURCE OF TRUTH: ledger/core/GOVERNOR.md
+SOURCE OF TRUTH: CITADEL/core/GOVERNOR.md
 If this code contradicts the MD file, the MD file is correct.
 """
 
@@ -28,7 +28,7 @@ import json
 class EscalationLevel(Enum):
     """Intervention escalation levels."""
     PASSIVE = 0      # Normal assistance
-    SUGGESTION = 1   # Light guidance: "You may want to…"
+    SUGGESTION = 1   # Light guidance: "You may want toâ€¦"
     CORRECTION = 2   # Clear direction + strict mode
     INTERVENTION = 3 # Override softness, execution lock
 
@@ -65,7 +65,7 @@ class Governor:
     Strategic oversight layer.
     
     Tracks escalation, detects patterns, controls execution locks.
-    Does NOT execute — only advises/locks.
+    Does NOT execute â€” only advises/locks.
     
     Usage:
         gov = Governor()
@@ -122,7 +122,7 @@ class Governor:
         """
         Check current intervention level for given context.
         
-        This is the main entry point — EXECUTOR calls this before acting.
+        This is the main entry point â€” EXECUTOR calls this before acting.
         """
         # Check if we're locked
         if self._locked:

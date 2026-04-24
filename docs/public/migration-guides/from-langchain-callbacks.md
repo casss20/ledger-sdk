@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Replace LangChain callbacks with Ledger governance
+- Replace LangChain callbacks with CITADEL governance
 - Migrate existing agent monitoring
 - Preserve audit history
 - Gradual migration strategy
@@ -11,7 +11,7 @@
 
 ## Comparison
 
-| Feature | LangChain Callbacks | Ledger |
+| Feature | LangChain Callbacks | CITADEL |
 |---------|-------------------|--------|
 | Monitoring | Yes | Yes |
 | Policy enforcement | No | Yes |
@@ -24,36 +24,36 @@
 
 ## Migration Steps
 
-### Step 1: Install Ledger
+### Step 1: Install CITADEL
 ```bash
-pip install ledger-sdk[langchain]
+pip install citadel-sdk[langchain]
 ```
 
-### Step 2: Add Ledger handler alongside callbacks
+### Step 2: Add CITADEL handler alongside callbacks
 ```python
 from langchain.callbacks import FileCallbackHandler
-from ledger_sdk.integrations.langchain import LedgerCallbackHandler
+from citadel_sdk.integrations.langchain import CITADELCallbackHandler
 
 # Keep existing callbacks
 file_handler = FileCallbackHandler("agent.log")
 
-# Add Ledger governance
-ledger = ledger_sdk.Client(api_key="ldk_test_...")
-ledger_handler = LedgerCallbackHandler(
-    client=ledger,
+# Add CITADEL governance
+CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+citadel_handler = CITADELCallbackHandler(
+    client=CITADEL,
     agent_id="migration-agent-01"
 )
 
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    callbacks=[file_handler, ledger_handler]  # Both active
+    callbacks=[file_handler, citadel_handler]  # Both active
 )
 ```
 
 ### Step 3: Configure policies
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: migration-policy
@@ -81,7 +81,7 @@ Once confident, remove legacy callbacks:
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    callbacks=[ledger_handler]  # Only Ledger
+    callbacks=[citadel_handler]  # Only CITADEL
 )
 ```
 
@@ -89,9 +89,9 @@ agent_executor = AgentExecutor(
 
 ## Preserving History
 
-Export LangChain logs and import to Ledger:
+Export LangChain logs and import to CITADEL:
 ```python
-ledger.migration.import_logs(
+CITADEL.migration.import_logs(
     source="langchain",
     path="/path/to/callback/logs",
     agent_id="migration-agent-01"

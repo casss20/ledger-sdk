@@ -13,7 +13,7 @@ import {
   KillSwitch,
   ActivityEvent,
   ApprovalRequest 
-} from '@ledger/widget-library';
+} from '@citadel/widget-library';
 
 // Mock Data
 const MOCK_EVENTS: ActivityEvent[] = [
@@ -36,7 +36,7 @@ const MOCK_APPROVALS: ApprovalRequest[] = [
   { 
     id: 'app_2', 
     action: 'github.repo_delete', 
-    resource: 'ledger-sdk-internal', 
+    resource: 'citadel-sdk-internal', 
     actorId: 'cleaner-bot', 
     timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), 
     riskScore: 0.98, 

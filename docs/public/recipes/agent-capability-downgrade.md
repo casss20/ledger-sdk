@@ -18,23 +18,23 @@ When an agent's trust score drops below threshold, automatically remove risky pe
 
 ```python
 # Monitor trust score
-score = ledger.trust.get_score(agent_id="data-agent")
+score = CITADEL.trust.get_score(agent_id="data-agent")
 
 if score.value < 300:
     # Downgrade: remove write access
-    ledger.agents.update_capabilities(
+    CITADEL.agents.update_capabilities(
         agent_id="data-agent",
         remove=["database.write", "api.delete"]
     )
 
     # Alert
-    ledger.alerts.send(
+    CITADEL.alerts.send(
         channel="#agent-ops",
         message=f"Agent data-agent downgraded. Trust score: {score.value}"
     )
 elif score.value > 600 and agent.is_downgraded:
     # Restore capabilities
-    ledger.agents.restore_capabilities(agent_id="data-agent")
+    CITADEL.agents.restore_capabilities(agent_id="data-agent")
 ```
 
 ---
@@ -42,7 +42,7 @@ elif score.value > 600 and agent.is_downgraded:
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: auto-downgrade

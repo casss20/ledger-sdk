@@ -1,6 +1,6 @@
 # Licensing
 
-Ledger uses a mixed-license model to balance broad ecosystem adoption with commercial sustainability.
+CITADEL uses a mixed-license model to balance broad ecosystem adoption with commercial sustainability.
 
 This repository contains components under different license terms. You should assume that **license terms are defined at the package or application level** unless explicitly stated otherwise.
 
@@ -12,7 +12,7 @@ The following components are licensed under the **Apache License 2.0**:
 - `packages/sdk-typescript`
 - `packages/open-spec`
 
-These components are open source under an OSI-approved license and are intended for broad adoption, integration, and contribution. They provide the "public interface" to the Ledger ecosystem.
+These components are open source under an OSI-approved license and are intended for broad adoption, integration, and contribution. They provide the "public interface" to the CITADEL ecosystem.
 
 ## Source-available components
 
@@ -37,8 +37,8 @@ Documentation (in `docs/`), examples, and snippets are licensed according to the
 
 ## Historical note
 
-Some earlier Ledger code may have been released under MIT. Those earlier releases remain available under the terms under which they were originally published. Newer releases use the structured licensing model defined above.
+Some earlier CITADEL code may have been released under MIT. Those earlier releases remain available under the terms under which they were originally published. Newer releases use the structured licensing model defined above.
 
 ## Questions
 
-For commercial use, OEM embedding, managed-service rights, or enterprise licensing questions, contact: `licensing@ledger.example`
+For commercial use, OEM embedding, managed-service rights, or enterprise licensing questions, contact: `licensing@CITADEL.example`

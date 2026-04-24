@@ -2,8 +2,8 @@ Business Source License 1.1
 
 Parameters:
 
-- Licensor: Ledger SDK Authors
-- Licensed Work: Ledger Runtime (apps/runtime)
+- Licensor: Citadel SDK Authors
+- Licensed Work: CITADEL Runtime (apps/runtime)
 - Additional Use Grant: You may use the Licensed Work for internal development, testing, and production use, provided that you do not offer the Licensed Work as a managed service (SaaS) that competes with the Licensor's hosted offerings.
 - Change Date: 2030-01-01
 - Change License: Apache License, Version 2.0

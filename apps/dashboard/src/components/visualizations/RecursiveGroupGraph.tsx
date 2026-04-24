@@ -21,7 +21,7 @@ const nodeTypes = {
 const mockGroups = {
   id: 'group_root',
   name: 'Governance',
-  display_name: 'Ledger Governance',
+  display_name: 'Citadel Governance',
   icon: 'Shield',
   color: '#8b5cf6',
   type: 'group',

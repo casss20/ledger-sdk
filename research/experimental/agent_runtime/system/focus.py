@@ -1,4 +1,4 @@
-"""FOCUS — Anti-Distraction Bouncer
+"""FOCUS â€” Anti-Distraction Bouncer
 
 Implementation of FOCUS.md.
 
@@ -32,7 +32,7 @@ True emergencies exist:
 - data loss imminent
 - safety issue
 
-SOURCE OF TRUTH: ledger/system/FOCUS.md
+SOURCE OF TRUTH: CITADEL/system/FOCUS.md
 If this code contradicts the MD file, the MD file is correct.
 """
 

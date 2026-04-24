@@ -1,11 +1,11 @@
-# Ledger SDK for TypeScript
+# Citadel SDK for TypeScript
 
-The official TypeScript/JavaScript client library for integrating with the Ledger governance runtime.
+The official TypeScript/JavaScript client library for integrating with the Citadel governance runtime.
 
 ## Installation
 
 ```bash
-npm install @ledger/sdk
+npm install @citadel/sdk
 ```
 
 ## License

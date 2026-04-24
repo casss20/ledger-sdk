@@ -30,7 +30,7 @@ export const MainLayout: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-900/20">
             <ShieldCheck size={20} className="text-white" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-white">LEDGER</span>
+          <span className="text-xl font-black tracking-tighter text-white">CITADEL</span>
         </div>
 
         <nav className="flex-1 px-4 py-2 space-y-1">

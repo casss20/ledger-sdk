@@ -1,12 +1,12 @@
 """
-End-to-end demo of LEDGER SDK.
+End-to-end demo of Citadel SDK.
 
 Runs against local Postgres. Expects:
   postgres://postgres:password@localhost/postgres
 """
 
 import asyncio
-from ledger.sdk import Ledger, Denied
+from CITADEL.sdk import CITADEL, Denied
 
 
 async def approve_everything(ctx):
@@ -15,7 +15,7 @@ async def approve_everything(ctx):
 
 
 async def main():
-    gov = Ledger(
+    gov = CITADEL(
         audit_dsn="postgres://postgres:password@localhost/postgres",
         agent="nova",
     )
@@ -28,13 +28,13 @@ async def main():
     async def send_email(to, body):
         return {"to": to, "sent": True}
 
-    # First call — approved
+    # First call â€” approved
     print(await send_email("user@x.com", "hello"))
 
     # Kill the feature
     gov.killsw.kill("email_send", reason="phishing incident")
 
-    # Second call — blocked
+    # Second call â€” blocked
     try:
         await send_email("user@x.com", "again")
     except Denied as e:

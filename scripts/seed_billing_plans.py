@@ -3,7 +3,7 @@ import asyncio
 import os
 import json
 import asyncpg
-from ledger.config import settings
+from CITADEL.config import settings
 
 PLANS = [
     {

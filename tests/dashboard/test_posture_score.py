@@ -11,7 +11,7 @@ Target: 5 tests passing.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from ledger.dashboard.posture_score import PostureScoreService, PostureScore
+from CITADEL.dashboard.posture_score import PostureScoreService, PostureScore
 
 
 TENANT = "test_tenant"
@@ -90,7 +90,7 @@ class TestPostureScore:
         import asyncpg
 
         # Insert test data
-        conn = await asyncpg.connect("postgresql://ledger:ledger@localhost:5432/ledger_test")
+        conn = await asyncpg.connect("postgresql://CITADEL:CITADEL@localhost:5432/citadel_test")
         await conn.execute("SET app.admin_bypass = 'true'")
 
         # Insert an actor first (FK requirement)

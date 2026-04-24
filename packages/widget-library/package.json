@@ -1,7 +1,7 @@
 {
-  "name": "@ledger/widget-library",
+  "name": "@citadel/widget-library",
   "version": "0.1.0",
-  "description": "Governance UI components for Ledger SDK",
+  "description": "Governance UI components for Citadel SDK",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",

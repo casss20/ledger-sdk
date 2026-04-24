@@ -1,31 +1,31 @@
-# Ledger Database Architecture
+# CITADEL Database Architecture
 
 Control-system database design for AI governance. Optimized for deterministic decisions, auditability, and policy enforcement.
 
 ## Two Logical Stores
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              OPERATIONAL STORE (Postgres)              │
-│  • Active policies      • Capability tokens            │
-│  • Kill switches        • Approval state                 │
-│  • Actor registry       • Rate limit metadata          │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              AUDIT/EVENT STORE (Postgres)              │
-│  • Every action attempt   • Decision path               │
-│  • Execution results      • Approval outcomes           │
-│  • Integrity chain        • Hash-chained events         │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              EPHEMERAL CACHE (Redis)                   │
-│  • Rate limit counters  • Distributed locks             │
-│  • Hot kill switch cache • Approval queue fanout        │
-└─────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚              OPERATIONAL STORE (Postgres)              â”‚
+â”‚  â€¢ Active policies      â€¢ Capability tokens            â”‚
+â”‚  â€¢ Kill switches        â€¢ Approval state                 â”‚
+â”‚  â€¢ Actor registry       â€¢ Rate limit metadata          â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚
+                          â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚              AUDIT/EVENT STORE (Postgres)              â”‚
+â”‚  â€¢ Every action attempt   â€¢ Decision path               â”‚
+â”‚  â€¢ Execution results      â€¢ Approval outcomes           â”‚
+â”‚  â€¢ Integrity chain        â€¢ Hash-chained events         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚
+                          â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚              EPHEMERAL CACHE (Redis)                   â”‚
+â”‚  â€¢ Rate limit counters  â€¢ Distributed locks             â”‚
+â”‚  â€¢ Hot kill switch cache â€¢ Approval queue fanout        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Golden rule:** Postgres is the source of truth. Redis is for speed only.
@@ -34,19 +34,19 @@ Control-system database design for AI governance. Optimized for deterministic de
 
 ### 1. Append-Only Where Possible
 **Never overwrite history:**
-- `audit_events` — hash-chained, immutable
-- `policy_snapshots` — resolved policy at decision time
-- `decisions` — terminal outcome, one per action
-- `actions` — canonical request record
+- `audit_events` â€” hash-chained, immutable
+- `policy_snapshots` â€” resolved policy at decision time
+- `decisions` â€” terminal outcome, one per action
+- `actions` â€” canonical request record
 
 **Why replay matters:** Every decision must be reproducible with original action payload, policy version, and capability state.
 
 ### 2. Mutable Only for Live State
 **These tables change:**
-- `capabilities` — use count decrements
-- `kill_switches` — enabled/disabled toggles
-- `approvals` — status transitions (pending → approved/rejected)
-- `actors` — status updates (active/suspended/revoked)
+- `capabilities` â€” use count decrements
+- `kill_switches` â€” enabled/disabled toggles
+- `approvals` â€” status transitions (pending â†’ approved/rejected)
+- `actors` â€” status updates (active/suspended/revoked)
 
 ### 3. Separate Normalized Action from Audit Trail
 | Table | Purpose | Use Case |
@@ -57,10 +57,10 @@ Control-system database design for AI governance. Optimized for deterministic de
 
 ### 4. Every Decision Replayable
 Stored for replay:
-- `actions.payload_json` — original request
-- `decisions.policy_snapshot_id` — policy version used
-- `decisions.capability_token` — capability that authorized
-- `decisions.context_json` — ambient state at decision time
+- `actions.payload_json` â€” original request
+- `decisions.policy_snapshot_id` â€” policy version used
+- `decisions.capability_token` â€” capability that authorized
+- `decisions.context_json` â€” ambient state at decision time
 
 ## Main Tables
 
@@ -85,18 +85,18 @@ Stored for replay:
 
 ## Redis Usage
 
-### ✅ Good for Redis (ephemeral)
+### âœ… Good for Redis (ephemeral)
 ```
-ratelimit:{actor}:{action}      → Sliding window counters
-lock:capability:{token}         → Atomic capability use
-lock:approval:{id}              → Approval decision lock
-cache:killswitch:{scope}        → Hot kill switch (TTL: 5s)
-cache:policy:{tenant}:{scope}   → Cached policy (TTL: 30s)
-approvals:pending               → Queue fanout for pub/sub
-dedupe:{key}                    → Idempotency (TTL: 5m)
+ratelimit:{actor}:{action}      â†’ Sliding window counters
+lock:capability:{token}         â†’ Atomic capability use
+lock:approval:{id}              â†’ Approval decision lock
+cache:killswitch:{scope}        â†’ Hot kill switch (TTL: 5s)
+cache:policy:{tenant}:{scope}   â†’ Cached policy (TTL: 30s)
+approvals:pending               â†’ Queue fanout for pub/sub
+dedupe:{key}                    â†’ Idempotency (TTL: 5m)
 ```
 
-### ❌ Never in Redis (Postgres truth)
+### âŒ Never in Redis (Postgres truth)
 - Audit log
 - Policy definitions
 - Final approval state
@@ -107,33 +107,33 @@ dedupe:{key}                    → Idempotency (TTL: 5m)
 
 ```
 Agent calls: stripe.charge
-│
-├─ 1. Store in `actions` (canonical request)
-├─ 2. Resolve `policy_snapshots` (which policy applies)
-├─ 3. Check `kill_switches` (emergency stop?)
-├─ 4. Check `capabilities` (have permission?)
-│   └─ Redis lock for atomic decrement
-├─ 5. Assess risk → may create `approvals` entry
-├─ 6. Write `decisions` (blocked/allowed/pending)
-├─ 7. Append `audit_events` (every step logged)
-│
-└─ 8. If approved → execute → log result
+â”‚
+â”œâ”€ 1. Store in `actions` (canonical request)
+â”œâ”€ 2. Resolve `policy_snapshots` (which policy applies)
+â”œâ”€ 3. Check `kill_switches` (emergency stop?)
+â”œâ”€ 4. Check `capabilities` (have permission?)
+â”‚   â””â”€ Redis lock for atomic decrement
+â”œâ”€ 5. Assess risk â†’ may create `approvals` entry
+â”œâ”€ 6. Write `decisions` (blocked/allowed/pending)
+â”œâ”€ 7. Append `audit_events` (every step logged)
+â”‚
+â””â”€ 8. If approved â†’ execute â†’ log result
 ```
 
 ## Quick Start
 
 ```bash
 # Create database
-createdb ledger_control
+createdb citadel_control
 
 # Run schema
-psql ledger_control -f db/schema.sql
+psql citadel_control -f db/schema.sql
 
 # Verify integrity function
-psql ledger_control -c "SELECT * FROM verify_audit_chain();"
+psql citadel_control -c "SELECT * FROM verify_audit_chain();"
 
 # Test capability consumption
-psql ledger_control -c "SELECT * FROM consume_capability('cap_xxx', 'actor_1');"
+psql citadel_control -c "SELECT * FROM consume_capability('cap_xxx', 'actor_1');"
 ```
 
 ## Helper Functions

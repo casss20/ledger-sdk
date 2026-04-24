@@ -11,15 +11,15 @@
 
 ## Prometheus Metrics
 
-Ledger exposes these metrics at `/metrics`:
+CITADEL exposes these metrics at `/metrics`:
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `ledger_governance_decisions_total` | Counter | Total decisions by type |
-| `ledger_policy_eval_duration_ms` | Histogram | Policy evaluation latency |
-| `ledger_approval_queue_size` | Gauge | Pending approvals |
-| `ledger_kill_switch_active` | Gauge | Active kill switches |
-| `ledger_trust_score_avg` | Gauge | Average trust score |
+| `citadel_governance_decisions_total` | Counter | Total decisions by type |
+| `citadel_policy_eval_duration_ms` | Histogram | Policy evaluation latency |
+| `citadel_approval_queue_size` | Gauge | Pending approvals |
+| `citadel_kill_switch_active` | Gauge | Active kill switches |
+| `citadel_trust_score_avg` | Gauge | Average trust score |
 
 ---
 
@@ -28,7 +28,7 @@ Ledger exposes these metrics at `/metrics`:
 Import dashboard `18674` from Grafana.com or use our JSON:
 
 ```bash
-curl -L https://docs.ledger.dev/assets/grafana-dashboard.json > ledger-dashboard.json
+curl -L https://docs.CITADEL.dev/assets/grafana-dashboard.json > citadel-dashboard.json
 ```
 
 Widgets:
@@ -44,10 +44,10 @@ Widgets:
 
 ```yaml
 groups:
-  - name: ledger-alerts
+  - name: CITADEL-alerts
     rules:
       - alert: HighDenialRate
-        expr: rate(ledger_governance_decisions_total{decision="denied"}[5m]) > 0.1
+        expr: rate(citadel_governance_decisions_total{decision="denied"}[5m]) > 0.1
         for: 5m
         labels:
           severity: warning
@@ -55,7 +55,7 @@ groups:
           summary: "High policy denial rate"
 
       - alert: ApprovalQueueBacklog
-        expr: ledger_approval_queue_size > 50
+        expr: citadel_approval_queue_size > 50
         for: 10m
         labels:
           severity: critical
@@ -70,8 +70,8 @@ groups:
 Forward audit events to your SIEM:
 
 ```python
-ledger.config.set_webhook(
-    url="https://splunk.company.com/ledger-events",
+CITADEL.config.set_webhook(
+    url="https://splunk.company.com/CITADEL-events",
     events=["governance.action.denied", "governance.kill_switch.activated"]
 )
 ```

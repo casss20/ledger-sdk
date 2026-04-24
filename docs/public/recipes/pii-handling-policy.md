@@ -17,7 +17,7 @@ Your customer support agent handles emails containing names, addresses, and phon
 ## Policy
 
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: pii-protection
@@ -43,7 +43,7 @@ spec:
 ## Implementation
 
 ```python
-action = ledger.govern(
+action = citadel.govern(
     agent_id="support-agent",
     action="email.send",
     params={

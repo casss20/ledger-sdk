@@ -18,7 +18,7 @@ Your data analysis agent needs to read production data but should never write to
 
 ### Block production writes
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: block-production-writes
@@ -32,7 +32,7 @@ spec:
 
 ### Allow production reads
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: allow-production-reads
@@ -46,7 +46,7 @@ spec:
 
 ### Schema changes need DBA
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: schema-change-approval
@@ -64,7 +64,7 @@ spec:
 
 ```python
 # Read (allowed)
-read_action = ledger.govern(
+read_action = citadel.govern(
     agent_id="analytics-agent",
     action="database.read",
     params={"table": "users", "environment": "production"}
@@ -72,14 +72,14 @@ read_action = ledger.govern(
 result = read_action.execute()  # Success
 
 # Write (denied)
-write_action = ledger.govern(
+write_action = citadel.govern(
     agent_id="analytics-agent",
     action="database.write",
     params={"table": "users", "environment": "production"}
 )
 try:
     write_action.execute()
-except ledger_sdk.PolicyDeniedError:
+except CITADEL_sdk.PolicyDeniedError:
     print("Write blocked - production is read-only")
 ```
 

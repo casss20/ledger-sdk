@@ -33,7 +33,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Ledger Governance
+                Citadel Governance
               </h1>
               <p className="text-sm text-slate-500">
                 AI Action Approval & Audit System

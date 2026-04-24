@@ -1,10 +1,10 @@
-"""Ledger Operations — Task execution and management.
+"""CITADEL Operations â€” Task execution and management.
 
 Implements:
-- PLANNER.md → planner.py (structured planning)
-- FAILURE.md → failure.py (recovery protocol)
-- ADAPTATION.md → adaptation.py (behavioral adjustment)
-- OPPORTUNITY.md → opportunity.py (leverage detection)
+- PLANNER.md â†’ planner.py (structured planning)
+- FAILURE.md â†’ failure.py (recovery protocol)
+- ADAPTATION.md â†’ adaptation.py (behavioral adjustment)
+- OPPORTUNITY.md â†’ opportunity.py (leverage detection)
 
 These components handle the operational aspects of task management:
 planning, failure recovery, behavioral adaptation, and opportunity detection.

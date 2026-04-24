@@ -2,7 +2,7 @@
 
 ## What you'll learn
 
-- Replace manual `print()` and `logger.info()` with Ledger
+- Replace manual `print()` and `logger.info()` with CITADEL
 - Gain automatic policy enforcement
 - Preserve existing log formats
 - Migrate incrementally
@@ -24,10 +24,10 @@ def send_email(to, subject, body):
         raise
 ```
 
-### After (Ledger governance)
+### After (CITADEL governance)
 ```python
 def send_email(to, subject, body):
-    action = ledger.govern(
+    action = citadel.govern(
         agent_id="email-agent",
         action="email.send",
         params={"to": to, "subject": subject, "body": body}
@@ -43,13 +43,13 @@ def send_email(to, subject, body):
 ### Phase 1: Wrap high-risk actions only
 ```python
 # Only govern the most sensitive operations
- governed_send = ledger.govern(...)
+ governed_send = citadel.govern(...)
  # Keep manual logging for low-risk ops
 ```
 
 ### Phase 2: Add policies for wrapped actions
 ```yaml
-apiVersion: ledger.gov/v1
+apiVersion: citadel.gov/v1
 kind: Policy
 metadata:
   name: email-policy
@@ -63,7 +63,7 @@ spec:
 ```
 
 ### Phase 3: Wrap all actions
-Gradually replace manual logging with `ledger.govern()` for all agent actions.
+Gradually replace manual logging with `citadel.govern()` for all agent actions.
 
 ### Phase 4: Remove manual logging
 Once all actions are governed, remove legacy logging code.
