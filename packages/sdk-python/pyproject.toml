@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "citadel-sdk"
+version = "0.1.0"
+description = "AI Governance: Constitution + Audit for Agent Builders"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Anthony Cass", email = "casseussergio@gmail.com"}
+]
+keywords = ["ai", "governance", "agent", "audit", "llm", "safety", "approval", "kill-switch"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+]
+dependencies = [
+    "httpx>=0.24",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "respx>=0.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/casss20/ledger-sdk"
+Repository = "https://github.com/casss20/ledger-sdk"
+Issues = "https://github.com/casss20/ledger-sdk/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["citadel"]
