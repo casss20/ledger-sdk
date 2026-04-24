@@ -16,7 +16,13 @@ class EntitlementService:
         plan = await self.repo.get_plan(plan_code)
         
         # 2. Base entitlements from plan
-        features = dict(plan['features_json'])
+        raw_features = plan['features_json'] if plan else {}
+        # Handle both dict and string (asyncpg JSONB parsing edge cases)
+        if isinstance(raw_features, str):
+            import json
+            features = json.loads(raw_features) if raw_features else {}
+        else:
+            features = dict(raw_features) if raw_features else {}
         status = BillingStatus(sub['status']) if sub else BillingStatus.ACTIVE
         
         # 3. Apply Overrides
