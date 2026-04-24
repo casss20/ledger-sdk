@@ -1,11 +1,10 @@
-app = "citadel-api"
-primary_region = "iad"  # Change to your region: iad (Virginia), lax (LA), lhr (London), etc.
+app = "ledger-sdk"
+primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  DATABASE_URL = ""  # Set via: fly secrets set DATABASE_URL=postgresql://...
   LOG_LEVEL = "INFO"
   METRICS_ENABLED = "true"
   RATE_LIMIT_REQUESTS = "100"
@@ -31,8 +30,3 @@ primary_region = "iad"  # Change to your region: iad (Virginia), lax (LA), lhr (
   memory = "512mb"
   cpu_kind = "shared"
   cpus = 1
-
-[mounts]
-  # Optional: if you need persistent storage (not needed for stateless API)
-  # source = "data"
-  # destination = "/data"
