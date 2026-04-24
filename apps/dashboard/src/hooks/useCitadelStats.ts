@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 
-export interface CITADELStats {
+export interface CitadelStats {
   pending_approvals: number;
   active_agents: number;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
+  kill_switches_active: number;
   killswitches: {
     email_send: boolean;
     stripe_charge: boolean;
@@ -13,10 +14,10 @@ export interface CITADELStats {
   recent_events_count: number;
 }
 
-export function useCITADELStats() {
-  return useQuery<CITADELStats>({
-    queryKey: ['CITADEL-stats'],
+export function useCitadelStats() {
+  return useQuery<CitadelStats>({
+    queryKey: ['citadel-stats'],
     queryFn: () => apiFetch('/api/dashboard/stats'),
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 }

@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         external: ['react', 'react-dom'],
-      }
-    }
+      },
+    },
   }
 })

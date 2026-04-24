@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Shield, 
   AlertCircle, 
@@ -42,7 +42,7 @@ const MOCK_APPROVALS: ApprovalRequest[] = [
   },
 ];
 
-export const Overview: React.FC = () => {
+export const Overview = () => {
   const [isLocked, setIsLocked] = useState(false);
   const { data: metrics, isLoading: metricsLoading } = useMetricsSummary();
   const { data: health } = useHealthReady();
@@ -161,5 +161,4 @@ export const Overview: React.FC = () => {
     </div>
   );
 };
-
 

@@ -14,7 +14,7 @@ import 'reactflow/dist/style.css';
 import { CustomNode } from './CustomNode';
 import { ApprovalEdge } from './ApprovalEdge';
 import { KillSwitchNode } from './KillSwitchNode';
-import { useCITADELStats } from '../../hooks/useCITADELStats';
+import { useCitadelStats } from '../../hooks/useCitadelStats';
 import { Button } from '../ui/Button';
 import { Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -167,7 +167,7 @@ export function GovernanceGraph() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
-  const { data: stats } = useCITADELStats();
+  const { data: stats } = useCitadelStats();
 
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),

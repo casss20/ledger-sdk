@@ -26,7 +26,7 @@ export function useBilling() {
   });
 
   const checkout = useMutation({
-    mutationFn: () => apiFetch('/v1/billing/checkout', { method: 'POST' }),
+    mutationFn: () => apiFetch<{ url: string }>('/v1/billing/checkout', { method: 'POST' }),
     onSuccess: (data: { url: string }) => {
       window.location.href = data.url;
     },
