@@ -3,7 +3,7 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.citadelsdk.com/v1';
 const TENANT_ID = import.meta.env.VITE_TENANT_ID || 'demo-tenant';
-const API_KEY = import.meta.env.VITE_API_KEY || '';
+const API_KEY = import.meta.env.VITE_API_KEY || 'dev-key-for-testing';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;

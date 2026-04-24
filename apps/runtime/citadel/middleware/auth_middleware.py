@@ -88,6 +88,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         api_key_id = request.headers.get("X-API-Key")
         api_key_secret = request.headers.get("X-API-Secret")
         
+        # Demo/dev key bypass: if key matches simple valid_api_keys, allow without secret
+        from citadel.config import settings
+        if api_key_id and api_key_id in settings.valid_api_keys:
+            request.state.tenant_id = "demo-tenant"
+            return await call_next(request)
+        
         if not api_key_id or not api_key_secret:
             logger.warning(f"Missing API key credentials: {request.url.path}")
             return JSONResponse(
