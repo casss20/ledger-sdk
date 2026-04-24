@@ -127,17 +127,16 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 def setup_middleware(app: FastAPI) -> None:
     """Register all middleware on the app."""
     
-    # CORS — locked down in production
-    origins = get_cors_origins()
+    # CORS
+    origins = settings.allowed_cors_origins
     if origins:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
+            allow_origin_regex=r"https://.*\.vercel\.app$",
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-            allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-API-Secret", "X-Tenant-ID", "X-User-ID", "X-Request-ID"],
-            expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"],
-            max_age=600,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
     
     # Request size limit (outermost = first check)

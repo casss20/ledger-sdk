@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     
+    # CORS Origins (comma-separated)
+    cors_origins: str = "https://dashboard-lemon-one-20.vercel.app,https://citadelsdk.com,https://dashboard.citadelsdk.com"
+    
+    @property
+    def allowed_cors_origins(self) -> List[str]:
+        if not self.cors_origins:
+            return []
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+    
     # Database
     database_url: str = "postgresql://Citadel:Citadel@localhost:5432/citadel_test"
     db_min_size: int = 2
