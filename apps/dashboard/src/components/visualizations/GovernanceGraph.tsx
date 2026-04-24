@@ -207,9 +207,9 @@ export function GovernanceGraph() {
             data: {
               ...node.data,
               switches: [
-                { name: 'email_send', active: stats.killswitches?.email_send || false },
-                { name: 'stripe_charge', active: stats.killswitches?.stripe_charge || false },
-                { name: 'db_write', active: stats.killswitches?.db_write || false },
+                { name: 'email_send', active: stats.kill_switches_active > 0 },
+                { name: 'stripe_charge', active: stats.kill_switches_active > 0 },
+                { name: 'db_write', active: stats.kill_switches_active > 0 },
               ],
             },
           };

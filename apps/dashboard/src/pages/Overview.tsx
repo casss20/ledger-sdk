@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { 
   Shield, 
-  Activity as ActivityIcon, 
   AlertCircle, 
   TrendingUp,
   Fingerprint,
   Zap
 } from 'lucide-react';
-import { 
-  ActivityStream, 
-  ApprovalQueue, 
-  KillSwitch,
-  ActivityEvent,
-  ApprovalRequest 
-} from '@citadel/widget-library';
+import { ActivityStream } from '../components/ActivityStream';
+import type { ActivityEvent } from '../components/ActivityStream';
+import { ApprovalQueue } from '../components/ApprovalQueue';
+import type { ApprovalRequest } from '../components/ApprovalQueue';
+import { KillSwitch } from '../components/KillSwitch';
+import { useMetricsSummary, useHealthReady } from '../hooks/useApi';
 
-// Mock Data
+// Mock Data for widgets that need frontend demo data
 const MOCK_EVENTS: ActivityEvent[] = [
   { id: '1', timestamp: new Date().toISOString(), severity: 'CRITICAL', type: 'token.revoked', summary: 'Production Token Revoked', agentId: 'nova-v2', actionable: true },
   { id: '2', timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), severity: 'HIGH', type: 'execution.blocked', summary: 'S3 Delete Blocked by Policy', agentId: 'forge-v1', actionable: true },
@@ -46,20 +44,55 @@ const MOCK_APPROVALS: ApprovalRequest[] = [
 
 export const Overview: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
+  const { data: metrics, isLoading: metricsLoading } = useMetricsSummary();
+  const { data: health } = useHealthReady();
+
+  // Calculate posture score from metrics
+  const totalDecisions = Object.values(metrics?.decisions_by_status || {}).reduce((a, b) => a + b, 0);
+  const executedDecisions = metrics?.decisions_by_status?.executed || 0;
+  const postureScore = totalDecisions > 0 
+    ? Math.round((executedDecisions / totalDecisions) * 100)
+    : 94;
+
+  const stats = [
+    { 
+      label: 'Posture Score', 
+      value: metricsLoading ? '...' : `${postureScore}`, 
+      icon: Shield, 
+      color: 'text-emerald-500', 
+      trend: health?.ready ? 'Healthy' : 'Degraded' 
+    },
+    { 
+      label: 'Active Policies', 
+      value: metricsLoading ? '...' : `${metrics?.capabilities_active || 0}`, 
+      icon: Fingerprint, 
+      color: 'text-blue-500', 
+      trend: 'Stable' 
+    },
+    { 
+      label: 'Pending Approvals', 
+      value: metricsLoading ? '...' : `${metrics?.pending_approvals || 0}`, 
+      icon: AlertCircle, 
+      color: 'text-orange-500', 
+      trend: metrics?.pending_approvals ? 'Needs Attention' : 'Clear' 
+    },
+    { 
+      label: 'Total Actions', 
+      value: metricsLoading ? '...' : `${metrics?.actions_total || 0}`, 
+      icon: TrendingUp, 
+      color: 'text-indigo-500', 
+      trend: 'Tracked' 
+    },
+  ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Posture Score', value: '94', icon: Shield, color: 'text-emerald-500', trend: '+2%' },
-          { label: 'Active Policies', value: '128', icon: Fingerprint, color: 'text-blue-500', trend: 'Stable' },
-          { label: 'Blocked Actions', value: '42', icon: AlertCircle, color: 'text-orange-500', trend: '+12' },
-          { label: 'Audit Velocity', value: '1.2k', icon: TrendingUp, color: 'text-indigo-500', trend: 'per/hr' },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <div key={i} className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800/50 backdrop-blur-sm group hover:border-slate-700 transition-all">
             <div className="flex items-center justify-between mb-4">
-              <div className={cn("p-2 rounded-xl bg-slate-800/50 border border-slate-700/50", stat.color)}>
+              <div className={`p-2 rounded-xl bg-slate-800/50 border border-slate-700/50 ${stat.color}`}>
                 <stat.icon size={20} />
               </div>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{stat.trend}</span>
@@ -77,8 +110,8 @@ export const Overview: React.FC = () => {
             <div className="p-6 rounded-[1.9rem] bg-slate-950/90 backdrop-blur-xl">
               <ApprovalQueue 
                 requests={MOCK_APPROVALS} 
-                onApprove={(id) => console.log('Approved', id)}
-                onReject={(id) => console.log('Rejected', id)}
+                onApprove={(id: string) => console.log('Approved', id)}
+                onReject={(id: string) => console.log('Rejected', id)}
               />
             </div>
           </div>
@@ -92,7 +125,7 @@ export const Overview: React.FC = () => {
         <div className="lg:col-span-4 space-y-8">
           <KillSwitch 
             isActive={isLocked} 
-            onToggle={async (state) => {
+            onToggle={async (state: boolean) => {
               await new Promise(r => setTimeout(r, 1000));
               setIsLocked(state);
             }} 
@@ -114,7 +147,7 @@ export const Overview: React.FC = () => {
                   <span className="text-xs font-medium text-slate-300">{item.name}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{item.status}</span>
-                    <div className={cn("w-2 h-2 rounded-full", item.color)} />
+                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
                   </div>
                 </div>
               ))}
@@ -129,7 +162,4 @@ export const Overview: React.FC = () => {
   );
 };
 
-// Helper for classes (re-defined here since we are in a single file)
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}
+
