@@ -1,4 +1,4 @@
-"""CRITIC â€” Quality Review
+"""CRITIC — Quality Review
 
 Implementation of CRITIC.md.
 
@@ -13,7 +13,7 @@ CRITIC reviews meaningful outputs before they leave the system.
 - Suggests improvements
 - Does not block low-risk execution unnecessarily
 
-SOURCE OF TRUTH: CITADEL/governance/CRITIC.md
+SOURCE OF TRUTH: citadel/governance/CRITIC.md
 If this code contradicts the MD file, the MD file is correct.
 """
 

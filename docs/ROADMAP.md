@@ -3,20 +3,20 @@
 ## The Problem (2026)
 
 Teams ship AI agents to production without guardrails:
-- âŒ Agent sends 100k emails (prompt bug)
-- âŒ Agent deletes production database (wrong permissions)
-- âŒ Agent charges customers $50k (loop bug)
-- âŒ No audit trail â€” can't prove what happened
-- âŒ No kill switch â€” can't stop it
+- ❌ Agent sends 100k emails (prompt bug)
+- ❌ Agent deletes production database (wrong permissions)
+- ❌ Agent charges customers $50k (loop bug)
+- ❌ No audit trail — can't prove what happened
+- ❌ No kill switch — can't stop it
 
 ## The Solution
 
-**CITADEL: Block, Approve, Log, Kill**
+**Citadel: Block, Approve, Log, Kill**
 
-- âœ… **Block**: Email, DB writes, payments, external APIs
-- âœ… **Require**: Human approval before risky actions
-- âœ… **Log**: Every action, tamper-proof, audit-ready
-- âœ… **Kill**: Stop any feature instantly, no deploy
+- ✅ **Block**: Email, DB writes, payments, external APIs
+- ✅ **Require**: Human approval before risky actions
+- ✅ **Log**: Every action, tamper-proof, audit-ready
+- ✅ **Kill**: Stop any feature instantly, no deploy
 
 Customer reaction: *"Oh fuck, we NEED this. Our agent nearly broke production yesterday."*
 
@@ -29,9 +29,9 @@ Customer reaction: *"Oh fuck, we NEED this. Our agent nearly broke production ye
 Wrap the 4 riskiest tool types with `@governed`:
 
 ```python
-from CITADEL.sdk import CITADEL
+from citadel.sdk import Citadel
 
-gov = CITADEL(...)
+gov = Citadel(...)
 
 @gov.governed(action="send_email", resource="outbound_email", flag="email_send")
 async def send_email(to: str, subject: str, body: str) -> dict:
@@ -85,15 +85,15 @@ class ApprovalQueue:
 ### Week 3: Audit Log + Compliance Report
 
 ```python
-@router.get("/CITADEL/audit")
+@router.get("/citadel/audit")
 async def get_audit_log(action: str | None, approved: bool | None, limit: int = 100): ...
 
-@router.get("/CITADEL/audit/integrity")
+@router.get("/citadel/audit/integrity")
 async def verify_audit_integrity():
     ok, entries = await gov.audit.verify_integrity()
-    return {"ok": ok, "status": "âœ… Chain intact" if ok else "âŒ TAMPERING DETECTED"}
+    return {"ok": ok, "status": "✅ Chain intact" if ok else "❌ TAMPERING DETECTED"}
 
-@router.get("/CITADEL/report/compliance")
+@router.get("/citadel/report/compliance")
 async def compliance_report(days: int = 7): ...
 ```
 
@@ -104,12 +104,12 @@ async def compliance_report(days: int = 7): ...
 ### Week 4: Kill Switches + Docs
 
 ```python
-@router.post("/CITADEL/killswitch/{flag}/kill")
+@router.post("/citadel/killswitch/{flag}/kill")
 async def kill_switch(flag: str, reason: str):
     gov.killsw.kill(flag, reason=reason)
     return {"status": "killed", "flag": flag}
 
-@router.post("/CITADEL/killswitch/{flag}/revive")
+@router.post("/citadel/killswitch/{flag}/revive")
 async def revive_switch(flag: str):
     gov.killsw.revive(flag)
     return {"status": "revived", "flag": flag}
@@ -121,7 +121,7 @@ async def revive_switch(flag: str):
 
 ## Marketing Angle
 
-**Pitch**: *CITADEL: Stop agent accidents before they happen.*
+**Pitch**: *Citadel: Stop agent accidents before they happen.*
 
 **Integration**: 4 lines of code to wrap a tool  
 **Pricing**: $0 open source or $5k consulting install  
@@ -133,7 +133,7 @@ async def revive_switch(flag: str):
 - **Reddit**: /r/LocalLLaMA, /r/MachineLearning
 - **Discord**: LangChain, CrewAI, OpenAI communities
 - **Direct**: YC startups building agents
-- **Product Hunt**: "CITADEL: AI Governance"
+- **Product Hunt**: "Citadel: AI Governance"
 
 ---
 
@@ -146,18 +146,18 @@ async def revive_switch(flag: str):
 | 5-6 | Polish, deploy to first customer ($5k) |
 | 7-8 | 2nd customer from HN/Discord |
 | 9-10 | Release on PyPI, Product Hunt launch |
-| Month 4+ | $30k ARR (6 customers Ã— $5k) |
+| Month 4+ | $30k ARR (6 customers × $5k) |
 
 ---
 
 ## Why This Beats "Broad Governance"
 
-| Competitors (Credo, Arthur, Lakera) | CITADEL |
+| Competitors (Credo, Arthur, Lakera) | Citadel |
 |-------------------------------------|--------|
-| âŒ Broad: "AI governance platform" | âœ… Sharp: "Stop agent accidents" |
-| âŒ Slow: Days of integration | âœ… Fast: 4 lines of code |
-| âŒ Vague: "Monitor for drift" | âœ… Concrete: "Block, approve, log, kill" |
-| âŒ Expensive: $2k+/mo | âœ… Cheap: $0 open source |
+| ❌ Broad: "AI governance platform" | ✅ Sharp: "Stop agent accidents" |
+| ❌ Slow: Days of integration | ✅ Fast: 4 lines of code |
+| ❌ Vague: "Monitor for drift" | ✅ Concrete: "Block, approve, log, kill" |
+| ❌ Expensive: $2k+/mo | ✅ Cheap: $0 open source |
 
 ---
 
@@ -187,7 +187,7 @@ async def revive_switch(flag: str):
 - [ ] Add kill switch API routes
 - [ ] Build kill switch UI
 - [ ] Write quick-start docs
-- [ ] Test end-to-end: block â†’ approve â†’ execute â†’ audit â†’ kill
+- [ ] Test end-to-end: block → approve → execute → audit → kill
 
 ### Deploy
 - [ ] Run against production test agent
@@ -201,12 +201,12 @@ async def revive_switch(flag: str):
 
 | Component | Status |
 |-----------|--------|
-| Core SDK (`@governed`, kill switches, audit) | âœ… Complete |
-| Constitution (24 markdown files) | âœ… Complete |
-| FastAPI integration example | âœ… Complete |
-| Approval queue | ðŸ”„ Week 2 |
-| Dashboard UI | ðŸ”„ Week 3-4 |
-| PyPI release | ðŸ”„ Week 9-10 |
+| Core SDK (`@governed`, kill switches, audit) | ✅ Complete |
+| Constitution (24 markdown files) | ✅ Complete |
+| FastAPI integration example | ✅ Complete |
+| Approval queue | 🔄 Week 2 |
+| Dashboard UI | 🔄 Week 3-4 |
+| PyPI release | 🔄 Week 9-10 |
 
 ---
 

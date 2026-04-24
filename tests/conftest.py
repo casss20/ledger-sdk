@@ -13,7 +13,7 @@ import asyncpg
 
 @pytest.fixture
 def postgres_dsn():
-    return "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
+    return "postgresql://citadel:citadel@localhost:5432/ledger_test"
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ async def clean_database(postgres_dsn):
     try:
         conn = await asyncpg.connect(postgres_dsn)
     except (OSError, asyncpg.PostgresError, ConnectionRefusedError) as e:
-        # PostgreSQL not available â€” skip silently for non-DB tests
+        # PostgreSQL not available — skip silently for non-DB tests
         yield
         return
     await conn.execute("SET app.admin_bypass = 'true'")

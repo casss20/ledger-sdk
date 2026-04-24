@@ -1,5 +1,5 @@
 """
-Stream 3a: Onboarding Flow â€” Quickstart Tests
+Stream 3a: Onboarding Flow — Quickstart Tests
 
 These tests verify that a founder can go from `pip install` to first
 governed action in < 10 minutes with zero manual setup.
@@ -51,7 +51,7 @@ async def test_quickstart_api_key_seeding():
 @pytest.mark.asyncio
 async def test_quickstart_action_execution():
     """
-    Asserts: sample action executes through CITADEL.
+    Asserts: sample action executes through Citadel.
     Verifies: action_id is returned.
     """
     from quickstart import initialize_test_tenant, seed_api_key, execute_sample_action

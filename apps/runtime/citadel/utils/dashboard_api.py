@@ -1,5 +1,5 @@
 """
-Dashboard API â€” Citadel SDK
+Dashboard API — Citadel SDK
 
 REST API endpoints for dashboard consumption.
 Serves Governor data, analytics, and real-time updates.

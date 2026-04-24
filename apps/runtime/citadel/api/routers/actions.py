@@ -116,7 +116,7 @@ async def execute_action(
     """
     Execute an action under governance control.
     
-    Universal entry point â€” the single primitive Citadel exposes.
+    Universal entry point — the single primitive Citadel exposes.
     Same as POST /actions, named explicitly for clarity.
     """
     return await submit_action(req, kernel, _)

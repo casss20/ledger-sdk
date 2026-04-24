@@ -12,7 +12,7 @@
 
 ## Overview
 
-CITADEL's approval system implements human-in-the-loop oversight for high-risk agent actions. When a policy triggers `require_approval`, the action pauses until a human explicitly approves or denies it.
+Citadel's approval system implements human-in-the-loop oversight for high-risk agent actions. When a policy triggers `require_approval`, the action pauses until a human explicitly approves or denies it.
 
 This satisfies EU AI Act Article 14(4)(b): "natural persons overseeing high-risk AI systems are enabled to correctly interpret the outputs."
 
@@ -22,19 +22,19 @@ This satisfies EU AI Act Article 14(4)(b): "natural persons overseeing high-risk
 
 ```
 Agent requests action
-    â†“
+    ↓
 Policy evaluation: require_approval
-    â†“
+    ↓
 Action PAUSED
-    â†“
+    ↓
 Notifications sent to approvers
-    â†“
+    ↓
 Approver reviews context
-    â†“
-    â”œâ”€ APPROVE â†’ Action resumes and executes
-    â”œâ”€ DENY â†’ Action rejected, agent notified
-    â””â”€ TIMEOUT â†’ Auto-rejected after timeout
-    â†“
+    ↓
+    ├─ APPROVE → Action resumes and executes
+    ├─ DENY → Action rejected, agent notified
+    └─ TIMEOUT → Auto-rejected after timeout
+    ↓
 Decision recorded in audit trail
 ```
 
@@ -135,7 +135,7 @@ Escalation chain:
 0h: Initial notification
 4h: First reminder
 8h: Second reminder
-24h: Timeout â†’ Auto-deny
+24h: Timeout → Auto-deny
 48h: Escalation notification to manager
 ```
 
@@ -167,16 +167,16 @@ approval_context = {
 
 ```python
 # List pending approvals
-pending = CITADEL.approvals.list(status="pending")
+pending = citadel.approvals.list(status="pending")
 
 # Approve an action
-CITADEL.approvals.approve(
+citadel.approvals.approve(
     approval_id="app_123e4567",
     reason="Verified customer, legitimate refund"
 )
 
 # Deny an action
-CITADEL.approvals.deny(
+citadel.approvals.deny(
     approval_id="app_123e4567",
     reason="Suspicious pattern, requires investigation"
 )
@@ -189,7 +189,7 @@ CITADEL.approvals.deny(
 Every approval is recorded:
 
 ```python
-records = CITADEL.audit.query(action="approval.decided")
+records = citadel.audit.query(action="approval.decided")
 for record in records:
     print(f"{record.approver} {record.decision} {record.action}")
     print(f"  Reason: {record.reason}")
@@ -203,7 +203,7 @@ for record in records:
 Temporarily delegate approval authority:
 
 ```python
-CITADEL.approvals.delegate(
+citadel.approvals.delegate(
     from_user="alice@company.com",
     to_user="bob@company.com",
     start="2026-05-01",
@@ -216,6 +216,6 @@ CITADEL.approvals.delegate(
 
 ## Next steps
 
-- [Kill Switch](./kill-switch.md) â€” Emergency stops when approvals aren't enough
-- [Trust Scoring](./trust-scoring.md) â€” Reduce approval burden for trusted agents
+- [Kill Switch](./kill-switch.md) — Emergency stops when approvals aren't enough
+- [Trust Scoring](./trust-scoring.md) — Reduce approval burden for trusted agents
 - [Recipe: High-Risk Action Approval](../recipes/high-risk-action-approval.md)

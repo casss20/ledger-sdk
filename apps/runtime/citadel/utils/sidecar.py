@@ -1,5 +1,5 @@
 """
-Sidecar Pattern â€” Citadel SDK
+Sidecar Pattern — Citadel SDK
 
 Like Weft's "Infrastructure as nodes, sidecars as the bridge":
 - Infrastructure nodes provision real resources
@@ -21,7 +21,7 @@ try:
 except ImportError:
     aiohttp = None
     HAS_AIOHTTP = False
-    logger.warning("[Sidecar] aiohttp not installed. Sidecar features disabled. Install with: pip install Citadel-sdk[sidecar]")
+    logger.warning("[Sidecar] aiohttp not installed. Sidecar features disabled. Install with: pip install citadel-sdk[sidecar]")
 
 
 class SidecarError(Exception):
@@ -67,7 +67,7 @@ class SidecarClient:
         retries: int = 3
     ):
         if not HAS_AIOHTTP:
-            raise ImportError("aiohttp not installed. Install with: pip install Citadel-sdk[sidecar]")
+            raise ImportError("aiohttp not installed. Install with: pip install citadel-sdk[sidecar]")
         self.endpoint = endpoint.rstrip('/')
         self.timeout = timeout
         self.retries = retries

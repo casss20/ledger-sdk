@@ -1,7 +1,7 @@
 """
-Backward compatibility shim â€” re-exports from citadel.services.audit_service.
+Backward compatibility shim — re-exports from citadel.services.audit_service.
 
-AuditService was moved to Citadel.services.audit_service during the package refactor.
+AuditService was moved to citadel.services.audit_service during the package refactor.
 This shim ensures all existing imports continue to work.
 """
 

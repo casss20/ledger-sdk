@@ -10,7 +10,7 @@
 ---
 
 ## Use Case
-Your customer support pipeline uses three agents: triage â†’ resolution â†’ follow-up. Each handoff must be authenticated and audited.
+Your customer support pipeline uses three agents: triage → resolution → follow-up. Each handoff must be authenticated and audited.
 
 ---
 
@@ -18,9 +18,9 @@ Your customer support pipeline uses three agents: triage â†’ resolution â�
 
 ```
 Triage Agent
-    â†“ [gt_token + auth]
+    ↓ [gt_token + auth]
 Resolution Agent
-    â†“ [gt_token + auth]
+    ↓ [gt_token + auth]
 Follow-up Agent
 ```
 
@@ -32,20 +32,20 @@ Follow-up Agent
 
 ```python
 # Triage agent authenticates resolution agent
-auth_token = CITADEL.agents.authenticate(
+auth_token = citadel.agents.authenticate(
     from_agent="triage-agent",
     to_agent="resolution-agent",
     task_id="ticket-123"
 )
 
 # Resolution agent verifies
-is_valid = CITADEL.agents.verify_auth(
+is_valid = citadel.agents.verify_auth(
     agent_id="resolution-agent",
     token=auth_token
 )
 
 # Resolution agent completes task, passes to follow-up
-next_token = CITADEL.agents.authenticate(
+next_token = citadel.agents.authenticate(
     from_agent="resolution-agent",
     to_agent="follow-up-agent",
     task_id="ticket-123"
@@ -56,7 +56,7 @@ next_token = CITADEL.agents.authenticate(
 
 ```python
 # Start trace
-trace = CITADEL.traces.start(name="customer-ticket-123")
+trace = citadel.traces.start(name="customer-ticket-123")
 
 # Triage agent
 action1 = citadel.govern(
@@ -73,7 +73,7 @@ action2 = citadel.govern(
 )
 
 # View full trace
-CITADEL.traces.get(trace.id)
+citadel.traces.get(trace.id)
 ```
 
 ---

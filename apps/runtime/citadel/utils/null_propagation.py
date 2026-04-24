@@ -1,5 +1,5 @@
 """
-Null Propagation â€” Citadel SDK
+Null Propagation — Citadel SDK
 
 Like Weft's null propagation: when upstream produces nothing, 
 downstream skips gracefully. No try/catch ceremony.
@@ -23,7 +23,7 @@ T = TypeVar('T')
 
 class SkipExecution(Exception):
     """
-    Graceful skip â€” not an error.
+    Graceful skip — not an error.
     Like Weft's null propagation through the graph.
     """
     pass
@@ -63,7 +63,7 @@ class Required:
         """
         if value is None or value == "" or value == [] or value == {}:
             ctx_str = f" | context: {context}" if context else ""
-            logger.info(f"[NullProp] Required input '{name}' is null â€” skipping execution{ctx_str}")
+            logger.info(f"[NullProp] Required input '{name}' is null — skipping execution{ctx_str}")
             
             # Report to GOVERNOR if we have an action_id
             if action_id:

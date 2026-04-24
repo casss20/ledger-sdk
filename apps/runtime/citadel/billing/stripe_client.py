@@ -1,7 +1,7 @@
 try:
     import stripe
 except ImportError:
-    stripe = None  # Stripe not installed â€” billing features disabled
+    stripe = None  # Stripe not installed — billing features disabled
 
 from typing import Optional, Dict, Any
 from citadel.config import settings

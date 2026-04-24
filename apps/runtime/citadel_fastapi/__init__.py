@@ -1,10 +1,10 @@
-"""CITADEL FastAPI integration â€” middleware and routes."""
+"""Citadel FastAPI integration — middleware and routes."""
 
-from .middleware import CITADELMiddleware, JWTHandler, JWTConfig, TokenPayload, get_current_user
+from .middleware import LedgerMiddleware, JWTHandler, JWTConfig, TokenPayload, get_current_user
 from .routes import router
 
 __all__ = [
-    "CITADELMiddleware",
+    "LedgerMiddleware",
     "JWTHandler",
     "JWTConfig",
     "TokenPayload",

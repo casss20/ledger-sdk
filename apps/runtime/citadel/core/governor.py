@@ -1,5 +1,5 @@
 """
-GOVERNOR â€” Central visibility and control plane for Citadel SDK
+GOVERNOR — Central visibility and control plane for Citadel SDK
 
 The GOVERNOR is the single source of truth for:
 - What actions are pending (awaiting approval)

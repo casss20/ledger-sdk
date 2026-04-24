@@ -1,17 +1,17 @@
 """
-Citadel Output Schema â€” Standard typed output schemas for all agents.
+Citadel Output Schema — Standard typed output schemas for all agents.
 
 Every agent produces one of these. The Citadel Router inspects the type
 to decide approval level and routing.
 
-OutputType     â†’ Approval level
+OutputType     → Approval level
 -----------      ---------------
-RESEARCH       â†’ SOFT  (informational, auto-queue)
-LISTING        â†’ HARD  (must not publish without approval)
-ASSET          â†’ HARD  (must not use without approval)
-MESSAGE        â†’ HARD  (must not send without approval)
-TASK           â†’ NONE  (internal orchestration, auto-proceed)
-GENERIC        â†’ HARD  (unknown â€” held for review)
+RESEARCH       → SOFT  (informational, auto-queue)
+LISTING        → HARD  (must not publish without approval)
+ASSET          → HARD  (must not use without approval)
+MESSAGE        → HARD  (must not send without approval)
+TASK           → NONE  (internal orchestration, auto-proceed)
+GENERIC        → HARD  (unknown — held for review)
 """
 
 import uuid
@@ -47,7 +47,7 @@ class AgentOutput(BaseModel):
     task_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    # Routing state â€” filled in by CitadelRouter
+    # Routing state — filled in by CitadelRouter
     target_channel: Optional[str] = None
     approval_level: ApprovalLevel = ApprovalLevel.HARD
     routed_at: Optional[str] = None
@@ -63,9 +63,9 @@ class Opportunity(BaseModel):
     """Research opportunity found by agent."""
     title: str
     niche: str
-    demand_score: float  # 0.0 â€“ 1.0
-    competition: float   # 0.0 â€“ 1.0
-    fit_score: float     # 0.0 â€“ 1.0
+    demand_score: float  # 0.0 – 1.0
+    competition: float   # 0.0 – 1.0
+    fit_score: float     # 0.0 – 1.0
     reasoning: str
     keywords: List[str] = []
     estimated_price_range: Optional[str] = None

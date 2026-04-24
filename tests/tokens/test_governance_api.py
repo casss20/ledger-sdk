@@ -2,13 +2,13 @@
 End-to-end tests for Governance REST API.
 
 Covers:
-  POST /v1/governance/decisions              â€” Create decision
-  GET  /v1/governance/decisions/{id}         â€” Get decision
-  POST /v1/governance/decisions/{id}/tokens  â€” Derive token
-  GET  /v1/governance/tokens/{id}            â€” Get token
-  POST /v1/governance/verify                 â€” Verify token/decision
-  GET  /v1/governance/audit/verify           â€” Verify audit chain
-  GET  /v1/governance/decisions/{id}/audit   â€” Get decision audit events
+  POST /v1/governance/decisions              — Create decision
+  GET  /v1/governance/decisions/{id}         — Get decision
+  POST /v1/governance/decisions/{id}/tokens  — Derive token
+  GET  /v1/governance/tokens/{id}            — Get token
+  POST /v1/governance/verify                 — Verify token/decision
+  GET  /v1/governance/audit/verify           — Verify audit chain
+  GET  /v1/governance/decisions/{id}/audit   — Get decision audit events
 """
 
 import pytest
@@ -16,15 +16,15 @@ import uuid
 import httpx
 from httpx import ASGITransport
 
-from CITADEL.api import create_app
-from CITADEL.tokens import GovernanceDecision, DecisionType
+from citadel.api import create_app
+from citadel.tokens import GovernanceDecision, DecisionType
 
 
 # Test configuration overrides
-import CITADEL.config
-CITADEL.config.settings.require_auth = True
-CITADEL.config.settings.api_keys = "test-key"
-CITADEL.config.settings.database_url = "postgresql://CITADEL:CITADEL@localhost:5432/citadel_test"
+import citadel.config
+citadel.config.settings.require_auth = True
+citadel.config.settings.api_keys = "test-key"
+citadel.config.settings.database_url = "postgresql://citadel:citadel@localhost:5432/ledger_test"
 
 
 @pytest.fixture

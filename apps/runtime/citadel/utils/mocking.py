@@ -1,5 +1,5 @@
 """
-Native Mocking â€” Citadel SDK
+Native Mocking — Citadel SDK
 
 Like Weft's mocking: any node can be replaced with "return this data instead".
 Type-checked against real ports. Build top-down (define interfaces first).
@@ -173,7 +173,7 @@ def mockable(
     """
     Decorator that enables mocking for any governed function.
     
-    Like Weft's native mocking â€” any node can be replaced with mock data.
+    Like Weft's native mocking — any node can be replaced with mock data.
     
     Usage:
         @mockable("send_email")

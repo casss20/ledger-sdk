@@ -1,14 +1,14 @@
-# VISION.md â€” Citadel SDK Long-Term Vision
+# VISION.md — Citadel SDK Long-Term Vision
 
-**Document Purpose:** Capture the ultimate vision for CITADEL beyond the current implementation.
+**Document Purpose:** Capture the ultimate vision for Citadel beyond the current implementation.
 
 ---
 
 ## The North Star
 
-**CITADEL is the universal control layer for autonomous AI.**
+**Citadel is the universal control layer for autonomous AI.**
 
-Before any AI agent takes a risky action â€” in any domain, on any platform â€” it asks CITADEL:
+Before any AI agent takes a risky action — in any domain, on any platform — it asks Citadel:
 
 > *"Is this allowed?"*
 
@@ -36,7 +36,7 @@ AI agents can now:
 ```python
 # Customer Service AI
 @gov.governed(action="send_email")           # Block spam, require approval
-@gov.governed(action="issue_refund")         # HIGH risk â†’ human approval
+@gov.governed(action="issue_refund")         # HIGH risk → human approval
 @gov.governed(action="close_account")        # Kill switch can stop this
 
 # DevOps AI
@@ -98,10 +98,10 @@ AI agents can now:
 - Billing & metering
 
 ### Phase 3: Multi-Language
-- **Node.js SDK** â€” `npm install citadel-sdk`
-- **Go SDK** â€” `go get github.com/CITADEL/sdk`
-- **Rust SDK** â€” `cargo add citadel-sdk`
-- **Java SDK** â€” Maven/Gradle integration
+- **Node.js SDK** — `npm install citadel-sdk`
+- **Go SDK** — `go get github.com/citadel/sdk`
+- **Rust SDK** — `cargo add citadel-sdk`
+- **Java SDK** — Maven/Gradle integration
 
 ### Phase 4: Enterprise Platform
 - AI-to-AI governance (agents governing agents)
@@ -214,9 +214,9 @@ AI agents can now:
 
 ## The Ultimate Goal
 
-> **Every AI agent in the world runs through CITADEL first.**
+> **Every AI agent in the world runs through Citadel first.**
 
-When AI becomes autonomous â€” scheduling meetings, trading stocks, diagnosing patients, writing code â€” **CITADEL is the safety layer that keeps it aligned with human intent.**
+When AI becomes autonomous — scheduling meetings, trading stocks, diagnosing patients, writing code — **Citadel is the safety layer that keeps it aligned with human intent.**
 
 We're not just building a library.  
 We're building **the immune system for the AI age.**

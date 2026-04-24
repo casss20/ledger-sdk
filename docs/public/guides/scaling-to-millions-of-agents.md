@@ -13,13 +13,13 @@
 
 ```
 Load Balancer
-    â†“
-CITADEL API (auto-scaled)
-    â†“
+    ↓
+Citadel API (auto-scaled)
+    ↓
 Policy Cache (Redis Cluster)
-    â†“
-Audit Ingest (Kafka â†’ S3)
-    â†“
+    ↓
+Audit Ingest (Kafka → S3)
+    ↓
 Search Index (Elasticsearch)
 ```
 

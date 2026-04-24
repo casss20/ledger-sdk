@@ -1,9 +1,9 @@
 """
-Cross-Action Analytics â€” Citadel SDK
+Cross-Action Analytics — Citadel SDK
 
 Time-windowed rate analysis, anomaly detection, agent behavior profiling.
 
-Like a SIEM for AI agents â€” detect when "normal" becomes "abnormal".
+Like a SIEM for AI agents — detect when "normal" becomes "abnormal".
 """
 
 from typing import Dict, List, Optional, Any, Callable

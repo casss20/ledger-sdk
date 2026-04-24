@@ -1,5 +1,5 @@
 """
-Subgraph Execution â€” Citadel SDK
+Subgraph Execution — Citadel SDK
 
 Outputs as endpoints. Run only the subgraph needed for specific outputs.
 Like Weft's "Outputs as endpoints, subgraph execution" from ROADMAP.
