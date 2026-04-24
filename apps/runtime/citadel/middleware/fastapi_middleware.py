@@ -41,6 +41,8 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = {
         "/health",
         "/v1/health",
+        "/v1/health/live",
+        "/v1/health/ready",
         "/healthz",
         "/docs",
         "/openapi.json",
