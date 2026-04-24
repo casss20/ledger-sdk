@@ -9,7 +9,9 @@ RUN groupadd -r citadel && useradd -r -g citadel citadel
 # Install dependencies
 WORKDIR /app
 COPY pyproject.toml README.md ./
-COPY src/ ./src/
+COPY apps/runtime/ ./apps/runtime/
+COPY demo/ ./demo/
+COPY db/ ./db/
 
 # Install with all production dependencies
 RUN pip install --no-cache-dir -e ".[all]"
