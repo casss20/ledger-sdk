@@ -89,6 +89,12 @@ all = [
     "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["apps/runtime/citadel"]
+
+[tool.hatch.build.targets.wheel.sources]
+"apps/runtime/citadel" = "citadel"
+
 [project.urls]
 Homepage = "https://github.com/casss20/citadel-sdk"
 Documentation = "https://github.com/casss20/citadel-sdk/tree/master/docs"
