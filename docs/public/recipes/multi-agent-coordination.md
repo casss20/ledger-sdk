@@ -2,9 +2,9 @@
 
 ## What you'll learn
 
-- Authenticate agent-to-agent communication
-- Trace actions across agent chains
-- Govern handoffs between agents
+- Authenticate agent-to-agent communication using API keys
+- Trace actions across agent chains with audit logs
+- Govern handoffs between agents using approvals
 - Audit multi-agent workflows
 
 ---
@@ -18,62 +18,141 @@ Your customer support pipeline uses three agents: triage → resolution → foll
 
 ```
 Triage Agent
-    ↓ [gt_token + auth]
+    ↓ [API Key + X-Tenant-ID]
 Resolution Agent
-    ↓ [gt_token + auth]
+    ↓ [API Key + X-Tenant-ID]
 Follow-up Agent
+    ↓ [Audit log]
+Citadel Dashboard
 ```
 
 ---
 
 ## Implementation
 
-### Agent authentication
+### Step 1: Get API keys for each agent
 
-```python
-# Triage agent authenticates resolution agent
-auth_token = citadel.agents.authenticate(
-    from_agent="triage-agent",
-    to_agent="resolution-agent",
-    task_id="ticket-123"
-)
+Each agent needs its own API key. Create them via the dashboard or API:
 
-# Resolution agent verifies
-is_valid = citadel.agents.verify_auth(
-    agent_id="resolution-agent",
-    token=auth_token
-)
+```bash
+# Create API key for triage agent
+curl -X POST https://api.citadelsdk.com/auth/keys \
+  -H "Authorization: Bearer <admin_jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "triage-agent"}'
 
-# Resolution agent completes task, passes to follow-up
-next_token = citadel.agents.authenticate(
-    from_agent="resolution-agent",
-    to_agent="follow-up-agent",
-    task_id="ticket-123"
-)
+# Response:
+# {"key_id": "gk_live_...", "key_secret": "secret_shown_once"}
 ```
 
-### Trace context propagation
+### Step 2: Govern actions with Citadel
+
+Each agent wraps its actions with the Citadel API:
 
 ```python
-# Start trace
-trace = citadel.traces.start(name="customer-ticket-123")
+import requests
 
-# Triage agent
-action1 = citadel.govern(
-    agent_id="triage-agent",
-    action="ticket.triage",
-    trace_id=trace.id
+CITADEL_API = "https://api.citadelsdk.com"
+HEADERS = {
+    "X-API-Key": "gk_live_your_key_id",
+    "X-API-Secret": "your_key_secret",
+    "X-Tenant-ID": "your-tenant",
+    "Content-Type": "application/json"
+}
+
+# Triage agent: create a governed action
+response = requests.post(
+    f"{CITADEL_API}/v1/actions",
+    headers=HEADERS,
+    json={
+        "action_type": "ticket.triage",
+        "payload": {
+            "ticket_id": "ticket-123",
+            "priority": "high",
+            "category": "billing"
+        },
+        "agent_id": "triage-agent"
+    }
+)
+action = response.json()
+print(f"Action created: {action['action_id']}")
+
+# Resolution agent: continue the workflow
+response = requests.post(
+    f"{CITADEL_API}/v1/actions",
+    headers=HEADERS,
+    json={
+        "action_type": "ticket.resolve",
+        "payload": {
+            "ticket_id": "ticket-123",
+            "resolution": "refund_approved"
+        },
+        "agent_id": "resolution-agent"
+    }
 )
 
-# Resolution agent continues trace
-action2 = citadel.govern(
-    agent_id="resolution-agent",
-    action="ticket.resolve",
-    trace_id=trace.id
-)
+# If approval is required, check the approval queue
+approvals = requests.get(
+    f"{CITADEL_API}/v1/approvals",
+    headers=HEADERS
+).json()
+```
 
-# View full trace
-citadel.traces.get(trace.id)
+### Step 3: Trace across agents with metadata
+
+Pass trace context through action metadata:
+
+```python
+import uuid
+
+# Start a trace
+trace_id = str(uuid.uuid4())
+
+# Each agent includes trace_id in payload
+triage_action = requests.post(
+    f"{CITADEL_API}/v1/actions",
+    headers=HEADERS,
+    json={
+        "action_type": "ticket.triage",
+        "payload": {
+            "ticket_id": "ticket-123",
+            "trace_id": trace_id,
+            "step": 1,
+            "agent": "triage"
+        }
+    }
+).json()
+
+resolution_action = requests.post(
+    f"{CITADEL_API}/v1/actions",
+    headers=HEADERS,
+    json={
+        "action_type": "ticket.resolve",
+        "payload": {
+            "ticket_id": "ticket-123",
+            "trace_id": trace_id,
+            "step": 2,
+            "agent": "resolution",
+            "parent_action": triage_action["action_id"]
+        }
+    }
+).json()
+```
+
+### Step 4: Audit the full workflow
+
+Query the audit trail to see the complete agent chain:
+
+```python
+# Get all actions for a trace
+audit = requests.get(
+    f"{CITADEL_API}/v1/audit",
+    headers=HEADERS,
+    params={"trace_id": trace_id}
+).json()
+
+for event in audit["events"]:
+    print(f"[{event['step']}] {event['agent']}: {event['action_type']} → {event['status']}")
 ```
 
 ---
@@ -81,4 +160,5 @@ citadel.traces.get(trace.id)
 ## Next steps
 
 - [Core Concepts: Governance Tokens](../core-concepts/governance-tokens.md)
+- [Core Concepts: Human Approvals](../core-concepts/human-approvals.md)
 - [Recipe: Agent-to-Agent Authentication](agent-to-agent-authentication.md)
