@@ -642,7 +642,7 @@ def test_legacy_import_emits_warning():
             warnings.simplefilter("always")
             import citadel
             assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
-            assert citadel.__version__ == "0.2.0"
+            assert citadel.__version__ == "0.2.1"
     finally:
         # Restore sys.path
         sys.path = orig_path

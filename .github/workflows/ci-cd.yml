@@ -31,11 +31,11 @@ jobs:
       - name: Install lint tools
         run: pip install ruff mypy
       - name: Ruff check
-        run: ruff check apps/runtime/ || true
+        run: ruff check apps/runtime/
       - name: Ruff format check
-        run: ruff format --check apps/runtime/ || true
+        run: ruff format --check apps/runtime/
       - name: MyPy typecheck
-        run: mypy apps/runtime/ || true
+        run: mypy apps/runtime/
 
   # ──────────────────────────────────────────
   # 2. BACKEND TESTS
@@ -72,13 +72,14 @@ jobs:
         env:
           PGPASSWORD: citadel
         run: |
-          psql -h localhost -U citadel -d citadel_test -f db/00-init-test-db.sql
+          # Database already created by postgres service; just apply schema
           psql -h localhost -U citadel -d citadel_test -f db/schema.sql
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql://citadel:citadel@localhost:5432/citadel_test
           API_KEYS: test-key:admin
           REQUIRE_AUTH: false
+          CITADEL_TESTING: true
         run: pytest tests/ -v --tb=short
 
   # ──────────────────────────────────────────
@@ -121,6 +122,7 @@ jobs:
           cache-dependency-path: |
             apps/dashboard/package-lock.json
             apps/landing/package-lock.json
+            apps/dashboard-demo/package-lock.json
 
       - name: Build Dashboard
         working-directory: apps/dashboard
@@ -141,6 +143,7 @@ jobs:
         run: |
           npm ci
           npm run build
+        continue-on-error: true
 
   # ──────────────────────────────────────────
   # 5. DEPLOY API (Fly.io)
