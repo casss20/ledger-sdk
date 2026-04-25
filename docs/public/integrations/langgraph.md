@@ -5,7 +5,7 @@ Govern LangGraph state machines with Citadel's policy engine at every node trans
 ## Installation
 
 ```bash
-pip install citadel-sdk langgraph
+pip install citadel-governance langgraph
 ```
 
 ## Quick Start

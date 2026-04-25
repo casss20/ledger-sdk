@@ -26,19 +26,19 @@
 
 ### Step 1: Install CITADEL
 ```bash
-pip install citadel-sdk[langchain]
+pip install citadel-governance[langchain]
 ```
 
 ### Step 2: Add CITADEL handler alongside callbacks
 ```python
 from langchain.callbacks import FileCallbackHandler
-from citadel_sdk.integrations.langchain import CITADELCallbackHandler
+from citadel.integrations.langchain import CITADELCallbackHandler
 
 # Keep existing callbacks
 file_handler = FileCallbackHandler("agent.log")
 
 # Add CITADEL governance
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+CITADEL = citadel.Client(api_key="ldk_test_...")
 citadel_handler = CITADELCallbackHandler(
     client=CITADEL,
     agent_id="migration-agent-01"

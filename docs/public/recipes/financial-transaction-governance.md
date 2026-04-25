@@ -53,7 +53,7 @@ action = citadel.govern(
 
 try:
     result = action.execute()
-except citadel_sdk.ApprovalRequiredError as e:
+except citadel.ApprovalRequiredError as e:
     print(f"Needs CFO + CEO approval: {e.approval_url}")
 ```
 

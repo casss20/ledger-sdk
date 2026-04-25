@@ -3,15 +3,15 @@
 ## Installation
 
 ```bash
-pip install citadel-sdk
+pip install citadel-governance
 ```
 
 ## Client
 
 ```python
-import citadel_sdk
+import citadel
 
-CITADEL = citadel_sdk.Client(
+CITADEL = citadel.Client(
     api_key="ldk_test_...",
     environment="sandbox"  # or "production"
 )

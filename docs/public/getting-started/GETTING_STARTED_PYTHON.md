@@ -21,13 +21,13 @@
 ## Step 1: Install Citadel SDK
 
 ```bash
-pip install citadel-sdk
+pip install citadel-governance
 ```
 
 Verify the installation:
 
 ```bash
-python -c "import ledger_sdk; print(ledger_sdk.__version__)"
+python -c "import citadel; print(citadel.__version__)"
 ```
 
 > ⚠️ **Note:** If you see `ModuleNotFoundError`, ensure your virtual environment is activated:
@@ -145,7 +145,7 @@ Citadel integrates seamlessly with LangChain via a callback handler:
 ```python
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from ledger_sdk.integrations.langchain import LedgerCallbackHandler
+from citadel.integrations.langchain import LedgerCallbackHandler
 
 # Initialize Citadel handler
 ledger_handler = LedgerCallbackHandler(

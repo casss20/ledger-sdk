@@ -12,9 +12,9 @@
 ## Installation
 
 ```bash
-pip install citadel-sdk[crewai]
+pip install citadel-governance[crewai]
 # or
-pip install citadel-sdk crewai
+pip install citadel-governance crewai
 ```
 
 ---
@@ -23,11 +23,11 @@ pip install citadel-sdk crewai
 
 ```python
 from crewai import Agent, Task, Crew
-from citadel_sdk.integrations.crewai import CITADELTaskHook
+from citadel.integrations.crewai import CITADELTaskHook
 
 # Initialize CITADEL
-import citadel_sdk
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+import citadel
+CITADEL = citadel.Client(api_key="ldk_test_...")
 
 # Create CITADEL hook
 citadel_hook = CITADELTaskHook(

@@ -5,7 +5,7 @@ Govern Claude Code agent actions with policy enforcement, file edit controls, an
 ## Installation
 
 ```bash
-pip install citadel-sdk anthropic
+pip install citadel-governance anthropic
 ```
 
 ## Quick Start

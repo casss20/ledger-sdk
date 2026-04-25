@@ -90,10 +90,10 @@ spec:
 
 ### Python SDK
 ```python
-import ledger_sdk
+import citadel
 
 # Initialize with API key
-citadel = ledger_sdk.Client(api_key="ldk_...")
+citadel = citadel.Client(api_key="ldk_...")
 
 # Wrap an agent action
 governed = citadel.govern(

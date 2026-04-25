@@ -13,15 +13,15 @@
 
 ### Step 1: Install CITADEL
 ```bash
-pip install citadel-sdk[autogen]
+pip install citadel-governance[autogen]
 ```
 
 ### Step 2: Add CITADEL interceptor
 ```python
 from autogen import ConversableAgent
-from citadel_sdk.integrations.autogen import CITADELAgentInterceptor
+from citadel.integrations.autogen import CITADELAgentInterceptor
 
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+CITADEL = citadel.Client(api_key="ldk_test_...")
 interceptor = CITADELAgentInterceptor(
     client=CITADEL,
     conversation_id="migrated-chat-01"

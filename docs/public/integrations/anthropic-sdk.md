@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-pip install citadel-sdk[anthropic]
+pip install citadel-governance[anthropic]
 ```
 
 ---
@@ -21,10 +21,10 @@ pip install citadel-sdk[anthropic]
 
 ```python
 from anthropic import Anthropic
-from citadel_sdk.integrations.anthropic import CITADELAnthropicMiddleware
+from citadel.integrations.anthropic import CITADELAnthropicMiddleware
 
-import citadel_sdk
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+import citadel
+CITADEL = citadel.Client(api_key="ldk_test_...")
 
 middleware = CITADELAnthropicMiddleware(client=CITADEL, agent_id="claude-agent-01")
 

@@ -5,7 +5,7 @@ Govern OpenAI Codex code generation with security review, policy enforcement, an
 ## Installation
 
 ```bash
-pip install citadel-sdk openai
+pip install citadel-governance openai
 ```
 
 ## Quick Start

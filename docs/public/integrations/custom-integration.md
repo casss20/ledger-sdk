@@ -34,11 +34,11 @@ Return result to agent
 ### Python middleware template
 
 ```python
-import ledger_sdk
+import citadel
 
 class CustomGovernanceMiddleware:
     def __init__(self, api_key, agent_id):
-        self.citadel = ledger_sdk.Client(api_key=api_key)
+        self.citadel = citadel.Client(api_key=api_key)
         self.agent_id = agent_id
 
     def before_action(self, action, params):
@@ -50,9 +50,9 @@ class CustomGovernanceMiddleware:
         try:
             result = governed.execute()
             return {"allowed": True, "token": result.governance_token}
-        except ledger_sdk.PolicyDeniedError as e:
+        except citadel.PolicyDeniedError as e:
             return {"allowed": False, "error": str(e)}
-        except ledger_sdk.ApprovalRequiredError as e:
+        except citadel.ApprovalRequiredError as e:
             return {"allowed": False, "approval_url": e.approval_url}
 
     def after_action(self, action, params, outcome, token):
