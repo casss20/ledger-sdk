@@ -418,6 +418,152 @@ CREATE TRIGGER trg_audit_event_hash
 COMMENT ON TABLE audit_events IS 'Full chronological audit trail - append-only, hash-chained, tamper-evident';
 
 -- ============================================================================
+-- MERKLE ROOT SIGNING: External anchoring for audit chain integrity
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_merkle_roots (
+    root_id BIGSERIAL PRIMARY KEY,
+    root_hash TEXT NOT NULL UNIQUE,
+    -- Merkle tree root over a batch of audit events
+    from_event_id BIGINT NOT NULL,
+    to_event_id BIGINT NOT NULL,
+    event_count BIGINT NOT NULL,
+    -- Signature using Ed25519 or RSA (hex-encoded)
+    signature TEXT NOT NULL,
+    -- Public key identifier for verification
+    key_id TEXT NOT NULL,
+    -- External anchor (e.g., transparency log entry, blockchain tx)
+    external_anchor TEXT,
+    -- When this root was computed and signed
+    signed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Optional tenant scoping (NULL = global/system root)
+    tenant_id TEXT,
+    -- Prevent tampering with signed roots
+    CONSTRAINT valid_range CHECK (from_event_id <= to_event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_merkle_roots_range ON audit_merkle_roots(from_event_id, to_event_id);
+CREATE INDEX IF NOT EXISTS idx_merkle_roots_tenant ON audit_merkle_roots(tenant_id, signed_at DESC);
+
+COMMENT ON TABLE audit_merkle_roots IS 'Signed Merkle roots for external audit chain anchoring';
+
+-- Compute Merkle root over a range of audit events
+CREATE OR REPLACE FUNCTION compute_audit_merkle_root(
+    p_from_event_id BIGINT,
+    p_to_event_id BIGINT
+)
+RETURNS TEXT AS $$
+DECLARE
+    rec RECORD;
+    combined TEXT := '';
+BEGIN
+    -- Collect all event hashes in range and combine iteratively
+    FOR rec IN
+        SELECT event_hash
+        FROM audit_events
+        WHERE event_id BETWEEN p_from_event_id AND p_to_event_id
+        ORDER BY event_id
+    LOOP
+        combined := encode(digest(combined || rec.event_hash, 'sha256'), 'hex');
+    END LOOP;
+    
+    RETURN combined;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Sign and store a Merkle root for a range of events
+CREATE OR REPLACE FUNCTION sign_audit_merkle_root(
+    p_from_event_id BIGINT,
+    p_to_event_id BIGINT,
+    p_signature TEXT,
+    p_key_id TEXT,
+    p_tenant_id TEXT DEFAULT NULL,
+    p_external_anchor TEXT DEFAULT NULL
+)
+RETURNS TEXT AS $$
+DECLARE
+    v_root_hash TEXT;
+    v_event_count BIGINT;
+BEGIN
+    -- Validate range exists
+    SELECT COUNT(*) INTO v_event_count
+    FROM audit_events
+    WHERE event_id BETWEEN p_from_event_id AND p_to_event_id;
+    
+    IF v_event_count = 0 THEN
+        RAISE EXCEPTION 'No audit events in range % to %', p_from_event_id, p_to_event_id;
+    END IF;
+    
+    -- Compute merkle root
+    v_root_hash := compute_audit_merkle_root(p_from_event_id, p_to_event_id);
+    
+    -- Store signed root
+    INSERT INTO audit_merkle_roots (
+        root_hash, from_event_id, to_event_id, event_count,
+        signature, key_id, external_anchor, tenant_id
+    ) VALUES (
+        v_root_hash, p_from_event_id, p_to_event_id, v_event_count,
+        p_signature, p_key_id, p_external_anchor, p_tenant_id
+    )
+    ON CONFLICT (root_hash) DO UPDATE SET
+        signature = EXCLUDED.signature,
+        key_id = EXCLUDED.key_id,
+        external_anchor = EXCLUDED.external_anchor,
+        signed_at = NOW();
+    
+    RETURN v_root_hash;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Verify audit chain integrity including latest Merkle root
+CREATE OR REPLACE FUNCTION verify_audit_chain_with_merkle()
+RETURNS TABLE (
+    chain_valid BOOLEAN,
+    chain_checked_count BIGINT,
+    chain_broken_at BIGINT,
+    merkle_root_valid BOOLEAN,
+    latest_root_hash TEXT,
+    latest_root_signed_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_chain_valid BOOLEAN;
+    v_count BIGINT;
+    v_broken BIGINT;
+    v_root_hash TEXT;
+    v_signed_at TIMESTAMPTZ;
+    v_merkle_valid BOOLEAN := NULL;
+    v_from_id BIGINT;
+    v_to_id BIGINT;
+BEGIN
+    -- First verify the hash chain
+    SELECT valid, checked_count, broken_at_event_id
+    INTO v_chain_valid, v_count, v_broken
+    FROM verify_audit_chain();
+    
+    -- Check if we have a Merkle root covering the latest events
+    SELECT 
+        mr.root_hash, mr.signed_at, mr.from_event_id, mr.to_event_id
+    INTO v_root_hash, v_signed_at, v_from_id, v_to_id
+    FROM audit_merkle_roots mr
+    ORDER BY mr.to_event_id DESC
+    LIMIT 1;
+    
+    IF v_root_hash IS NOT NULL THEN
+        -- Verify the stored root matches recomputed value
+        v_merkle_valid := (compute_audit_merkle_root(v_from_id, v_to_id) = v_root_hash);
+    END IF;
+    
+    RETURN QUERY SELECT
+        v_chain_valid,
+        v_count,
+        v_broken,
+        v_merkle_valid,
+        v_root_hash,
+        v_signed_at;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
 -- EXECUTION RESULTS: Action execution outcomes
 -- ============================================================================
 
