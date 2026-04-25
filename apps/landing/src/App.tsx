@@ -22,7 +22,7 @@ function Navigation() {
   const links = [
     { label: 'Features', href: '#features' },
     { label: 'How it works', href: '#how-it-works' },
-    { label: 'Docs', href: '/docs' },
+    { label: 'Docs', href: 'https://citadelsdk.com/docs' },
   ]
 
   return (
@@ -118,7 +118,7 @@ function Hero() {
               className="animate-shimmer px-8 py-4 rounded-full text-white font-semibold text-base shadow-lg hover:shadow-xl transition-shadow">
               Get Started Free
             </a>
-            <a href="/docs"
+            <a href="https://citadelsdk.com/docs"
               className="px-8 py-4 rounded-full text-slate-700 font-semibold text-base border border-slate-200 hover:border-blue-300 hover:text-blue-700 transition-colors bg-white/60 backdrop-blur-sm">
               Read the Docs
             </a>
@@ -519,7 +519,7 @@ function Footer() {
 
         <div className="flex items-center gap-6">
           {[
-            { label: 'Docs', href: '/docs' },
+            { label: 'Docs', href: 'https://citadelsdk.com/docs' },
             { label: 'Dashboard', href: 'https://dashboard.citadelsdk.com' },
             { label: 'GitHub', href: 'https://github.com/casss20/ledger-sdk' },
             { label: 'PyPI', href: 'https://pypi.org/project/citadel-governance/' },
