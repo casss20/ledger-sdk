@@ -143,7 +143,6 @@ jobs:
         run: |
           npm ci
           npm run build
-        continue-on-error: true
 
   # ──────────────────────────────────────────
   # 5. DEPLOY API (Fly.io)
