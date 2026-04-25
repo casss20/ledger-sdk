@@ -1,469 +1,557 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  Shield, Eye, Zap, FileText, Users, Code2,
-  Copy, Check, ChevronRight, AlertTriangle,
-  BookOpen, LayoutDashboard, ArrowRight,
-  Lock, GitBranch, Globe, Menu, X
+  Shield, EyeOff, ClipboardList, Settings,
+  ArrowDownLeft, Scale, FileSearch,
+  Zap, Activity, Clock,
+  CheckCircle2, AlertTriangle, XCircle,
+  Users, GitBranch, Globe, FileText, Lock,
+  LayoutDashboard, Menu, X,
 } from 'lucide-react'
 
-function CopyButton({ text, light = false }: { text: string; light?: boolean }) {
-  const [copied, setCopied] = useState(false)
-  const copy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-  return (
-    <button
-      onClick={copy}
-      aria-label="Copy to clipboard"
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${
-        light
-          ? 'bg-white hover:bg-orange-50 border-slate-200 hover:border-orange-300'
-          : 'bg-slate-800 hover:bg-slate-700 border-slate-700 hover:border-orange-500/40'
-      }`}
-    >
-      {copied
-        ? <Check size={13} className="text-emerald-500" />
-        : <Copy size={13} className={light ? 'text-slate-400' : 'text-slate-400'} />}
-      <span className={`mono text-xs ${light ? 'text-slate-500' : 'text-slate-400'}`}>
-        {copied ? 'Copied!' : 'Copy'}
-      </span>
-    </button>
-  )
-}
-
-function CodeBlock({ lines }: { lines: { type: string; text: string }[][] }) {
-  return (
-    <pre className="mono text-sm leading-7 overflow-x-auto">
-      {lines.map((line, i) => (
-        <div key={i}>
-          {line.length === 0
-            ? <span>&nbsp;</span>
-            : line.map((token, j) => (
-                <span key={j} className={`token-${token.type}`}>{token.text}</span>
-              ))}
-        </div>
-      ))}
-    </pre>
-  )
-}
-
-const installCommand = 'pip install citadel-governance'
-
-const codeLines = [
-  [{ type: 'keyword', text: 'import' }, { type: 'plain', text: ' citadel' }],
-  [],
-  [{ type: 'comment', text: '# 1. Point at your Citadel instance' }],
-  [{ type: 'function', text: 'citadel.configure' }, { type: 'plain', text: '(' }],
-  [{ type: 'plain', text: '    base_url=' }, { type: 'string', text: '"https://api.citadelsdk.com"' }, { type: 'plain', text: ',' }],
-  [{ type: 'plain', text: '    api_key=' }, { type: 'string', text: '"your-api-key"' }, { type: 'plain', text: ',' }],
-  [{ type: 'plain', text: '    actor_id=' }, { type: 'string', text: '"my-agent"' }, { type: 'plain', text: ',' }],
-  [{ type: 'plain', text: ')' }],
-  [],
-  [{ type: 'comment', text: '# 2. Every agent action goes through governance' }],
-  [{ type: 'plain', text: 'result = ' }, { type: 'keyword', text: 'await' }, { type: 'plain', text: ' ' }, { type: 'function', text: 'citadel.execute' }, { type: 'plain', text: '(' }],
-  [{ type: 'plain', text: '    action=' }, { type: 'string', text: '"stripe.refund"' }, { type: 'plain', text: ',' }],
-  [{ type: 'plain', text: '    resource=' }, { type: 'string', text: '"charge:ch_123"' }, { type: 'plain', text: ',' }],
-  [{ type: 'plain', text: '    payload={ ' }, { type: 'string', text: '"amount"' }, { type: 'plain', text: ': ' }, { type: 'number', text: '5000' }, { type: 'plain', text: ' },' }],
-  [{ type: 'plain', text: ')' }],
-  [],
-  [{ type: 'keyword', text: 'if' }, { type: 'plain', text: ' result.status == ' }, { type: 'string', text: '"executed"' }, { type: 'plain', text: ':' }],
-  [{ type: 'plain', text: '    ' }, { type: 'function', text: 'print' }, { type: 'plain', text: '(' }, { type: 'string', text: '"Permitted and logged"' }, { type: 'plain', text: ')' }],
-  [{ type: 'keyword', text: 'elif' }, { type: 'plain', text: ' result.status == ' }, { type: 'string', text: '"pending_approval"' }, { type: 'plain', text: ':' }],
-  [{ type: 'plain', text: '    ' }, { type: 'function', text: 'print' }, { type: 'plain', text: '(' }, { type: 'string', text: '"Queued for human review"' }, { type: 'plain', text: ')' }],
-  [{ type: 'keyword', text: 'else' }, { type: 'plain', text: ':' }],
-  [{ type: 'plain', text: '    ' }, { type: 'function', text: 'print' }, { type: 'plain', text: '(f' }, { type: 'string', text: '"Blocked: {result.reason}"' }, { type: 'plain', text: ')' }],
-]
-
-const problems = [
-  {
-    icon: AlertTriangle,
-    title: 'Agents act without oversight',
-    body: 'Autonomous agents make high-stakes decisions — sending emails, executing payments, modifying infrastructure — with zero human visibility.',
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    border: 'border-amber-100',
-  },
-  {
-    icon: Eye,
-    title: 'No audit trail',
-    body: 'When something goes wrong, you have no record of what your agent did, why it was allowed, or who approved it.',
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-  },
-  {
-    icon: Zap,
-    title: 'No kill switch',
-    body: "When an agent goes rogue, you can't stop it. One bad prompt can trigger a cascade you have no way to interrupt.",
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    border: 'border-red-100',
-  },
-]
-
-const features = [
-  { icon: Shield,    title: 'Policy Engine',       body: 'Precedence-based rules evaluate every action: ALLOW, BLOCK, or route to approval. Define policies in code or via the dashboard.',       color: 'text-orange-600', bg: 'bg-orange-50' },
-  { icon: Users,     title: 'Human Approvals',     body: 'High-risk actions pause and wait for a human decision. Reviewers approve or reject from the dashboard in real time.',                   color: 'text-violet-600', bg: 'bg-violet-50' },
-  { icon: Lock,      title: 'Kill Switch',         body: 'One click blocks all agent actions globally, per tenant, or per agent. Instant. No redeploy needed.',                                   color: 'text-red-600',    bg: 'bg-red-50'    },
-  { icon: FileText,  title: 'Tamper-Proof Audit',  body: 'Every decision is cryptographically hashed and chained in PostgreSQL. The audit trail cannot be modified or deleted.',                  color: 'text-emerald-600',bg: 'bg-emerald-50'},
-  { icon: GitBranch, title: 'Multi-Tenant',        body: 'Full tenant isolation via PostgreSQL Row-Level Security. Each customer sees only their own agents, policies, and audit logs.',           color: 'text-blue-600',   bg: 'bg-blue-50'   },
-  { icon: Globe,     title: 'Open SDK',            body: 'One pip install. Works with any agent framework — LangChain, AutoGen, custom. MIT licensed.',                                           color: 'text-teal-600',   bg: 'bg-teal-50'   },
-]
-
-const steps = [
-  { step: '01', title: 'Install', body: "One pip install. No servers to run \u2014 point at our hosted API and you're ready in seconds." },
-  { step: '02', title: 'Configure', body: 'Set your API URL, key, and actor ID. Works with any Python async framework.' },
-  { step: '03', title: 'Govern', body: 'Every action is evaluated by policy, logged to the audit chain, and optionally routed for human approval.' },
-]
-
-export default function App() {
+/* ─── Navigation ─── */
+function Navigation() {
+  const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const links = [
+    { label: 'Features', href: '#features' },
+    { label: 'How it works', href: '#how-it-works' },
+    { label: 'Docs', href: '/docs' },
+  ]
+
   return (
-    <div className="min-h-dvh bg-white text-slate-900">
-
-      {/* ── Nav ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center shadow-md shadow-orange-200">
-              <Shield size={16} className="text-white" />
-            </div>
-            <span className="text-base font-black tracking-tighter text-slate-900">CITADEL</span>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled ? 'glass-strong shadow-sm border-b border-white/60' : 'bg-transparent'
+    }`}>
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
+        {/* Logo */}
+        <a href="#" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
+            <Shield size={16} className="text-white" />
           </div>
+          <span className="font-serif text-xl font-semibold text-slate-900">Citadel</span>
+        </a>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-8">
-            {[{ label: 'Docs', href: '/docs' }, { label: 'Features', href: '#features' }, { label: 'How it works', href: '#how-it-works' }].map(({ label, href }) => (
-              <a key={label} href={href} className="nav-link text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors duration-200">
-                {label}
-              </a>
-            ))}
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <a href="/docs" className="text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors duration-200">
-              Documentation
+        {/* Desktop links */}
+        <div className="hidden md:flex items-center gap-8">
+          {links.map(({ label, href }) => (
+            <a key={label} href={href}
+              className="font-sans text-sm text-slate-600 hover:text-slate-900 transition-colors">
+              {label}
             </a>
-            <a href="https://dashboard.citadelsdk.com"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold transition-all duration-200 shadow-sm shadow-orange-200">
-              <LayoutDashboard size={14} />
-              Dashboard
-            </a>
-          </div>
-
-          {/* Mobile menu toggle */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} className="text-slate-600" /> : <Menu size={20} className="text-slate-600" />}
-          </button>
+          ))}
         </div>
 
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden border-t border-slate-100 bg-white px-6 py-4 space-y-3">
-            {[{ label: 'Docs', href: '/docs' }, { label: 'Features', href: '#features' }, { label: 'How it works', href: '#how-it-works' }].map(({ label, href }) => (
-              <a key={label} href={href} onClick={() => setMobileOpen(false)}
-                className="block text-sm text-slate-600 hover:text-slate-900 font-medium py-2">
-                {label}
-              </a>
-            ))}
-            <a href="https://dashboard.citadelsdk.com"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-orange-600 text-white text-sm font-semibold mt-2">
-              <LayoutDashboard size={14} />
-              Open Dashboard
+        {/* Desktop CTA */}
+        <div className="hidden md:flex items-center gap-3">
+          <a href="https://dashboard.citadelsdk.com"
+            className="flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors">
+            <LayoutDashboard size={14} />
+            Dashboard
+          </a>
+        </div>
+
+        {/* Mobile toggle */}
+        <button className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+          {mobileOpen ? <X size={20} className="text-slate-600" /> : <Menu size={20} className="text-slate-600" />}
+        </button>
+      </div>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="md:hidden glass-strong border-t border-white/60 px-6 py-4 space-y-3">
+          {links.map(({ label, href }) => (
+            <a key={label} href={href} onClick={() => setMobileOpen(false)}
+              className="block font-sans text-sm text-slate-700 hover:text-slate-900 py-2">
+              {label}
             </a>
-          </div>
-        )}
-      </nav>
+          ))}
+          <a href="https://dashboard.citadelsdk.com"
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full bg-slate-900 text-white text-sm font-medium mt-2">
+            <LayoutDashboard size={14} />
+            Open Dashboard
+          </a>
+        </div>
+      )}
+    </nav>
+  )
+}
 
-      {/* ── Hero ── */}
-      <section className="hero-grid relative pt-32 pb-24 px-6 overflow-hidden">
-        <div className="hero-glow absolute inset-0 pointer-events-none" />
+/* ─── Hero ─── */
+function Hero() {
+  return (
+    <section className="relative pt-32 pb-20 overflow-hidden">
+      {/* Gradient orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-sky-200/40 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-blue-200/30 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-sky-100/50 blur-[80px] pointer-events-none" />
 
-        <div className="relative max-w-4xl mx-auto text-center animate-fade-up">
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="flex flex-col items-center text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 mb-8">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-            <span className="text-xs font-semibold text-orange-700 tracking-wide">AI Governance Infrastructure</span>
+          <div className="mb-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-sans text-sm font-semibold tracking-wide">
+            <Zap size={14} />
+            AI Governance Infrastructure
           </div>
 
-          {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tighter text-slate-900 leading-[1.05] mb-6">
-            The Constitution<br />
-            <span className="gradient-text">for your AI agents</span>
+          {/* H1 */}
+          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight text-slate-900 max-w-5xl leading-[1.05]">
+            The Constitution for<br />your AI Agents.
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed mb-12">
+          {/* Sub */}
+          <p className="mt-8 max-w-2xl font-sans text-base md:text-lg text-slate-600 leading-relaxed">
             One SDK call to control, audit, and approve every action your agents take.
             Policy enforcement, human approvals, kill switches, and tamper-proof audit — out of the box.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-slate-900 border border-slate-800 w-full sm:w-auto">
-              <span className="text-slate-500 mono text-sm select-none">$</span>
-              <span className="mono text-sm text-white flex-1">{installCommand}</span>
-              <CopyButton text={installCommand} />
-            </div>
+          <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
             <a href="https://dashboard.citadelsdk.com"
-              className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-all duration-200 shadow-lg shadow-orange-200 hover:-translate-y-0.5 w-full sm:w-auto justify-center">
-              View Dashboard
-              <ArrowRight size={16} />
+              className="animate-shimmer px-8 py-4 rounded-full text-white font-semibold text-base shadow-lg hover:shadow-xl transition-shadow">
+              Get Started Free
+            </a>
+            <a href="/docs"
+              className="px-8 py-4 rounded-full text-slate-700 font-semibold text-base border border-slate-200 hover:border-blue-300 hover:text-blue-700 transition-colors bg-white/60 backdrop-blur-sm">
+              Read the Docs
             </a>
           </div>
 
-          {/* Feature strip */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-3">
+          <p className="mt-4 text-slate-400 text-sm font-sans">
+            No credit card required · MIT licensed · 5-minute setup
+          </p>
+
+          {/* Pill strip */}
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
             {['Policy Engine', 'Human-in-the-Loop', 'Kill Switch', 'Tamper-Proof Audit', 'Multi-Tenant', 'Open SDK'].map((label) => (
-              <span key={label} className="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
+              <span key={label} className="px-3 py-1.5 rounded-full glass border border-white/60 text-slate-500 text-xs font-medium">
                 {label}
               </span>
             ))}
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* ── Social proof bar ── */}
-      <div className="border-y border-slate-100 bg-slate-50 py-5 px-6">
-        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-8 text-slate-400 text-sm">
-          <span className="flex items-center gap-2"><Shield size={14} className="text-orange-400" /> MIT Licensed</span>
-          <span className="flex items-center gap-2"><GitBranch size={14} className="text-orange-400" /> Open Source</span>
-          <span className="flex items-center gap-2"><FileText size={14} className="text-orange-400" /> Cryptographic Audit</span>
-          <span className="flex items-center gap-2"><Users size={14} className="text-orange-400" /> Human-in-the-Loop</span>
-          <span className="flex items-center gap-2"><Zap size={14} className="text-orange-400" /> One-Click Kill Switch</span>
+/* ─── Floating Feature Cards ─── */
+const floatingFeatures = [
+  {
+    icon: <Shield size={20} />,
+    title: 'Real-time Control',
+    description: 'Intercept and approve agent actions in milliseconds. Zero latency overhead.',
+    floatClass: 'animate-float',
+  },
+  {
+    icon: <EyeOff size={20} />,
+    title: 'Undetectable Layer',
+    description: 'Invisible middleware. Your agents never know governance is running.',
+    floatClass: 'animate-float-delayed',
+  },
+  {
+    icon: <ClipboardList size={20} />,
+    title: 'Full Audit Trail',
+    description: 'Every decision, every action, every rejection — cryptographically logged.',
+    floatClass: 'animate-float-slow',
+  },
+  {
+    icon: <Settings size={20} />,
+    title: 'Policy Engine',
+    description: 'ALLOW, BLOCK, or route to approval. Policies defined in code or dashboard.',
+    floatClass: 'animate-float-delayed',
+  },
+]
+
+function FloatingFeatures() {
+  return (
+    <section id="features" className="py-24 relative overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-sky-100/30 blur-[120px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="text-center mb-16">
+          <h2 className="font-serif text-4xl md:text-5xl font-medium text-slate-900 tracking-tight">
+            Governance that just works
+          </h2>
+          <p className="mt-4 max-w-xl mx-auto font-sans text-base md:text-lg text-slate-600 leading-relaxed">
+            Four powerful primitives. Zero configuration headache. Citadel handles the
+            complexity so you can focus on building.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {floatingFeatures.map((f) => (
+            <div key={f.title}
+              className={`glass border-glow rounded-2xl p-6 ${f.floatClass} hover:shadow-lg transition-shadow`}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">{f.icon}</div>
+                <h3 className="font-sans font-semibold text-slate-900 text-sm">{f.title}</h3>
+              </div>
+              <p className="font-sans text-sm text-slate-600 leading-relaxed">{f.description}</p>
+            </div>
+          ))}
         </div>
       </div>
+    </section>
+  )
+}
 
-      {/* ── Problem ── */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold uppercase tracking-widest mb-4 border border-red-100">
-              The Problem
+/* ─── Live Status ─── */
+function LiveStatus() {
+  return (
+    <section className="py-12">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="glass-strong border-glow rounded-2xl p-6 md:p-8">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+            <span className="font-sans text-sm font-semibold tracking-wide uppercase text-slate-500">
+              System Status
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900">
-              Agents are powerful.<br />
-              <span className="text-slate-400">Uncontrolled agents are dangerous.</span>
-            </h2>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-pulse-glow absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
+              <span className="font-sans text-sm font-medium text-emerald-600">
+                All systems operational
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {problems.map(({ icon: Icon, title, body, color, bg, border }) => (
-              <div key={title} className={`card-lift p-7 rounded-2xl bg-white border ${border} shadow-sm`}>
-                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center mb-5`}>
-                  <Icon size={22} className={color} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { icon: <Zap size={18} className="text-slate-400" />, value: '2.4ms', label: 'avg latency' },
+              { icon: <Activity size={18} className="text-slate-400" />, value: '99.99%', label: 'uptime' },
+              { icon: <Clock size={18} className="text-slate-400" />, value: '12M+', label: 'actions governed' },
+            ].map(({ icon, value, label }) => (
+              <div key={label} className="flex items-center gap-3">
+                {icon}
+                <div>
+                  <p className="font-mono text-lg font-medium text-slate-900">{value}</p>
+                  <p className="font-sans text-xs text-slate-500">{label}</p>
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-2">{title}</h3>
-                <p className="text-slate-500 leading-relaxed text-sm">{body}</p>
               </div>
             ))}
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* ── How it works ── */}
-      <section id="how-it-works" className="py-24 px-6 bg-slate-50 section-divider">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-bold uppercase tracking-widest mb-4 border border-orange-100">
-              How it works
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900">
-              Three steps to governed agents
-            </h2>
-          </div>
+/* ─── Code Window ─── */
+const consoleLogs = [
+  { time: '14:32:01.243', msg: 'Citadel initialized — policy: strict', type: 'ok' },
+  { time: '14:32:01.245', msg: 'Agent action intercepted', type: 'ok' },
+  { time: '14:32:01.246', msg: 'Policy check passed', type: 'ok' },
+  { time: '14:32:01.248', msg: 'Action approved — 1.2ms', type: 'ok' },
+  { time: '14:32:01.250', msg: 'Audit log written', type: 'ok' },
+  { time: '14:32:01.252', msg: 'Action executed successfully', type: 'ok' },
+  { time: '14:32:01.255', msg: 'Rate limit: 34/1000 req/min', type: 'info' },
+]
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            {/* Steps */}
-            <div className="space-y-8 pt-2">
-              {steps.map(({ step, title, body }, i) => (
-                <div key={step} className="flex gap-5">
-                  <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-orange-600 flex items-center justify-center shadow-md shadow-orange-200">
-                    <span className="mono text-xs font-bold text-white">{step}</span>
-                  </div>
-                  <div className="pt-1">
-                    <h3 className="font-bold text-slate-900 text-lg mb-1">{title}</h3>
-                    <p className="text-slate-500 text-sm leading-relaxed">{body}</p>
-                    {i < steps.length - 1 && (
-                      <div className="w-px h-6 bg-slate-200 ml-0.5 mt-6" />
-                    )}
-                  </div>
-                </div>
-              ))}
+function typeIcon(type: string) {
+  if (type === 'ok') return <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+  if (type === 'warn') return <AlertTriangle size={12} className="text-amber-400 shrink-0" />
+  return <XCircle size={12} className="text-red-400 shrink-0" />
+}
 
-              <a href="/docs"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 hover:border-orange-300 bg-white hover:bg-orange-50 text-sm text-slate-700 hover:text-orange-700 font-medium transition-all duration-200 group">
-                <BookOpen size={15} />
-                Read the full docs
-                <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform duration-200" />
-              </a>
-            </div>
-
-            {/* Code block — dark on purpose (standard for technical products) */}
-            <div className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-xl shadow-slate-200">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-900">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
-                </div>
-                <span className="mono text-xs text-slate-400">agent.py</span>
-                <CopyButton text={`import citadel\n\ncitadel.configure(\n    base_url="https://api.citadelsdk.com",\n    api_key="your-api-key",\n    actor_id="my-agent",\n)\n\nresult = await citadel.execute(\n    action="stripe.refund",\n    resource="charge:ch_123",\n    payload={"amount": 5000},\n)`} />
-              </div>
-              <div className="p-6">
-                <CodeBlock lines={codeLines} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-violet-50 text-violet-600 text-xs font-bold uppercase tracking-widest mb-4 border border-violet-100">
-              Features
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900">
-              Everything you need.<br />
-              <span className="text-slate-400">Nothing you don't.</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map(({ icon: Icon, title, body, color, bg }) => (
-              <div key={title} className="card-lift p-7 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center mb-5`}>
-                  <Icon size={22} className={color} />
-                </div>
-                <h3 className="font-bold text-slate-900 text-base mb-2">{title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Decorator section ── */}
-      <section className="py-24 px-6 bg-slate-50 section-divider">
-        <div className="max-w-6xl mx-auto">
-          <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2">
-              {/* Left */}
-              <div className="p-10 lg:p-12 flex flex-col justify-center">
-                <div className="inline-flex items-center gap-2 mb-5">
-                  <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center">
-                    <Code2 size={16} className="text-orange-600" />
-                  </div>
-                  <span className="text-xs font-bold text-orange-600 uppercase tracking-widest">Decorator API</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 mb-4">
-                  Wrap any function<br />in one line
-                </h2>
-                <p className="text-slate-500 leading-relaxed mb-8 text-sm">
-                  Use <code className="mono text-orange-600 text-sm bg-orange-50 px-1.5 py-0.5 rounded">@citadel.guard</code> to protect
-                  any async function. If governance blocks it, an exception is raised.
-                  If it needs approval, execution pauses automatically.
-                </p>
-                <a href="/docs"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold transition-all duration-200 shadow-sm shadow-orange-200 self-start">
-                  View decorator docs
-                  <ArrowRight size={14} />
-                </a>
-              </div>
-
-              {/* Right — code */}
-              <div className="bg-slate-950 p-8 flex items-center">
-                <div className="w-full">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="mono text-xs text-slate-500">decorator_example.py</span>
-                  </div>
-                  <CodeBlock lines={[
-                    [{ type: 'keyword', text: 'import' }, { type: 'plain', text: ' citadel' }],
-                    [],
-                    [{ type: 'plain', text: '@' }, { type: 'function', text: 'citadel.guard' }, { type: 'plain', text: '(' }],
-                    [{ type: 'plain', text: '    action=' }, { type: 'string', text: '"github.repo_delete"' }, { type: 'plain', text: ',' }],
-                    [{ type: 'plain', text: '    resource=' }, { type: 'string', text: '"repo:{name}"' }],
-                    [{ type: 'plain', text: ')' }],
-                    [{ type: 'keyword', text: 'async' }, { type: 'plain', text: ' ' }, { type: 'keyword', text: 'def' }, { type: 'plain', text: ' ' }, { type: 'function', text: 'delete_repo' }, { type: 'plain', text: '(name: ' }, { type: 'keyword', text: 'str' }, { type: 'plain', text: '):' }],
-                    [{ type: 'comment', text: '    # Only runs if governance allows it' }],
-                    [{ type: 'plain', text: '    ' }, { type: 'keyword', text: 'await' }, { type: 'plain', text: ' github.repos.delete(name)' }],
-                  ]} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 items-center justify-center mx-auto mb-8 shadow-xl shadow-orange-200">
-            <Shield size={30} className="text-white" />
-          </div>
-          <h2 className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900 mb-4">
-            Start governing your<br />agents in 5 minutes
+function CodeWindow() {
+  return (
+    <section id="how-it-works" className="py-24">
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <h2 className="font-serif text-4xl md:text-5xl font-medium text-slate-900 tracking-tight">
+            See it in action
           </h2>
-          <p className="text-slate-500 text-lg mb-10 leading-relaxed">
-            One install. No infrastructure to run. Connect to our hosted API
-            and see every agent action in the dashboard instantly.
+          <p className="mt-4 max-w-xl mx-auto font-sans text-base text-slate-600 leading-relaxed">
+            Install, configure, govern. Every action flows through Citadel before it touches your systems.
           </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-slate-900 border border-slate-800 w-full sm:w-auto">
-              <span className="text-slate-500 mono text-sm select-none">$</span>
-              <span className="mono text-sm text-white">{installCommand}</span>
-              <CopyButton text={installCommand} />
+        <div className="rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+          {/* Window chrome */}
+          <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-window-red" />
+              <span className="w-3 h-3 rounded-full bg-window-yellow" />
+              <span className="w-3 h-3 rounded-full bg-window-green" />
             </div>
+            <div className="flex-1 text-center">
+              <span className="font-mono text-xs text-slate-500 font-medium">agent.py — citadel-demo</span>
+            </div>
+            <div className="w-14" />
+          </div>
+
+          {/* Split body */}
+          <div className="flex flex-col md:flex-row">
+            {/* Code */}
+            <div className="flex-1 bg-slate-900 p-6 md:p-8 overflow-x-auto">
+              <pre className="font-mono text-sm leading-relaxed">
+                <code>
+                  <span className="text-blue-400">import</span>{' '}
+                  <span className="text-slate-300">citadel</span>
+                  {'\n\n'}
+                  <span className="text-slate-500">{'# Configure once at startup'}</span>
+                  {'\n'}
+                  <span className="text-slate-300">citadel.</span>
+                  <span className="text-purple-400">configure</span>
+                  <span className="text-slate-300">{'({'}</span>
+                  {'\n  '}
+                  <span className="text-slate-300">base_url=</span>
+                  <span className="text-emerald-400">&apos;https://api.citadelsdk.com&apos;</span>
+                  <span className="text-slate-300">,</span>
+                  {'\n  '}
+                  <span className="text-slate-300">api_key=</span>
+                  <span className="text-slate-300">os.environ[</span>
+                  <span className="text-emerald-400">&apos;CITADEL_KEY&apos;</span>
+                  <span className="text-slate-300">],</span>
+                  {'\n  '}
+                  <span className="text-slate-300">actor_id=</span>
+                  <span className="text-emerald-400">&apos;my-agent&apos;</span>
+                  {'\n'}
+                  <span className="text-slate-300">{'});'}</span>
+                  {'\n\n'}
+                  <span className="text-slate-500">{'# Every action is governed'}</span>
+                  {'\n'}
+                  <span className="text-slate-300">result = </span>
+                  <span className="text-blue-400">await </span>
+                  <span className="text-slate-300">citadel.</span>
+                  <span className="text-purple-400">execute</span>
+                  <span className="text-slate-300">{'({'}</span>
+                  {'\n  '}
+                  <span className="text-slate-300">action=</span>
+                  <span className="text-emerald-400">&apos;stripe.refund&apos;</span>
+                  <span className="text-slate-300">,</span>
+                  {'\n  '}
+                  <span className="text-slate-300">payload={'{'}</span>
+                  <span className="text-emerald-400">&apos;amount&apos;</span>
+                  <span className="text-slate-300">: </span>
+                  <span className="text-amber-400">5000</span>
+                  <span className="text-slate-300">{'}'}</span>
+                  {'\n'}
+                  <span className="text-slate-300">{'});'}</span>
+                </code>
+              </pre>
+            </div>
+
+            {/* Live console */}
+            <div className="flex-1 bg-slate-950 p-6 md:p-8 border-t md:border-t-0 md:border-l border-slate-800">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-sans text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Live Console
+                </span>
+              </div>
+              <div className="space-y-2">
+                {consoleLogs.map((log, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    {typeIcon(log.type)}
+                    <span className="font-mono text-xs text-slate-500 shrink-0">{log.time}</span>
+                    <span className="font-mono text-xs text-slate-300">{log.msg}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─── Control Plane ─── */
+const controlFeatures = [
+  {
+    icon: <ArrowDownLeft size={24} strokeWidth={1.5} />,
+    title: 'Intercept',
+    description: 'Every agent action routes through Citadel first. We evaluate, log, and either approve or reject — before anything reaches your systems.',
+  },
+  {
+    icon: <Scale size={24} strokeWidth={1.5} />,
+    title: 'Govern',
+    description: 'Set budgets, rate limits, content policies, and approval workflows. Our engine handles the complexity so you write zero custom middleware.',
+  },
+  {
+    icon: <FileSearch size={24} strokeWidth={1.5} />,
+    title: 'Audit',
+    description: 'Query every decision. Export compliance reports. Prove governance to regulators and customers with cryptographically chained logs.',
+  },
+]
+
+function ControlPlane() {
+  return (
+    <section className="py-24">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+          {/* Sticky left */}
+          <div className="lg:sticky lg:top-32">
+            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-medium text-slate-900 tracking-tight leading-tight">
+              Your Control Plane.
+              <br />
+              Their Blind Spot.
+            </h2>
+            <p className="mt-6 font-sans text-base md:text-lg text-slate-600 leading-relaxed max-w-md">
+              Citadel operates silently between your agents and the outside world.
+              You see everything. They see nothing.
+            </p>
             <a href="https://dashboard.citadelsdk.com"
-              className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-all duration-200 shadow-lg shadow-orange-200 hover:-translate-y-0.5 w-full sm:w-auto justify-center">
+              className="mt-8 inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors">
+              <LayoutDashboard size={14} />
               Open Dashboard
-              <ArrowRight size={16} />
             </a>
           </div>
 
-          <p className="text-slate-400 text-sm">
-            MIT licensed SDK · Hosted API · No credit card required
-          </p>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-slate-100 bg-slate-50 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-orange-600 flex items-center justify-center">
-              <Shield size={12} className="text-white" />
-            </div>
-            <span className="text-sm font-black tracking-tighter text-slate-700">CITADEL</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            {[
-              { label: 'Docs', href: '/docs' },
-              { label: 'Dashboard', href: 'https://dashboard.citadelsdk.com' },
-              { label: 'GitHub', href: 'https://github.com/casss20/ledger-sdk' },
-              { label: 'PyPI', href: 'https://pypi.org/project/citadel-governance/' },
-            ].map(({ label, href }) => (
-              <a key={label} href={href}
-                className="text-sm text-slate-400 hover:text-slate-700 font-medium transition-colors duration-200">
-                {label}
-              </a>
+          {/* Right features */}
+          <div className="space-y-12">
+            {controlFeatures.map((f) => (
+              <div key={f.title} className="flex gap-5">
+                <div className="mt-1 p-3 rounded-xl bg-slate-100 text-slate-700 shrink-0 h-fit">
+                  {f.icon}
+                </div>
+                <div>
+                  <h3 className="font-sans text-lg font-semibold text-slate-900 mb-2">{f.title}</h3>
+                  <p className="font-sans text-base text-slate-500 leading-relaxed">{f.description}</p>
+                </div>
+              </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400">© 2026 Citadel. MIT License.</p>
         </div>
-      </footer>
+      </div>
+    </section>
+  )
+}
+
+/* ─── All Features Grid ─── */
+const allFeatures = [
+  { icon: Shield,      title: 'Policy Engine',      body: 'Precedence-based rules evaluate every action: ALLOW, BLOCK, or route to approval.',    color: 'text-blue-600',    bg: 'bg-blue-50'    },
+  { icon: Users,       title: 'Human Approvals',    body: 'High-risk actions pause and wait for a human decision in the dashboard.',               color: 'text-violet-600',  bg: 'bg-violet-50'  },
+  { icon: Lock,        title: 'Kill Switch',        body: 'One click blocks all agent actions globally, per tenant, or per agent. Instant.',       color: 'text-red-600',     bg: 'bg-red-50'     },
+  { icon: FileText,    title: 'Tamper-Proof Audit', body: 'Every decision is cryptographically hashed and chained. Cannot be modified.',           color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { icon: GitBranch,   title: 'Multi-Tenant',       body: 'PostgreSQL Row-Level Security. Each customer sees only their own data.',                color: 'text-sky-600',     bg: 'bg-sky-50'     },
+  { icon: Globe,       title: 'Open SDK',           body: 'pip install citadel-governance. Works with LangChain, AutoGen, custom. MIT licensed.', color: 'text-teal-600',    bg: 'bg-teal-50'    },
+]
+
+function FeaturesGrid() {
+  return (
+    <section className="py-24 bg-slate-50 border-t border-slate-100">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="font-serif text-4xl md:text-5xl font-medium text-slate-900 tracking-tight">
+            Everything you need.
+          </h2>
+          <p className="mt-4 max-w-xl mx-auto font-sans text-base text-slate-600 leading-relaxed">
+            Six primitives, one SDK. Citadel handles the complexity so you can focus on shipping.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {allFeatures.map(({ icon: Icon, title, body, color, bg }) => (
+            <div key={title}
+              className="glass border-glow rounded-2xl p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
+              <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-4`}>
+                <Icon size={20} className={color} />
+              </div>
+              <h3 className="font-sans font-semibold text-slate-900 mb-2">{title}</h3>
+              <p className="font-sans text-sm text-slate-500 leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─── CTA ─── */
+function CTA() {
+  return (
+    <section className="py-24 relative overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-blue-100/40 blur-[120px] pointer-events-none" />
+
+      <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
+        <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-200">
+          <Shield size={30} className="text-white" />
+        </div>
+        <h2 className="font-serif text-4xl md:text-5xl font-medium text-slate-900 tracking-tight mb-4">
+          Start governing your<br />agents today.
+        </h2>
+        <p className="font-sans text-base md:text-lg text-slate-600 leading-relaxed mb-10 max-w-md mx-auto">
+          One install. No infrastructure. Connect to our hosted API and see every
+          agent action in the dashboard within minutes.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="glass border border-white/60 rounded-xl px-5 py-3.5 flex items-center gap-3">
+            <span className="text-slate-400 font-mono text-sm select-none">$</span>
+            <span className="font-mono text-sm text-slate-800">pip install citadel-governance</span>
+          </div>
+          <a href="https://dashboard.citadelsdk.com"
+            className="animate-shimmer px-8 py-3.5 rounded-full text-white font-semibold text-sm shadow-lg hover:shadow-xl transition-shadow">
+            Open Dashboard →
+          </a>
+        </div>
+
+        <p className="mt-6 font-sans text-sm text-slate-400">
+          MIT licensed · Hosted API · No credit card required
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/* ─── Footer ─── */
+function Footer() {
+  return (
+    <footer className="border-t border-slate-200 py-12">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <a href="#" className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center">
+            <Shield size={12} className="text-white" />
+          </div>
+          <span className="font-serif text-lg font-semibold text-slate-900">Citadel</span>
+        </a>
+
+        <div className="flex items-center gap-6">
+          {[
+            { label: 'Docs', href: '/docs' },
+            { label: 'Dashboard', href: 'https://dashboard.citadelsdk.com' },
+            { label: 'GitHub', href: 'https://github.com/casss20/ledger-sdk' },
+            { label: 'PyPI', href: 'https://pypi.org/project/citadel-governance/' },
+          ].map(({ label, href }) => (
+            <a key={label} href={href}
+              className="font-sans text-sm text-slate-600 hover:text-slate-900 transition-colors">
+              {label}
+            </a>
+          ))}
+        </div>
+
+        <p className="font-sans text-sm text-slate-400">© 2026 Citadel. MIT License.</p>
+      </div>
+    </footer>
+  )
+}
+
+/* ─── App ─── */
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
+      <Navigation />
+      <main>
+        <Hero />
+        <FloatingFeatures />
+        <LiveStatus />
+        <CodeWindow />
+        <ControlPlane />
+        <FeaturesGrid />
+        <CTA />
+      </main>
+      <Footer />
     </div>
   )
 }
