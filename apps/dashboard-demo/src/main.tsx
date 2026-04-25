@@ -8,7 +8,7 @@ import "./styles/index.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/demo">
         <App />
       </BrowserRouter>
     </QueryProvider>

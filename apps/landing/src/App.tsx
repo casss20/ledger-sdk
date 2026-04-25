@@ -50,7 +50,7 @@ function Navigation() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <a href="https://dashboard.citadelsdk.com"
+          <a href="/demo/"
             className="flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors">
             <LayoutDashboard size={14} />
             Dashboard
@@ -73,7 +73,7 @@ function Navigation() {
               {label}
             </a>
           ))}
-          <a href="https://dashboard.citadelsdk.com"
+          <a href="/demo/"
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full bg-slate-900 text-white text-sm font-medium mt-2">
             <LayoutDashboard size={14} />
             Open Dashboard
@@ -114,7 +114,7 @@ function Hero() {
 
           {/* CTAs */}
           <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-            <a href="https://dashboard.citadelsdk.com"
+            <a href="/demo/"
               className="animate-shimmer px-8 py-4 rounded-full text-white font-semibold text-base shadow-lg hover:shadow-xl transition-shadow">
               Get Started Free
             </a>
@@ -401,7 +401,7 @@ function ControlPlane() {
               Citadel operates silently between your agents and the outside world.
               You see everything. They see nothing.
             </p>
-            <a href="https://dashboard.citadelsdk.com"
+            <a href="/demo/"
               className="mt-8 inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors">
               <LayoutDashboard size={14} />
               Open Dashboard
@@ -491,7 +491,7 @@ function CTA() {
             <span className="text-slate-400 font-mono text-sm select-none">$</span>
             <span className="font-mono text-sm text-slate-800">pip install citadel-governance</span>
           </div>
-          <a href="https://dashboard.citadelsdk.com"
+          <a href="/demo/"
             className="animate-shimmer px-8 py-3.5 rounded-full text-white font-semibold text-sm shadow-lg hover:shadow-xl transition-shadow">
             Open Dashboard →
           </a>
@@ -520,7 +520,7 @@ function Footer() {
         <div className="flex items-center gap-6">
           {[
             { label: 'Docs', href: 'https://citadelsdk.com/docs' },
-            { label: 'Dashboard', href: 'https://dashboard.citadelsdk.com' },
+            { label: 'Dashboard', href: '/demo/' },
             { label: 'GitHub', href: 'https://github.com/casss20/ledger-sdk' },
             { label: 'PyPI', href: 'https://pypi.org/project/citadel-governance/' },
           ].map(({ label, href }) => (
