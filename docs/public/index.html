@@ -840,6 +840,66 @@ function closeMobile() {
   document.getElementById('sidebar').classList.remove('open');
 }
 
+// Intercept clicks on markdown links to load via SPA instead of full navigation
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a');
+  if (!link) return;
+  
+  const href = link.getAttribute('href');
+  if (!href) return;
+  
+  // Handle .md file links
+  if (href.endsWith('.md')) {
+    e.preventDefault();
+    loadFile(href);
+    return;
+  }
+  
+  // Handle relative directory links (e.g., ../core-concepts/governance-tokens.md)
+  if (href.includes('.md')) {
+    e.preventDefault();
+    loadFile(href);
+    return;
+  }
+  
+  // Handle hash-based navigation
+  if (href.startsWith('#')) {
+    e.preventDefault();
+    loadFile(href.slice(1));
+    return;
+  }
+});
+
+// Intercept clicks on markdown links to load via SPA instead of full navigation
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a');
+  if (!link) return;
+  
+  const href = link.getAttribute('href');
+  if (!href) return;
+  
+  // Handle .md file links
+  if (href.endsWith('.md')) {
+    e.preventDefault();
+    loadFile(href);
+    return;
+  }
+  
+  // Handle relative directory links (e.g., ../core-concepts/governance-tokens.md)
+  if (href.includes('.md')) {
+    e.preventDefault();
+    loadFile(href);
+    return;
+  }
+  
+  // Handle hash-based navigation
+  if (href.startsWith('#')) {
+    e.preventDefault();
+    loadFile(href.slice(1));
+    return;
+  }
+});
+
 function searchDocs(query) {
   if (!query) {
     document.querySelectorAll('.nav-item').forEach(item => item.style.display = '');
