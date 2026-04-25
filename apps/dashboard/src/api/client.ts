@@ -143,4 +143,37 @@ export const auditApi = {
   }>('/governance/audit/verify'),
 };
 
+export interface TraceabilityGraphNode {
+  id: string;
+  type: string;
+  title: string;
+  subtitle?: string | null;
+  detail: string;
+  meta: Record<string, unknown>;
+  status: string;
+}
+
+export interface TraceabilityGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+  status: string;
+}
+
+export interface TraceabilityGraphResponse {
+  decision_id?: string | null;
+  trace_id?: string | null;
+  nodes: TraceabilityGraphNode[];
+  edges: TraceabilityGraphEdge[];
+  source: string;
+}
+
+export const traceabilityApi = {
+  graph: (decisionId?: string) =>
+    fetchApi<TraceabilityGraphResponse>('/governance/traceability', {
+      params: decisionId ? { decision_id: decisionId } : undefined,
+    }),
+};
+
 export type { ApiError };

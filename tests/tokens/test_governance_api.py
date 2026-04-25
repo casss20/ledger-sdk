@@ -407,6 +407,50 @@ class TestGovernanceAPI:
         assert "token.derived" in types
 
     @pytest.mark.asyncio
+    async def test_traceability_graph_links_policy_decision_token_and_audit(self, client):
+        """Traceability graph returns joinable policy -> decision -> token -> audit lineage."""
+        resp = await client.post(
+            "/v1/governance/decisions",
+            headers=HEADERS,
+            json={
+                "decision_type": "allow",
+                "actor_id": "agent_api_trace",
+                "action": "stripe.refund.create",
+                "resource": "customer:2841",
+                "policy_version": "policy_trace_test",
+                "approval_state": "approved",
+                "approved_by": "operator:test",
+                "scope_actions": ["stripe.refund.create"],
+                "scope_resources": ["customer:2841"],
+                "constraints": {"tool": "stripe"},
+                "reason": "traceability graph test",
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        decision_id = resp.json()["decision_id"]
+
+        token_resp = await client.post(
+            f"/v1/governance/decisions/{decision_id}/tokens",
+            headers=HEADERS,
+            json={},
+        )
+        assert token_resp.status_code == 201, token_resp.text
+
+        graph_resp = await client.get(
+            f"/v1/governance/traceability?decision_id={decision_id}",
+            headers=HEADERS,
+        )
+        assert graph_resp.status_code == 200, graph_resp.text
+        graph = graph_resp.json()
+
+        assert graph["decision_id"] == decision_id
+        node_types = {node["type"] for node in graph["nodes"]}
+        assert {"policy", "decision", "token", "approval", "execution", "audit"}.issubset(node_types)
+        assert any(node["meta"].get("policy_version") == "policy_trace_test" for node in graph["nodes"])
+        assert any(node["meta"].get("decision_id") == decision_id for node in graph["nodes"])
+        assert any(edge["label"] == "introspected" for edge in graph["edges"])
+
+    @pytest.mark.asyncio
     async def test_auth_required(self, client):
         """Requests without API key are rejected."""
         resp = await client.post(

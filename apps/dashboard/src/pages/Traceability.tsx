@@ -1,5 +1,6 @@
 import { GitBranch, KeyRound, ScrollText, ShieldCheck } from 'lucide-react';
 import { TraceabilityGraph } from '../components/traceability/TraceabilityGraph';
+import { useTraceabilityGraph } from '../hooks/useApi';
 
 const lineageFacts = [
   {
@@ -29,6 +30,14 @@ const lineageFacts = [
 ];
 
 export const Traceability = () => {
+  const { data: graph, isLoading, error } = useTraceabilityGraph();
+  const hasLiveGraph = Boolean(graph?.nodes.length);
+  const statusLabel = isLoading
+    ? 'Loading live lineage'
+    : hasLiveGraph
+      ? 'Live runtime lineage'
+      : 'Reference lineage model';
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -46,9 +55,19 @@ export const Traceability = () => {
           </p>
         </div>
         <div className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-orange-400">
-          Runtime lineage model
+          {statusLabel}
         </div>
       </div>
+
+      {(isLoading || error || !hasLiveGraph) && (
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/50 px-5 py-4 text-sm text-slate-400">
+          {isLoading
+            ? 'Connecting to the Citadel governance API and loading the latest decision lineage.'
+            : error
+              ? 'Live lineage is temporarily unavailable, so the dashboard is showing the reference traceability model.'
+              : 'No live governance decision lineage was returned yet, so the dashboard is showing the reference model until runtime decisions exist.'}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {lineageFacts.map((fact) => (
@@ -72,7 +91,7 @@ export const Traceability = () => {
         ))}
       </div>
 
-      <TraceabilityGraph />
+      <TraceabilityGraph graph={graph} />
     </div>
   );
 };

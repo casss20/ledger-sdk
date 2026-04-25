@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { healthApi, metricsApi, approvalsApi, actionsApi, auditApi } from '../api/client';
-import type { Approval, Action } from '../api/client';
+import { healthApi, metricsApi, approvalsApi, actionsApi, auditApi, traceabilityApi } from '../api/client';
+import type { Approval, Action, TraceabilityGraphResponse } from '../api/client';
 
 // Health
 export function useHealthLive() {
@@ -105,4 +105,12 @@ export function useGovernanceAuditVerify() {
   });
 }
 
-export type { Approval, Action };
+export function useTraceabilityGraph(decisionId?: string) {
+  return useQuery({
+    queryKey: ['governance', 'traceability', decisionId || 'latest'],
+    queryFn: () => traceabilityApi.graph(decisionId),
+    refetchInterval: 15000,
+  });
+}
+
+export type { Approval, Action, TraceabilityGraphResponse };

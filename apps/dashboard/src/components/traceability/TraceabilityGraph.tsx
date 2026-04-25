@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   Background,
   Controls,
@@ -13,6 +13,8 @@ import type { Edge, Node, NodeProps } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
   CheckCircle2,
+  CircleSlash2,
+  Clock3,
   FileCheck2,
   Fingerprint,
   GitBranch,
@@ -21,8 +23,16 @@ import {
   ShieldCheck,
   Zap,
 } from 'lucide-react';
+import type { TraceabilityGraphResponse } from '../../api/client';
 
-type TraceabilityStatus = 'verified' | 'active' | 'approved' | 'executed' | 'evidence';
+type TraceabilityStatus =
+  | 'verified'
+  | 'active'
+  | 'approved'
+  | 'executed'
+  | 'evidence'
+  | 'pending'
+  | 'blocked';
 
 type TraceabilityNodeData = {
   title: string;
@@ -42,6 +52,8 @@ const ICONS = {
   audit: FileCheck2,
   trace: GitBranch,
   fingerprint: Fingerprint,
+  pending: Clock3,
+  blocked: CircleSlash2,
 };
 
 const STATUS_STYLES: Record<TraceabilityStatus, string> = {
@@ -50,6 +62,8 @@ const STATUS_STYLES: Record<TraceabilityStatus, string> = {
   approved: 'border-emerald-400/50 shadow-emerald-500/10',
   executed: 'border-indigo-400/50 shadow-indigo-500/10',
   evidence: 'border-slate-400/40 shadow-slate-500/10',
+  pending: 'border-amber-400/50 shadow-amber-500/10',
+  blocked: 'border-rose-400/50 shadow-rose-500/10',
 };
 
 const STATUS_DOTS: Record<TraceabilityStatus, string> = {
@@ -58,6 +72,8 @@ const STATUS_DOTS: Record<TraceabilityStatus, string> = {
   approved: 'bg-emerald-400',
   executed: 'bg-indigo-400',
   evidence: 'bg-slate-400',
+  pending: 'bg-amber-400',
+  blocked: 'bg-rose-400',
 };
 
 function TraceabilityNode({ data, selected }: NodeProps<TraceabilityNodeData>) {
@@ -103,134 +119,171 @@ const nodeTypes = {
   traceability: memo(TraceabilityNode),
 };
 
-const nodes: Node<TraceabilityNodeData>[] = [
-  {
-    id: 'policy',
-    type: 'traceability',
-    position: { x: 20, y: 190 },
-    data: {
-      eyebrow: 'Policy',
+const FALLBACK_GRAPH: TraceabilityGraphResponse = {
+  source: 'reference',
+  decision_id: 'gd_01h_trace_7f2',
+  trace_id: 'trace_123',
+  nodes: [
+    {
+      id: 'policy',
+      type: 'policy',
       title: 'High-Value Refund Approval',
       detail: 'Policy version selected during decision evaluation.',
-      meta: 'policy_2026_04_24_7',
-      icon: 'policy',
+      meta: { policy_version: 'policy_2026_04_24_7' },
       status: 'verified',
     },
-  },
-  {
-    id: 'decision',
-    type: 'traceability',
-    position: { x: 320, y: 190 },
-    data: {
-      eyebrow: 'Decision',
+    {
+      id: 'decision',
+      type: 'decision',
       title: 'Allow with Approval Evidence',
       detail: 'Durable governance decision persisted before token issuance.',
-      meta: 'gd_01h_trace_7f2',
-      icon: 'decision',
+      meta: { decision_id: 'gd_01h_trace_7f2' },
       status: 'active',
     },
-  },
-  {
-    id: 'token',
-    type: 'traceability',
-    position: { x: 620, y: 75 },
-    data: {
-      eyebrow: 'Capability',
+    {
+      id: 'token',
+      type: 'token',
       title: 'Short-Lived gt_cap_',
       detail: 'Scoped execution proof bound to one decision_id.',
-      meta: 'gt_cap_9k2...42s',
-      icon: 'token',
+      meta: { token_id: 'gt_cap_9k2...42s' },
       status: 'active',
     },
-  },
-  {
-    id: 'approval',
-    type: 'traceability',
-    position: { x: 620, y: 305 },
-    data: {
-      eyebrow: 'Approval',
+    {
+      id: 'approval',
+      type: 'approval',
       title: 'Operator Approved',
       detail: 'Human approval state stays joinable through decision_id.',
-      meta: 'approved_by operator:admin',
-      icon: 'approval',
+      meta: { approved_by: 'operator:admin' },
       status: 'approved',
     },
-  },
-  {
-    id: 'execution',
-    type: 'traceability',
-    position: { x: 940, y: 190 },
-    data: {
-      eyebrow: 'Execution',
+    {
+      id: 'execution',
+      type: 'execution',
       title: 'stripe.refund.create',
       detail: 'Runtime gateway introspected token before execution.',
-      meta: 'customer:2841',
-      icon: 'execution',
+      meta: { resource: 'customer:2841' },
       status: 'executed',
     },
-  },
-  {
-    id: 'audit',
-    type: 'traceability',
-    position: { x: 1240, y: 190 },
-    data: {
-      eyebrow: 'Audit Evidence',
+    {
+      id: 'audit',
+      type: 'audit',
       title: 'Outcome Correlated',
       detail: 'Audit record links outcome to token, decision, policy, and approval.',
-      meta: 'trace_123 / event_hash',
-      icon: 'audit',
+      meta: { trace_id: 'trace_123', event_hash: 'event_hash' },
       status: 'evidence',
     },
-  },
-];
+  ],
+  edges: [
+    { id: 'policy-decision', source: 'policy', target: 'decision', label: 'evaluates', status: 'active' },
+    { id: 'decision-token', source: 'decision', target: 'token', label: 'issues', status: 'active' },
+    { id: 'decision-approval', source: 'decision', target: 'approval', label: 'preserves state', status: 'active' },
+    { id: 'token-execution', source: 'token', target: 'execution', label: 'introspected', status: 'active' },
+    { id: 'approval-execution', source: 'approval', target: 'execution', label: 'authorizes', status: 'active' },
+    { id: 'execution-audit', source: 'execution', target: 'audit', label: 'records outcome', status: 'active' },
+  ],
+};
 
-const edges: Edge[] = [
-  {
-    id: 'policy-decision',
-    source: 'policy',
-    target: 'decision',
-    label: 'evaluates',
-  },
-  {
-    id: 'decision-token',
-    source: 'decision',
-    target: 'token',
-    label: 'issues',
-  },
-  {
-    id: 'decision-approval',
-    source: 'decision',
-    target: 'approval',
-    label: 'preserves state',
-  },
-  {
-    id: 'token-execution',
-    source: 'token',
-    target: 'execution',
-    label: 'introspected',
-  },
-  {
-    id: 'approval-execution',
-    source: 'approval',
-    target: 'execution',
-    label: 'authorizes',
-  },
-  {
-    id: 'execution-audit',
-    source: 'execution',
-    target: 'audit',
-    label: 'records outcome',
-  },
-].map((edge) => ({
-  ...edge,
-  animated: edge.id === 'token-execution',
-  markerEnd: { type: MarkerType.ArrowClosed, color: '#fb923c' },
-  style: { stroke: '#fb923c', strokeWidth: 2 },
-  labelStyle: { fill: '#cbd5e1', fontSize: 11, fontWeight: 700 },
-  labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
-}));
+const TYPE_POSITIONS: Record<string, { x: number; y: number }> = {
+  policy: { x: 20, y: 190 },
+  decision: { x: 320, y: 190 },
+  token: { x: 620, y: 75 },
+  approval: { x: 620, y: 305 },
+  execution: { x: 940, y: 190 },
+  audit: { x: 1240, y: 190 },
+};
 
-export function TraceabilityGraph() {
+const TYPE_LABELS: Record<string, string> = {
+  policy: 'Policy',
+  decision: 'Decision',
+  token: 'Capability',
+  approval: 'Approval',
+  execution: 'Execution',
+  audit: 'Audit Evidence',
+};
+
+function normalizeStatus(status?: string): TraceabilityStatus {
+  const value = (status || '').toLowerCase();
+
+  if (['verified'].includes(value)) return 'verified';
+  if (['active', 'allow', 'allowed'].includes(value)) return 'active';
+  if (['approved', 'auto_approved'].includes(value)) return 'approved';
+  if (['executed', 'execution'].includes(value)) return 'executed';
+  if (['pending', 'require_approval', 'escalate'].includes(value)) return 'pending';
+  if (['blocked', 'deny', 'denied', 'revoked', 'expired', 'rejected'].includes(value)) return 'blocked';
+
+  return 'evidence';
+}
+
+function iconForType(type: string): keyof typeof ICONS {
+  if (type in ICONS) {
+    return type as keyof typeof ICONS;
+  }
+  return 'trace';
+}
+
+function metaPreview(meta: Record<string, unknown>) {
+  const preferredKeys = [
+    'decision_id',
+    'token_id',
+    'policy_version',
+    'event_hash',
+    'trace_id',
+    'resource',
+    'approved_by',
+  ];
+  const key = preferredKeys.find((item) => meta[item]);
+  const raw = key ? String(meta[key]) : Object.values(meta).find(Boolean)?.toString();
+
+  if (!raw) return 'live evidence';
+  return raw.length > 34 ? `${raw.slice(0, 25)}...${raw.slice(-5)}` : raw;
+}
+
+type TraceabilityGraphProps = {
+  graph?: TraceabilityGraphResponse;
+};
+
+export function TraceabilityGraph({ graph }: TraceabilityGraphProps) {
+  const activeGraph = graph?.nodes.length ? graph : FALLBACK_GRAPH;
+  const isLive = activeGraph.source === 'live' && Boolean(graph?.nodes.length);
+
+  const nodes = useMemo<Node<TraceabilityNodeData>[]>(() => {
+    const typeCounts: Record<string, number> = {};
+
+    return activeGraph.nodes.map((node, index) => {
+      const base = TYPE_POSITIONS[node.type] || { x: 120 + index * 260, y: 190 };
+      const seen = typeCounts[node.type] || 0;
+      typeCounts[node.type] = seen + 1;
+
+      return {
+        id: node.id,
+        type: 'traceability',
+        position: {
+          x: base.x,
+          y: base.y + seen * 128,
+        },
+        data: {
+          eyebrow: TYPE_LABELS[node.type] || node.type,
+          title: node.title,
+          detail: node.detail,
+          meta: metaPreview(node.meta || {}),
+          icon: iconForType(node.type),
+          status: normalizeStatus(node.status),
+        },
+      };
+    });
+  }, [activeGraph]);
+
+  const edges = useMemo<Edge[]>(() => {
+    return activeGraph.edges.map((edge) => ({
+      ...edge,
+      animated: edge.label.toLowerCase().includes('introspect'),
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#fb923c' },
+      style: { stroke: '#fb923c', strokeWidth: 2 },
+      labelStyle: { fill: '#cbd5e1', fontSize: 11, fontWeight: 700 },
+      labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
+    }));
+  }, [activeGraph]);
+
   return (
     <div className="h-[620px] w-full overflow-hidden rounded-[2rem] border border-slate-800/70 bg-slate-950 shadow-2xl shadow-black/30">
       <ReactFlow
@@ -254,6 +307,9 @@ export function TraceabilityGraph() {
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
               Follow the joinable path from policy version to decision, token, approval,
               runtime execution, and audit evidence.
+            </p>
+            <p className="mt-3 inline-flex rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-orange-300">
+              {isLive ? 'Live backend lineage' : 'Reference fallback'}
             </p>
           </div>
         </Panel>

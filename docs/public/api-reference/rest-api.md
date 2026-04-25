@@ -155,6 +155,49 @@ Only `allow` decisions can issue runtime capability tokens. Each active `gt_cap_
 }
 ```
 
+### Get a traceability graph
+
+Dashboard and audit explorer clients can request a graph-ready lineage view for the latest governance decision, or for a specific decision.
+
+```http
+GET /v1/governance/traceability?decision_id=gd_01h...
+Authorization: Bearer <api-key>
+X-Tenant-ID: ws_prod_01
+```
+
+**Response:**
+```json
+{
+  "decision_id": "gd_01h...",
+  "trace_id": "trace_123",
+  "source": "live",
+  "nodes": [
+    {
+      "id": "decision:gd_01h...",
+      "type": "decision",
+      "title": "Allow",
+      "detail": "Approved high-risk refund",
+      "status": "active",
+      "meta": {
+        "decision_id": "gd_01h...",
+        "policy_version": "policy_2026_04_24_7"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "policy-decision",
+      "source": "policy:policy_2026_04_24_7",
+      "target": "decision:gd_01h...",
+      "label": "evaluates",
+      "status": "active"
+    }
+  ]
+}
+```
+
+The response is designed for dashboard rendering and preserves the joinable chain from `policy_version` to `decision_id`, `gt_cap_` token, approval state, runtime execution, and governance audit evidence.
+
 ### Govern an action
 
 ```http

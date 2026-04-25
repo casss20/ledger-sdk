@@ -181,6 +181,32 @@ class ChainVerifyResponse(BaseModel):
     broken_at_event_id: Optional[int] = None
 
 
+class TraceabilityGraphNode(BaseModel):
+    id: str
+    type: str
+    title: str
+    subtitle: Optional[str] = None
+    detail: str = ""
+    meta: Dict[str, Any] = Field(default_factory=dict)
+    status: str = "evidence"
+
+
+class TraceabilityGraphEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    label: str
+    status: str = "active"
+
+
+class TraceabilityGraphResponse(BaseModel):
+    decision_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    nodes: List[TraceabilityGraphNode]
+    edges: List[TraceabilityGraphEdge]
+    source: str = "live"
+
+
 # ============================================================================
 # Helpers
 # ============================================================================
@@ -294,6 +320,81 @@ def _to_token_response(data: Dict[str, Any]) -> TokenResponse:
         revoked_reason=data.get("revoked_reason"),
         created_at=data.get("created_at"),
         chain_hash=data.get("chain_hash", ""),
+    )
+
+
+def _iso(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def _short(value: Optional[str], length: int = 18) -> str:
+    if not value:
+        return "none"
+    if len(value) <= length:
+        return value
+    return f"{value[: length - 6]}...{value[-3:]}"
+
+
+def _lineage_status(decision_type: Optional[str], revoked_at: Any = None) -> str:
+    if revoked_at:
+        return "revoked"
+    if decision_type in {"deny", "revoked"}:
+        return "blocked"
+    if decision_type in {"escalate", "require_approval", "pending"}:
+        return "pending"
+    if decision_type == "allow":
+        return "active"
+    return "evidence"
+
+
+def _is_expired(value: Any) -> bool:
+    if not value:
+        return False
+
+    expiry = value
+    if isinstance(expiry, str):
+        expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+    if isinstance(expiry, datetime) and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+
+    return isinstance(expiry, datetime) and expiry < datetime.now(timezone.utc)
+
+
+def _trace_node(
+    node_id: str,
+    node_type: str,
+    title: str,
+    detail: str,
+    meta: Dict[str, Any],
+    status_value: str,
+    subtitle: Optional[str] = None,
+) -> TraceabilityGraphNode:
+    return TraceabilityGraphNode(
+        id=node_id,
+        type=node_type,
+        title=title,
+        subtitle=subtitle,
+        detail=detail,
+        meta={key: _iso(value) for key, value in meta.items() if value is not None},
+        status=status_value,
+    )
+
+
+def _trace_edge(
+    edge_id: str,
+    source: str,
+    target: str,
+    label: str,
+    status_value: str = "active",
+) -> TraceabilityGraphEdge:
+    return TraceabilityGraphEdge(
+        id=edge_id,
+        source=source,
+        target=target,
+        label=label,
+        status=status_value,
     )
 
 
@@ -582,6 +683,220 @@ async def introspect_token(
         exp=exp,
         kill_switch=result.kill_switch,
         reason=result.reason,
+    )
+
+
+@router.get("/governance/traceability", response_model=TraceabilityGraphResponse)
+async def get_traceability_graph(
+    request: Request,
+    decision_id: Optional[str] = None,
+    tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    _: str = Depends(require_api_key),
+):
+    """
+    Return a dashboard-ready lineage graph for a governance decision.
+
+    The graph makes the audit spine explicit: policy version -> decision ->
+    capability token -> approval state -> runtime execution -> audit evidence.
+    """
+    pool = await _get_pool(request)
+
+    async with pool.acquire() as conn:
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+
+        if decision_id:
+            decision_row = await conn.fetchrow(
+                """
+                SELECT
+                    decision_id, decision_type, tenant_id, actor_id, request_id,
+                    trace_id, workspace_id, agent_id, subject_type, subject_id,
+                    action, resource, risk_level, policy_version, approval_state,
+                    approved_by, approved_at, issued_token_id, expiry,
+                    revoked_at, revoked_reason, scope_actions, scope_resources,
+                    created_at, reason
+                FROM governance_decisions
+                WHERE tenant_id = $1 AND decision_id = $2
+                LIMIT 1
+                """,
+                tenant_id,
+                decision_id,
+            )
+        else:
+            decision_row = await conn.fetchrow(
+                """
+                SELECT
+                    decision_id, decision_type, tenant_id, actor_id, request_id,
+                    trace_id, workspace_id, agent_id, subject_type, subject_id,
+                    action, resource, risk_level, policy_version, approval_state,
+                    approved_by, approved_at, issued_token_id, expiry,
+                    revoked_at, revoked_reason, scope_actions, scope_resources,
+                    created_at, reason
+                FROM governance_decisions
+                WHERE tenant_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                tenant_id,
+            )
+
+        if not decision_row:
+            return TraceabilityGraphResponse(nodes=[], edges=[], source="live")
+
+        decision = dict(decision_row)
+        active_decision_id = decision["decision_id"]
+
+        token_row = await conn.fetchrow(
+            """
+            SELECT
+                token_id, decision_id, subject, audience, workspace_id, tool,
+                action, resource_scope, risk_level, not_before, trace_id,
+                approval_ref, revoked_at, revoked_reason, expiry, created_at
+            FROM governance_tokens
+            WHERE tenant_id = $1 AND decision_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            tenant_id,
+            active_decision_id,
+        )
+
+        audit_row = await conn.fetchrow(
+            """
+            SELECT
+                event_id, event_ts, event_type, actor_id, token_id,
+                payload_json, event_hash
+            FROM governance_audit_log
+            WHERE tenant_id = $1 AND decision_id = $2
+            ORDER BY event_id DESC
+            LIMIT 1
+            """,
+            tenant_id,
+            active_decision_id,
+        )
+
+    token = dict(token_row) if token_row else None
+    audit_event = dict(audit_row) if audit_row else None
+    policy_version = decision.get("policy_version") or "unknown"
+    trace_id = decision.get("trace_id") or (token or {}).get("trace_id")
+
+    policy_node_id = f"policy:{policy_version}"
+    decision_node_id = f"decision:{active_decision_id}"
+    approval_node_id = f"approval:{active_decision_id}"
+    execution_node_id = f"execution:{active_decision_id}"
+
+    nodes: List[TraceabilityGraphNode] = [
+        _trace_node(
+            policy_node_id,
+            "policy",
+            policy_version,
+            "Exact policy version captured when Citadel evaluated the action.",
+            {"policy_version": policy_version},
+            "verified",
+        ),
+        _trace_node(
+            decision_node_id,
+            "decision",
+            str(decision.get("decision_type", "decision")).replace("_", " ").title(),
+            decision.get("reason") or f"{decision.get('action')} on {decision.get('resource') or 'resource'}",
+            {
+                "decision_id": active_decision_id,
+                "request_id": decision.get("request_id"),
+                "trace_id": trace_id,
+                "workspace_id": decision.get("workspace_id"),
+                "actor_id": decision.get("actor_id"),
+                "risk_level": decision.get("risk_level"),
+                "created_at": decision.get("created_at"),
+            },
+            _lineage_status(decision.get("decision_type"), decision.get("revoked_at")),
+            subtitle=decision.get("action"),
+        ),
+        _trace_node(
+            approval_node_id,
+            "approval",
+            str(decision.get("approval_state", "unknown")).replace("_", " ").title(),
+            "Approval state is preserved on the durable decision record.",
+            {
+                "approval_state": decision.get("approval_state"),
+                "approved_by": decision.get("approved_by"),
+                "approved_at": decision.get("approved_at"),
+            },
+            str(decision.get("approval_state") or "evidence"),
+        ),
+        _trace_node(
+            execution_node_id,
+            "execution",
+            decision.get("action") or "runtime action",
+            f"Protected runtime operation scoped to {decision.get('resource') or 'any resource'}.",
+            {
+                "resource": decision.get("resource"),
+                "workspace_id": decision.get("workspace_id"),
+                "risk_level": decision.get("risk_level"),
+            },
+            "executed" if audit_event else _lineage_status(decision.get("decision_type")),
+        ),
+    ]
+
+    edges: List[TraceabilityGraphEdge] = [
+        _trace_edge("policy-decision", policy_node_id, decision_node_id, "evaluates"),
+        _trace_edge("decision-approval", decision_node_id, approval_node_id, "preserves state"),
+        _trace_edge("approval-execution", approval_node_id, execution_node_id, "authorizes"),
+    ]
+
+    if token:
+        token_node_id = f"token:{token['token_id']}"
+        token_status = "revoked" if token.get("revoked_at") else "active"
+        if _is_expired(token.get("expiry")):
+            token_status = "expired"
+
+        nodes.append(
+            _trace_node(
+                token_node_id,
+                "token",
+                _short(token["token_id"], 24),
+                "Short-lived gt_cap_ execution proof bound to exactly one decision.",
+                {
+                    "token_id": token.get("token_id"),
+                    "decision_id": token.get("decision_id"),
+                    "tool": token.get("tool"),
+                    "action": token.get("action"),
+                    "resource_scope": token.get("resource_scope"),
+                    "expiry": token.get("expiry"),
+                },
+                token_status,
+            )
+        )
+        edges.extend(
+            [
+                _trace_edge("decision-token", decision_node_id, token_node_id, "issues"),
+                _trace_edge("token-execution", token_node_id, execution_node_id, "introspected"),
+            ]
+        )
+
+    if audit_event:
+        audit_node_id = f"audit:{audit_event['event_id']}"
+        nodes.append(
+            _trace_node(
+                audit_node_id,
+                "audit",
+                str(audit_event.get("event_type", "audit event")).replace("_", " ").title(),
+                "Latest hash-chained governance event for this decision.",
+                {
+                    "event_id": audit_event.get("event_id"),
+                    "event_hash": audit_event.get("event_hash"),
+                    "event_ts": audit_event.get("event_ts"),
+                    "token_id": audit_event.get("token_id"),
+                },
+                "evidence",
+            )
+        )
+        edges.append(_trace_edge("execution-audit", execution_node_id, audit_node_id, "records outcome"))
+
+    return TraceabilityGraphResponse(
+        decision_id=active_decision_id,
+        trace_id=trace_id,
+        nodes=nodes,
+        edges=edges,
+        source="live",
     )
 
 
