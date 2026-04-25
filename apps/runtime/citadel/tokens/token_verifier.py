@@ -69,11 +69,6 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "token_not_found", context)
             return VerificationResult(valid=False, reason="token_not_found")
 
-        token_expiry = self._parse_datetime(token_data.get("expiry"))
-        if token_expiry and datetime.now(timezone.utc) > token_expiry:
-            await self._audit_token_verification(token_id, False, "token_expired", context)
-            return VerificationResult(valid=False, reason="token_expired")
-
         token_nbf = self._parse_datetime(token_data.get("not_before"))
         if token_nbf and datetime.now(timezone.utc) < token_nbf:
             await self._audit_token_verification(token_id, False, "token_not_yet_valid", context)
@@ -135,10 +130,16 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "workspace_mismatch", context, decision)
             return VerificationResult(valid=False, reason="workspace_mismatch", decision=decision)
 
-        # 3. Check expiry
+        # 3. Check expiry — decision expiry takes precedence over token expiry
+        # since the token derives its lifetime from the decision.
         if decision.is_expired:
             await self._audit_token_verification(token_id, False, "decision_expired", context, decision)
             return VerificationResult(valid=False, reason="decision_expired", decision=decision)
+
+        token_expiry = self._parse_datetime(token_data.get("expiry"))
+        if token_expiry and datetime.now(timezone.utc) > token_expiry:
+            await self._audit_token_verification(token_id, False, "token_expired", context, decision)
+            return VerificationResult(valid=False, reason="token_expired", decision=decision)
 
         # 4. Check revocation
         if decision.decision_type == DecisionType.REVOKED or decision.revoked_at is not None:
