@@ -8,7 +8,17 @@ from .usage_service import UsageService
 class BillingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # 1. Skip paths that don't require billing checks
-        exempt_paths = ["/health", "/v1/billing/webhooks", "/docs", "/openapi.json"]
+        exempt_paths = [
+            "/health",
+            "/v1/health",
+            "/auth/login",
+            "/auth/refresh",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/metrics",
+            "/v1/billing/webhooks",
+        ]
         if any(request.url.path.startswith(path) for path in exempt_paths):
             return await call_next(request)
 
@@ -19,7 +29,10 @@ class BillingMiddleware(BaseHTTPMiddleware):
 
         # 3. Resolve Entitlements and Usage
         # We use the app state pool for efficiency
-        pool = request.app.state.db_pool
+        pool = getattr(request.app.state, "db_pool", None)
+        if pool is None:
+            return await call_next(request)
+
         repo = BillingRepository(pool)
         entitlement_service = EntitlementService(repo)
         usage_service = UsageService(repo)
