@@ -23,7 +23,7 @@ X-RateLimit-Reset: 1713862800
 ```python
 try:
     result = action.execute()
-except citadel_sdk.RateLimitError as e:
+except citadel.RateLimitError as e:
     time.sleep(e.retry_after)
     result = action.execute()  # Retry
 ```

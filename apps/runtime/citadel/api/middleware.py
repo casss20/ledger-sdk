@@ -124,26 +124,24 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             )
 
 
+def setup_cors(app: FastAPI) -> None:
+    """Add CORS as the outermost middleware so it handles preflight before auth."""
+    origins = settings.allowed_cors_origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins if origins else ["*"],
+        allow_origin_regex=r"https://.*\.vercel\.app$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
 def setup_middleware(app: FastAPI) -> None:
     """Register all middleware on the app."""
-    
-    # CORS
-    origins = settings.allowed_cors_origins
-    if origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=origins,
-            allow_origin_regex=r"https://.*\.vercel\.app$",
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-    
-    # Request size limit (outermost = first check)
+    # Request size limit
     app.add_middleware(RequestSizeLimitMiddleware)
-    
     # Request logging
     app.add_middleware(RequestLoggingMiddleware)
-    
-    # Error handling (inner = last resort)
+    # Error handling
     app.add_middleware(ErrorHandlingMiddleware)

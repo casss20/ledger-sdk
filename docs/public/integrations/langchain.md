@@ -13,9 +13,9 @@
 ## Installation
 
 ```bash
-pip install citadel-sdk[langchain]
+pip install citadel-governance[langchain]
 # or
-pip install citadel-sdk langchain langchain-openai
+pip install citadel-governance langchain langchain-openai
 ```
 
 ---
@@ -25,11 +25,11 @@ pip install citadel-sdk langchain langchain-openai
 ```python
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from ledger_sdk.integrations.langchain import LedgerCallbackHandler
+from citadel.integrations.langchain import LedgerCallbackHandler
 
 # Initialize Citadel
-import ledger_sdk
-citadel = ledger_sdk.Client(api_key="ldk_test_...")
+import citadel
+citadel = citadel.Client(api_key="ldk_test_...")
 
 # Create the callback handler
 ledger_handler = LedgerCallbackHandler(

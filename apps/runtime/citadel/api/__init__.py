@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
 from citadel.config import settings
-from citadel.api.middleware import setup_middleware
+from citadel.api.middleware import setup_middleware, setup_cors
 from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard
 from citadel.billing.routes import router as billing_router
 from citadel.billing.middleware import BillingMiddleware
@@ -180,7 +180,10 @@ def create_app() -> FastAPI:
     
     # Auth endpoints
     setup_auth_endpoints(app, jwt_service)
-    
+
+    # CORS must be outermost — added last so it runs before auth on preflight
+    setup_cors(app)
+
     # Routers
     app.include_router(actions.router, prefix="/v1")
     app.include_router(approvals.router, prefix="/v1")

@@ -12,9 +12,9 @@
 ## Installation
 
 ```bash
-pip install citadel-sdk[autogen]
+pip install citadel-governance[autogen]
 # or
-pip install citadel-sdk pyautogen
+pip install citadel-governance pyautogen
 ```
 
 ---
@@ -23,11 +23,11 @@ pip install citadel-sdk pyautogen
 
 ```python
 from autogen import ConversableAgent, GroupChat
-from citadel_sdk.integrations.autogen import CITADELAgentInterceptor
+from citadel.integrations.autogen import CITADELAgentInterceptor
 
 # Initialize CITADEL
-import citadel_sdk
-CITADEL = citadel_sdk.Client(api_key="ldk_test_...")
+import citadel
+CITADEL = citadel.Client(api_key="ldk_test_...")
 
 # Create interceptor
 interceptor = CITADELAgentInterceptor(

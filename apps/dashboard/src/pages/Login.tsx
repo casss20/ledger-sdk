@@ -16,15 +16,11 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      // The backend expects application/x-www-form-urlencoded for OAuth2PasswordRequestForm
-      const formData = new URLSearchParams();
-      formData.append("username", username);
-      formData.append("password", password);
-
-      const response = await fetch("/auth/login", {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${apiBase}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString()
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {

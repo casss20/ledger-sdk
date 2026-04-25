@@ -5,7 +5,7 @@ Govern K2.6 agents with Citadel's policy engine, approval workflows, and audit t
 ## Installation
 
 ```bash
-pip install citadel-sdk moonshot-ai  # K2.6 SDK
+pip install citadel-governance moonshot-ai  # K2.6 SDK
 ```
 
 ## Quick Start

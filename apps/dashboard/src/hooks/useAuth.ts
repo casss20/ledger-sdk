@@ -4,20 +4,20 @@ import { useNavigate } from "react-router-dom";
 export function useAuth() {
   const [token, setToken] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("CITADEL-token");
+      return localStorage.getItem("auth_token");
     }
     return null;
   });
   const navigate = useNavigate();
 
   const login = (newToken: string) => {
-    localStorage.setItem("CITADEL-token", newToken);
+    localStorage.setItem("auth_token", newToken);
     setToken(newToken);
     navigate("/overview");
   };
 
   const logout = () => {
-    localStorage.removeItem("CITADEL-token");
+    localStorage.removeItem("auth_token");
     setToken(null);
     navigate("/login");
   };

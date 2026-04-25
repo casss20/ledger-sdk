@@ -132,7 +132,7 @@ Test in staging without affecting production:
 
 ```python
 # Staging environment test
-citadel = ledger_sdk.Client(
+citadel = citadel.Client(
     api_key="ldk_test_...",
     environment="sandbox"
 )
@@ -144,7 +144,7 @@ citadel.kill_switch.activate(agent_id="test-agent", reason="Test")
 try:
     action = citadel.govern(agent_id="test-agent", action="test.action")
     action.execute()
-except ledger_sdk.KillSwitchActivatedError:
+except citadel.KillSwitchActivatedError:
     print("Kill switch working correctly")
 
 # Deactivate

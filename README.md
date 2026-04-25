@@ -47,54 +47,69 @@ Citadel is organized as a **mixed-license monorepo** to separate the open ecosys
 - **`tests/`**: Tiered test suite (unit, simulation, hardening).
 - **`scripts/`**: Development and administrative utilities.
 
-## Quick Start
+## Quick Start — 5 minutes
 
-### Installation
+### 1. Install the SDK
+
 ```bash
-pip install citadel-sdk
+pip install citadel-governance
 ```
 
-### Local Development Setup
+### 2. Point it at the hosted API
 
-To run the Citadel SDK locally (or run the test suite), you must have a PostgreSQL database running with the correct schema.
-
-**1. Start the Database**
-We provide a `docker-compose.yml` to instantly spin up the required PostgreSQL instance and apply the schema:
-```bash
-docker compose up -d postgres
-```
-
-**2. Install Dependencies**
-Install the core runtime dependencies:
-```bash
-pip install -e .
-```
-
-**3. Run the API Server**
-Start the FastAPI server:
-```bash
-uvicorn citadel.api:app --reload
-```
-
-### Quick Usage
 ```python
 import citadel
 
-# Configure the universal client
-client = citadel.CitadelClient(base_url="http://localhost:8000", api_key="your-key")
-
-# Execute an action under governance
-result = await client.execute(
-    action="file.delete",
-    resource="documents/sensitive.pdf",
-    actor_id="agent-v1",
-    capability_token="gt_cap_xyz..." # Optional: Bypass policy via GT token
+citadel.configure(
+    base_url="https://ledger-sdk.fly.dev",
+    api_key="dev-key-for-testing",
+    actor_id="my-agent",
 )
+```
 
-if result.status == "executed":
-    print("Action permitted and logged.")
-elif result.status == "pending_approval":
-    print("Action is waiting for human review.")
+### 3. Execute an action under governance
+
+```python
+import asyncio
+
+async def main():
+    result = await citadel.execute(
+        action="stripe.refund",
+        resource="charge:ch_123",
+        payload={"amount": 5000},
+    )
+
+    if result.status == "executed":
+        print("Permitted and logged.")
+    elif result.status == "pending_approval":
+        print("Queued for human review.")
+    else:
+        print(f"Blocked: {result.reason}")
+
+asyncio.run(main())
+```
+
+### 4. Watch it in the dashboard
+
+Open **[casss20-ledger-sdk-6nlu.vercel.app](https://casss20-ledger-sdk-6nlu.vercel.app)** and log in with `admin` / `admin123`.
+
+Every action your agent executes appears in the Activity feed in real time. High-risk actions land in the Approval Queue for human review.
+
+### Use as a decorator
+
+```python
+@citadel.guard(action="github.repo_delete", resource="repo:{name}")
+async def delete_repo(name: str):
+    # Only runs if governance allows it
+    await github.repos.delete(name)
+```
+
+### Self-hosted setup
+
+```bash
+docker compose up -d postgres
+pip install -e ".[all]"
+uvicorn citadel.api:app --host 0.0.0.0 --port 8000
 ```
 
 ## Hardening & Verification
