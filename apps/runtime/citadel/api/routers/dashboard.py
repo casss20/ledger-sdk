@@ -1,6 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, Request, HTTPException
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Literal
 from pydantic import BaseModel, Field
 from citadel.execution.kernel import Kernel
 from citadel.api.dependencies import get_kernel
@@ -248,7 +248,7 @@ async def list_dashboard_audit(
             FROM audit_events e
             LEFT JOIN actions a ON e.action_id = a.action_id
             LEFT JOIN decisions d ON e.action_id = d.action_id
-            WHERE e.tenant_id = $1 OR e.tenant_id IS NULL
+            WHERE e.tenant_id = $1
             ORDER BY e.event_ts DESC
             LIMIT $2 OFFSET $3
             """,
@@ -269,32 +269,50 @@ async def list_dashboard_audit(
         ]
     }
 
+class KillSwitchBody(BaseModel):
+    scope: Literal["agent", "tenant", "global"]
+    target_id: Optional[str] = Field(None, max_length=128)
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
 @router.post("/dashboard/kill-switch")
 async def trigger_kill_switch(
+    body: KillSwitchBody,
     request: Request,
-    scope: str = "tenant",
-    target_id: str = None,
-    reason: str = None,
     kernel: Kernel = Depends(get_kernel),
 ):
-    tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
-    user_id = getattr(request.state, "user_id", "dev_user")
-    
-    # In a real system we would use kernel.kill_switch_service
-    # For wiring phase, we'll implement a simple DB write
+    tenant_id = getattr(request.state, "tenant_id", None)
+    user_id = getattr(request.state, "user_id", None)
+    if not tenant_id or not user_id:
+        raise HTTPException(status_code=401, detail="unauthenticated")
+
+    # Validate target_id belongs to this tenant when scoped to an agent
+    if body.scope == "agent":
+        if not body.target_id:
+            raise HTTPException(status_code=400, detail="target_id required for agent scope")
+        async with kernel.repo.pool.acquire() as conn:
+            owned = await conn.fetchval(
+                "SELECT 1 FROM agents WHERE tenant_id = $1 AND agent_id = $2",
+                tenant_id, body.target_id,
+            )
+        if not owned:
+            raise HTTPException(status_code=404, detail="agent not found in tenant scope")
+
+    scope_value = body.target_id or tenant_id
     async with kernel.repo.pool.acquire() as conn:
         await conn.execute(
             """
             INSERT INTO kill_switches (tenant_id, scope_type, scope_value, enabled, reason, created_by)
             VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (tenant_id, scope_type, scope_value) 
+            ON CONFLICT (tenant_id, scope_type, scope_value)
             DO UPDATE SET enabled = EXCLUDED.enabled, reason = EXCLUDED.reason, updated_at = NOW()
             """,
-            tenant_id, scope, target_id or tenant_id, True, reason, user_id
+            tenant_id, body.scope, scope_value, True, body.reason, user_id,
         )
-    
+
     return {
         "status": "success",
         "kill_switch_id": str(uuid.uuid4()),
-        "activated_at": "now",
+        "scope": body.scope,
+        "target_id": scope_value,
     }

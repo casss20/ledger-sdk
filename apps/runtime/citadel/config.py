@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     
     # CORS Origins (comma-separated)
     cors_origins: str = (
-        "https://dashboard-lemon-one-20.vercel.app,"
         "https://citadelsdk.com,"
+        "https://www.citadelsdk.com,"
         "https://dashboard.citadelsdk.com,"
         "https://*.vercel.app"
     )
@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     api_key_header: str = "X-API-Key"
     api_keys: str = "dev-key-for-testing"  # Comma-separated list of valid keys
     require_auth: bool = True
+    citadel_jwt_secret: str = "secret_key_change_me_in_prod"
+    citadel_admin_bootstrap_username: str = "admin"
+    citadel_admin_bootstrap_password: Optional[str] = None
+    citadel_admin_bootstrap_tenant: str = "demo-tenant"
+    citadel_admin_bootstrap_email: str = "admin@citadel.dev"
+    citadel_admin_bootstrap_role: str = "admin"
     
     # Rate Limiting
     rate_limit_requests: int = 100  # per window

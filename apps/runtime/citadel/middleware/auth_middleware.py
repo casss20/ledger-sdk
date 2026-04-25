@@ -56,43 +56,49 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/actions",
         "/api/approvals",
         "/api/policies",
-        "/v1", # including /v1 routes that are meant for SDK
+        "/api/agents",
+        "/api/connectors",
+        "/api/audit",
+        "/v1",
     }
-    
+
     # Endpoints that require JWT
     DASHBOARD_PATHS = {
         "/dashboard",
         "/api/dashboard",
         "/auth/logout",
         "/auth/keys",
+        "/auth/step-up",
     }
-    
+
     def __init__(self, app, jwt_service: JWTService):
         super().__init__(app)
         self.jwt_service = jwt_service
-    
+
     async def dispatch(self, request: Request, call_next):
         import os
-        if os.getenv("CITADEL_DEV_MODE") == "true" or os.getenv("LEDGER_DEV_MODE") == "true":
+        from citadel.config import settings as _settings
+        # Dev-mode bypass: ONLY when settings.debug is also true (not a runtime env switch)
+        if (os.getenv("CITADEL_DEV_MODE") == "true" or os.getenv("LEDGER_DEV_MODE") == "true") and getattr(_settings, "debug", False):
             request.state.tenant_id = "dev_tenant"
             request.state.user_id = "dev_user"
             request.state.role = "admin"
             return await call_next(request)
-            
+
         # Exempt paths (health, docs, login)
         if request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)
-        
+
         # SDK endpoints require API key
         if any(request.url.path.startswith(path) for path in self.SDK_PATHS):
             return await self._auth_api_key(request, call_next)
-        
+
         # Dashboard endpoints require JWT
         if any(request.url.path.startswith(path) for path in self.DASHBOARD_PATHS):
             return await self._auth_jwt(request, call_next)
-        
-        # Default: allow (could be stricter)
-        return await call_next(request)
+
+        # Default: deny — anything not explicitly classified is unauthenticated
+        return JSONResponse(status_code=401, content={"error": "unauthenticated"})
     
     async def _auth_api_key(self, request: Request, call_next):
         """Authenticate SDK request using API key"""
@@ -247,6 +253,41 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
         except JWTError as e:
             return JSONResponse(status_code=401, content={"error": str(e)})
     
+    @app.post("/auth/step-up")
+    async def step_up(
+        request: Request,
+        password: str = Body(..., embed=True),
+        db = Depends(get_db),
+    ):
+        """Re-verify the current user's password for high-risk actions.
+
+        Returns a short-lived step-up token. The frontend should send this
+        token on the gated action so the backend can require recent re-auth.
+        """
+        user_id = getattr(request.state, "user_id", None)
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if not user_id or not tenant_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        operator_service = OperatorService(db)
+        # Re-authenticate by user_id + password.
+        operator = await operator_service.authenticate_by_id(user_id, password) \
+            if hasattr(operator_service, "authenticate_by_id") else None
+        if not operator:
+            # Fallback: try username == user_id (compat for current schema)
+            operator = await operator_service.authenticate(user_id, password)
+        if not operator:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        step_up_token = jwt_service.create_token(
+            user_id=operator.operator_id,
+            tenant_id=operator.tenant_id,
+            email=operator.email,
+            role=operator.role,
+            token_type="access",
+        )
+        return {"step_up_token": step_up_token, "expires_in": 300}
+
     @app.post("/auth/logout")
     async def logout(
         request: Request,

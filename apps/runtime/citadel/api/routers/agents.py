@@ -70,7 +70,7 @@ async def create_agent(body: AgentCreate, request: Request):
             INSERT INTO agents (agent_id, tenant_id, name, status, health_score,
                 token_spend, token_budget, actions_today, owner, quarantined, compliance)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT (agent_id) DO NOTHING
+            ON CONFLICT (tenant_id, agent_id) DO NOTHING
             RETURNING *
             """,
             body.agent_id,

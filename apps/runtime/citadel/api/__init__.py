@@ -29,6 +29,83 @@ from citadel.utils.telemetry import setup_telemetry
 logger = logging.getLogger(__name__)
 
 
+def _hash_operator_password(password: str) -> str:
+    """Hash an operator password using the same PBKDF2 format as OperatorService."""
+    import hashlib
+    import secrets
+
+    salt = secrets.token_hex(16)
+    iterations = 100000
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        iterations,
+    )
+    return f"pbkdf2:sha256:{iterations}:{salt}:{key.hex()}"
+
+
+async def _ensure_bootstrap_operator(pool) -> None:
+    """
+    Ensure the configured bootstrap admin can log in after deploy.
+
+    When CITADEL_ADMIN_BOOTSTRAP_PASSWORD is present, it is the operational
+    source of truth for the bootstrap operator and will reset that operator on
+    startup. Without the secret, we preserve the legacy empty-table dev seed.
+    """
+    username = settings.citadel_admin_bootstrap_username
+    password = settings.citadel_admin_bootstrap_password
+    tenant_id = settings.citadel_admin_bootstrap_tenant
+    email = settings.citadel_admin_bootstrap_email
+    role = settings.citadel_admin_bootstrap_role
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("SET LOCAL app.admin_bypass = 'true'")
+
+            if not password:
+                row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
+                if row and row["cnt"] > 0:
+                    return
+                password = "admin123"
+
+            import hashlib
+
+            operator_id = "op_bootstrap_" + hashlib.sha256(
+                username.encode("utf-8")
+            ).hexdigest()[:16]
+            password_hash = _hash_operator_password(password)
+
+            await conn.execute(
+                """
+                INSERT INTO operators (
+                    operator_id, username, email, password_hash,
+                    tenant_id, role, is_active
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+                ON CONFLICT (username) DO UPDATE SET
+                    email = EXCLUDED.email,
+                    password_hash = EXCLUDED.password_hash,
+                    tenant_id = EXCLUDED.tenant_id,
+                    role = EXCLUDED.role,
+                    is_active = TRUE
+                """,
+                operator_id,
+                username,
+                email,
+                password_hash,
+                tenant_id,
+                role,
+            )
+
+    logger.info(
+        "Ensured bootstrap operator username=%s tenant_id=%s role=%s",
+        username,
+        tenant_id,
+        role,
+    )
+
+
 async def _run_migrations(pool):
     """Run SQL migrations on startup."""
     import os
@@ -71,8 +148,9 @@ async def _run_migrations(pool):
                 )
                 logger.info(f"Applied migration: {filename}")
             except Exception as e:
-                logger.warning(f"Migration {filename} failed: {e}")
-                # Continue - some migrations may fail if objects already exist
+                logger.error(f"Migration {filename} failed: {e}")
+                # Fail loud â€” partial schema is worse than not booting.
+                raise
 
 
 @asynccontextmanager
@@ -99,24 +177,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as mig_exc:
             logger.warning(f"Migration runner warning: {mig_exc}")
         
-        # Seed default admin if operators table exists and is empty
+        # Ensure the configured bootstrap admin exists after migrations.
         try:
-            async with _pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
-                if row and row['cnt'] == 0:
-                    import hashlib, secrets
-                    salt = secrets.token_hex(16)
-                    iterations = 100000
-                    key = hashlib.pbkdf2_hmac('sha256', b'admin123', salt.encode(), iterations)
-                    password_hash = f"pbkdf2:sha256:{iterations}:{salt}:{key.hex()}"
-                    await conn.execute("""
-                        INSERT INTO operators (operator_id, username, email, password_hash, tenant_id, role, is_active)
-                        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-                        ON CONFLICT (username) DO NOTHING
-                    """, "op_admin_default", "admin", "admin@citadel.dev", password_hash, "demo-tenant", "admin")
-                    logger.info("Seeded default admin operator (admin / admin123)")
+            await _ensure_bootstrap_operator(_pool)
         except Exception as seed_exc:
-            # Table might not exist yet (migrations not run)
             logger.debug(f"Operator seed skipped: {seed_exc}")
     except Exception as exc:
         logger.exception("Database pool initialization failed; readiness will report unhealthy")
@@ -172,7 +236,16 @@ def create_app() -> FastAPI:
         async def delete(self, k): self.store.pop(k, None)
     
     app.state.cache = AppCache()
-    jwt_service = JWTService(secret_key="secret_key_change_me_in_prod")
+    jwt_secret = settings.citadel_jwt_secret
+    if not jwt_secret or jwt_secret == "secret_key_change_me_in_prod":
+        if settings.debug:
+            jwt_secret = "DEV_ONLY_DO_NOT_USE_IN_PROD"
+            logger.warning("CITADEL_JWT_SECRET not set; using a dev-only key.")
+        else:
+            raise RuntimeError(
+                "CITADEL_JWT_SECRET environment variable must be set in production."
+            )
+    jwt_service = JWTService(secret_key=jwt_secret)
     
     # Order: Outermost (runs first) to Innermost (runs last)
     
@@ -191,7 +264,7 @@ def create_app() -> FastAPI:
     # Auth endpoints
     setup_auth_endpoints(app, jwt_service)
 
-    # CORS must be outermost — added last so it runs before auth on preflight
+    # CORS must be outermost â€” added last so it runs before auth on preflight
     setup_cors(app)
 
     # Routers
