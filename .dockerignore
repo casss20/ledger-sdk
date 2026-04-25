@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Local environment
+.env
+.env.local
+
+# Documentation and non-essential files
+archive/
+docs/
+*.md
+!README.md
+
+# Frontend (not needed in backend container)
+apps/dashboard/
+apps/dashboard-demo/
+apps/landing/
+packages/
+
+# Test artifacts
+final_test_count.txt
+.pytest_cache/
+tests/
+
+# CI
+.github/

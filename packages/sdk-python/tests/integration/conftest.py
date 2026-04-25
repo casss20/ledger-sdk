@@ -3,7 +3,7 @@
 These tests require a live Citadel backend. They are skipped by default.
 
 To run:
-    export CITADEL_TEST_URL=https://ledger-sdk.fly.dev
+    export CITADEL_TEST_URL=https://api.citadelsdk.com
     export CITADEL_TEST_API_KEY=your-key
     pytest tests/integration/ -v
 

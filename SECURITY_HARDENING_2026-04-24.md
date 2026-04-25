@@ -1,5 +1,7 @@
 # Security Hardening Pass — 2026-04-24
 
+> **Note:** This document captures the initial hardening pass. For a comprehensive production-readiness review with severity rankings, see `PRODUCTION_AUDIT.md`.
+
 ## Issues Fixed
 
 ### 1. Rate Limiting (NEW)

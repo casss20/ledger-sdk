@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for ledger-sdk on 2026-04-24T08:23:13Z
+# fly.toml app configuration file for citadel-sdk
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -15,7 +15,8 @@ primary_region = 'ams'
   RATE_LIMIT_REQUESTS = '100'
   RATE_LIMIT_WINDOW_SECONDS = '60'
   REQUIRE_AUTH = 'true'
-  CORS_ORIGINS = 'https://dashboard-qfx06pd4e-casss20s-projects.vercel.app,https://citadelsdk.com,https://dashboard.citadelsdk.com'
+  # CORS_ORIGINS must be set via fly secrets or env override in production
+  # Example: fly deploy --env CORS_ORIGINS="https://dashboard.citadelsdk.com"
 
 [http_service]
   internal_port = 8000
@@ -36,4 +37,3 @@ primary_region = 'ams'
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256

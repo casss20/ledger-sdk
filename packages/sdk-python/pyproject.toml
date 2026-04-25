@@ -73,12 +73,11 @@ markers = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["citadel_governance", "citadel"]
+packages = ["citadel_governance"]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/citadel_governance",
-    "/citadel",
     "/tests",
     "/README.md",
     "/LICENSE",

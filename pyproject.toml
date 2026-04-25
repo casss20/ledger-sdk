@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "citadel-sdk"
-version = "0.1.0"
-description = "AI Governance: Constitution + Audit for Agent Builders"
+name = "citadel-runtime"
+version = "0.2.1"
+description = "AI Governance Runtime: Constitution + Audit for Agent Builders (Backend)"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Anthony Cass", email = "anthony@cass.solutions"}
 ]
@@ -44,10 +44,6 @@ dependencies = [
     "httpx>=0.24",
     "asyncpg>=0.29",
     "PyJWT>=2.8",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-instrumentation-fastapi>=0.41b0",
-    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
 [project.optional-dependencies]
@@ -61,6 +57,12 @@ durable = [
 ]
 sidecar = [
     "aiohttp>=3.8",
+]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 dev = [
     "pytest>=7.0",
@@ -81,6 +83,10 @@ all = [
     "prometheus-client>=0.17",
     "asyncpg>=0.29",
     "PyJWT>=2.8",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
 [project.urls]
@@ -89,16 +95,13 @@ Documentation = "https://github.com/casss20/citadel-sdk/tree/master/docs"
 Repository = "https://github.com/casss20/citadel-sdk.git"
 Issues = "https://github.com/casss20/citadel-sdk/issues"
 
-[tool.hatch.build.targets.wheel]
-packages = ["apps/runtime/citadel"]
-
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
+target-version = ["py310", "py311", "py312"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 select = [
     "E",   # pycodestyle errors
     "F",   # Pyflakes
@@ -112,7 +115,7 @@ ignore = [
 ]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

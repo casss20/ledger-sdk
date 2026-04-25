@@ -1,7 +1,6 @@
 include README.md
 include LICENSE
-include pyproject.toml
-recursive-include src *.py
+include CHANGELOG.md
+include .env.example
 recursive-include docs *.md
-recursive-include examples *.py
-recursive-include CITADEL *.md
+recursive-include db *.sql

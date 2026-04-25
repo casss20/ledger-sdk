@@ -25,7 +25,8 @@ services:
       DATABASE_URL: postgresql://citadel:citadel@postgres:5432/citadel
       DB_MIN_SIZE: 2
       DB_MAX_SIZE: 10
-      API_KEYS: prod-key-change-me-now,dev-key-for-testing
+      # API_KEYS must be set via .env file or environment override
+      # Example: API_KEYS=prod-key-1:admin,prod-key-2:read
       REQUIRE_AUTH: true
       RATE_LIMIT_REQUESTS: 100
       RATE_LIMIT_WINDOW_SECONDS: 60

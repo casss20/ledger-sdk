@@ -50,7 +50,16 @@ Citadel is organized as a **mixed-license monorepo** to separate the open ecosys
 - **`tests/`**: Tiered test suite (unit, simulation, hardening).
 - **`scripts/`**: Development and administrative utilities.
 
-## Quick Start — 5 minutes
+## 📦 Packages
+
+Citadel publishes two distinct Python packages:
+
+| Package | Install | Purpose | License |
+|---|---|---|---|
+| **citadel-governance** | `pip install citadel-governance` | Client SDK for agent integration | Apache 2.0 |
+| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted governance backend | BSL 1.1 |
+
+> **Note:** The backend runtime (`citadel-runtime`) is not published to PyPI. It is meant to be deployed as a service (Docker, Fly.io, etc.). The SDK (`citadel-governance`) is the only PyPI package for agent integration.
 
 ### 1. Install the SDK
 
@@ -63,9 +72,10 @@ pip install citadel-governance
 ```python
 import citadel_governance as cg
 
+# Get your API key from https://dashboard.citadelsdk.com/settings
 cg.configure(
     base_url="https://api.citadelsdk.com",
-    api_key="dev-key-for-testing",
+    api_key="YOUR_API_KEY_HERE",
     actor_id="my-agent",
 )
 ```

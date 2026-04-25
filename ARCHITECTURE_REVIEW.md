@@ -247,7 +247,7 @@ The GitHub Actions workflow (`ci-cd.yml`) has serious issues:
 The root README quickstart uses:
 ```python
 import citadel
-citadel.configure(base_url="https://ledger-sdk.fly.dev", ...)
+citadel.configure(base_url="https://api.citadelsdk.com", ...)
 ```
 
 This is the **deprecated import path**. The current recommended path is `import citadel_governance as cg`. This was partially fixed in SDK README but not in root README.
@@ -272,8 +272,8 @@ The 0.2.1 release fixed many of these, but some remain:
 | `packages/sdk-python/README.md` | `https://api.citadelsdk.com` | ✅ Fixed |
 | `citadel_governance/__init__.py` | `https://api.citadelsdk.com` | ✅ Fixed |
 | `citadel_governance/client.py` docstring | `https://api.citadelsdk.com` | ✅ Fixed |
-| Root README quickstart | `https://ledger-sdk.fly.dev` | ❌ Still wrong |
-| Root README dashboard link | `casss20-ledger-sdk-6nlu.vercel.app` | ❌ 404 |
+| Root README quickstart | `https://api.citadelsdk.com` | ❌ Still wrong |
+| Root README dashboard link | `dashboard.citadelsdk.com` | ❌ 404 |
 
 ### 4. "SHA-256 Hashed Keys" Claim vs. Reality
 
