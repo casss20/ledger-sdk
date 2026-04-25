@@ -16,6 +16,11 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from citadel.security.owasp_middleware import (
+    SecurityHeadersMiddleware,
+    InputValidationMiddleware,
+    SSRFProtectionMiddleware,
+)
 from citadel.config import settings
 
 
@@ -139,9 +144,15 @@ def setup_cors(app: FastAPI) -> None:
 
 def setup_middleware(app: FastAPI) -> None:
     """Register all middleware on the app."""
+    # OWASP security headers (outermost — applies to all responses)
+    app.add_middleware(SecurityHeadersMiddleware)
+    # SSRF protection on URL parameters
+    app.add_middleware(SSRFProtectionMiddleware)
+    # Input validation / injection detection
+    app.add_middleware(InputValidationMiddleware)
     # Request size limit
     app.add_middleware(RequestSizeLimitMiddleware)
     # Request logging
     app.add_middleware(RequestLoggingMiddleware)
-    # Error handling
+    # Error handling (innermost — catches everything)
     app.add_middleware(ErrorHandlingMiddleware)
