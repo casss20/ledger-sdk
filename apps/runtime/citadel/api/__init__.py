@@ -67,7 +67,13 @@ async def _ensure_bootstrap_operator(pool) -> None:
                 row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
                 if row and row["cnt"] > 0:
                     return
-                password = "admin123"
+                # Dev-only fallback: generate a random password and log it once
+                import secrets
+                password = secrets.token_urlsafe(16)
+                logger.warning(
+                    "Bootstrap password not configured. Generated dev-only password. "
+                    "Set CITADEL_ADMIN_BOOTSTRAP_PASSWORD in production."
+                )
 
             import hashlib
 

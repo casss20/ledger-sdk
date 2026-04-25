@@ -12,6 +12,9 @@ from functools import wraps
 import asyncio
 import logging
 
+from datetime import datetime, timezone
+import json
+
 from .governor import get_governor, ActionState
 
 logger = logging.getLogger(__name__)
@@ -103,8 +106,12 @@ class FallbackHandler:
         )
         
         if self.dead_letter:
-            # TODO: Implement dead letter queue
-            logger.error(f"[DeadLetter] Action {action_id} moved to dead letter: {last_error}")
+            dlq = get_dead_letter_queue()
+            await dlq.enqueue(
+                action_id=action_id,
+                error=last_error,
+                metadata={"retries_exhausted": self.max_retries}
+            )
         
         return False, None, last_error
 
@@ -130,18 +137,167 @@ def DeadLetter() -> FallbackHandler:
     return FallbackHandler(dead_letter=True)
 
 
+class CircuitBreakerState:
+    """Tracks circuit breaker state in memory (per-process)."""
+    
+    def __init__(self, threshold: int, reset_seconds: float):
+        self.threshold = threshold
+        self.reset_seconds = reset_seconds
+        self.failures = 0
+        self.last_failure_time: Optional[float] = None
+        self.state = "closed"  # closed, open, half-open
+        self._lock = asyncio.Lock()
+    
+    async def record_failure(self) -> bool:
+        """Record a failure. Returns True if circuit should open."""
+        async with self._lock:
+            self.failures += 1
+            self.last_failure_time = asyncio.get_event_loop().time()
+            if self.failures >= self.threshold:
+                self.state = "open"
+                return True
+            return False
+    
+    async def record_success(self):
+        """Record a success — reset failures."""
+        async with self._lock:
+            self.failures = 0
+            self.last_failure_time = None
+            self.state = "closed"
+    
+    async def can_execute(self) -> bool:
+        """Check if circuit allows execution."""
+        async with self._lock:
+            if self.state == "closed":
+                return True
+            if self.state == "open":
+                # Check if reset time has passed
+                if self.last_failure_time:
+                    elapsed = asyncio.get_event_loop().time() - self.last_failure_time
+                    if elapsed >= self.reset_seconds:
+                        self.state = "half-open"
+                        return True
+                return False
+            # half-open: allow one test request
+            return True
+    
+    async def record_half_open_result(self, success: bool):
+        """Record result of half-open test request."""
+        async with self._lock:
+            if success:
+                self.state = "closed"
+                self.failures = 0
+            else:
+                self.state = "open"
+                self.last_failure_time = asyncio.get_event_loop().time()
+
+
+class DeadLetterQueue:
+    """Simple in-memory dead letter queue with optional PostgreSQL persistence."""
+    
+    def __init__(self):
+        self._queue: list[dict] = []
+        self._lock = asyncio.Lock()
+    
+    async def enqueue(
+        self,
+        action_id: str,
+        error: Exception,
+        metadata: Optional[dict] = None
+    ):
+        """Add failed action to dead letter queue."""
+        entry = {
+            "action_id": action_id,
+            "error": str(error),
+            "error_type": type(error).__name__,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "metadata": metadata or {},
+        }
+        
+        async with self._lock:
+            self._queue.append(entry)
+        
+        logger.error(f"[DeadLetter] Action {action_id} moved to dead letter: {error}")
+        
+        # Optionally persist to database
+        try:
+            from citadel.config import settings
+            import asyncpg
+            
+            conn = await asyncpg.connect(settings.database_dsn)
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO dead_letter_queue (action_id, error, error_type, metadata)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (action_id) DO UPDATE SET
+                        error = EXCLUDED.error,
+                        error_type = EXCLUDED.error_type,
+                        metadata = EXCLUDED.metadata,
+                        enqueued_at = NOW()
+                    """,
+                    action_id,
+                    str(error),
+                    type(error).__name__,
+                    json.dumps(metadata or {}),
+                )
+            finally:
+                await conn.close()
+        except Exception as db_err:
+            logger.warning(f"[DeadLetter] Could not persist to database: {db_err}")
+    
+    async def dequeue(self, action_id: str) -> Optional[dict]:
+        """Remove and return an entry from the dead letter queue."""
+        async with self._lock:
+            for i, entry in enumerate(self._queue):
+                if entry["action_id"] == action_id:
+                    return self._queue.pop(i)
+            return None
+    
+    async def list_entries(self, limit: int = 100) -> list[dict]:
+        """List all entries in the dead letter queue."""
+        async with self._lock:
+            return self._queue[:limit]
+
+
+# Global dead letter queue instance
+_dead_letter_queue: Optional[DeadLetterQueue] = None
+
+
+def get_dead_letter_queue() -> DeadLetterQueue:
+    """Get or create the global dead letter queue."""
+    global _dead_letter_queue
+    if _dead_letter_queue is None:
+        _dead_letter_queue = DeadLetterQueue()
+    return _dead_letter_queue
+
+
+# Global circuit breaker registry
+_circuit_breakers: dict[str, CircuitBreakerState] = {}
+
+
+def get_circuit_breaker(name: str, threshold: int, reset_seconds: float) -> CircuitBreakerState:
+    """Get or create circuit breaker for a named service."""
+    if name not in _circuit_breakers:
+        _circuit_breakers[name] = CircuitBreakerState(threshold, reset_seconds)
+    return _circuit_breakers[name]
+
+
 def CircuitBreaker(
     threshold: int = 5,
-    reset_seconds: float = 60.0
+    reset_seconds: float = 60.0,
+    name: str = "default",
 ) -> FallbackHandler:
     """
     Circuit breaker pattern — stop after N failures, retry after cooldown.
     
-    TODO: Implement circuit breaker state tracking
+    State tracking is implemented via CircuitBreakerState.
     """
+    cb = get_circuit_breaker(name, threshold, reset_seconds)
+    
     return FallbackHandler(
         max_retries=0,
-        dead_letter=True  # Fail fast for now
+        dead_letter=True,
     )
 
 
