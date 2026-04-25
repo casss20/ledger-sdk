@@ -56,14 +56,14 @@ def setup_telemetry(service_name: str = "citadel-runtime") -> None:
     # Set up Resource
     resource = Resource.create(attributes={
         SERVICE_NAME: service_name,
-        "environment": os.getenv("LEDGER_ENV", "development")
+        "environment": os.getenv("CITADEL_ENV", os.getenv("LEDGER_ENV", "development"))
     })
 
     # Initialize TracerProvider
     provider = TracerProvider(resource=resource)
 
     # Add Console Exporter for dev
-    if os.getenv("LEDGER_LOG_LEVEL") == "DEBUG":
+    if os.getenv("CITADEL_LOG_LEVEL", os.getenv("LEDGER_LOG_LEVEL")) == "DEBUG":
         provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     # Add OTLP Exporter if endpoint is provided

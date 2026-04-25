@@ -43,8 +43,8 @@ node -e "const citadel = require('@citadel/sdk'); console.log(citadel.VERSION)"
 Create a `.env` file:
 
 ```bash
-LEDGER_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
-LEDGER_ENVIRONMENT=sandbox
+CITADEL_API_KEY=ldk_test_xxxxxxxxxxxxxxxx
+CITADEL_ENVIRONMENT=sandbox
 ```
 
 Load it in your application:
@@ -63,7 +63,7 @@ import 'dotenv/config';
 import { CitadelClient } from '@citadel/sdk';
 
 const citadel = new CitadelClient({
-  apiKey: process.env.LEDGER_API_KEY!,
+  apiKey: process.env.CITADEL_API_KEY!,
   environment: 'sandbox'
 });
 
@@ -137,9 +137,9 @@ console.log(record.timestamp);    // ISO 8601
 
 ```typescript
 import { Agent } from 'openai-agents';
-import { LedgerOpenAIIntegration } from '@citadel/sdk/integrations';
+import { CitadelOpenAIIntegration } from '@citadel/sdk/integrations';
 
-const ledgerIntegration = new LedgerOpenAIIntegration({
+const citadelIntegration = new CitadelOpenAIIntegration({
   client: citadel,
   agentId: 'openai-agent-01'
 });
@@ -148,7 +148,7 @@ const agent = new Agent({
   name: 'EmailAgent',
   instructions: 'Send emails to users',
   tools: [sendEmailTool],
-  guardrails: [ledgerIntegration.guardrail()] // <-- Governance here
+  guardrails: [citadelIntegration.guardrail()] // <-- Governance here
 });
 
 const result = await agent.run('Send welcome email to new@user.com');

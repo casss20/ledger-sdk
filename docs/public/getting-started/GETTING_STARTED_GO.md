@@ -46,7 +46,7 @@ func main() {
     ctx := context.Background()
 
     client, err := sdk.NewClient(sdk.Config{
-        APIKey:      os.Getenv("citadel_API_KEY"),
+        APIKey:      os.Getenv("CITADEL_API_KEY"),
         Environment: "sandbox",
     })
     if err != nil {
