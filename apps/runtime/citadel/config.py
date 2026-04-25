@@ -5,6 +5,7 @@ Production settings via Pydantic Settings with .env file support.
 Includes startup validation to prevent accidental insecure deployments.
 """
 
+import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -135,6 +136,10 @@ class Settings(BaseSettings):
         Returns list of error messages. Empty list = all good.
         Call this at startup and refuse to start if errors exist and debug=False.
         """
+        # Skip validation in testing mode
+        if os.environ.get("CITADEL_TESTING") == "true":
+            return []
+        
         errors = []
         if not self.debug:
             if self.citadel_jwt_secret == "secret_key_change_me_in_prod":

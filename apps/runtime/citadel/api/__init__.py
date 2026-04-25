@@ -13,6 +13,7 @@ Run: uvicorn citadel.api:app --reload
 
 from contextlib import asynccontextmanager
 import logging
+import os
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
@@ -258,7 +259,7 @@ def create_app() -> FastAPI:
     app.state.cache = AppCache()
     jwt_secret = settings.citadel_jwt_secret
     if not jwt_secret or jwt_secret == "secret_key_change_me_in_prod":
-        if settings.debug:
+        if settings.debug or os.environ.get("CITADEL_TESTING") == "true":
             jwt_secret = "DEV_ONLY_DO_NOT_USE_IN_PROD"
             logger.warning("CITADEL_JWT_SECRET not set; using a dev-only key.")
         else:

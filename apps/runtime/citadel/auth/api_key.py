@@ -14,6 +14,7 @@ import time
 from typing import List, Optional, Set
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -245,4 +246,167 @@ class ApiKeyManager:
         }
 
 
-__all__ = ["ApiKeyManager", "ApiKey"]
+class APIKeyEnvironment(str, Enum):
+    """API key environment types."""
+    TEST = "test"
+    LIVE = "live"
+
+
+class APIKeyError(Exception):
+    """Raised when API key validation fails."""
+    pass
+
+
+class APIKeyService:
+    """
+    Production-grade API key service with PostgreSQL persistence.
+    
+    Supports create, validate, revoke, rotate operations with caching.
+    """
+    
+    def __init__(self, db_pool, cache=None):
+        self.db_pool = db_pool
+        self.cache = cache
+    
+    async def create(
+        self,
+        tenant_id: str,
+        description: str,
+        environment: str = "test",
+        scopes: Optional[Set[str]] = None,
+    ) -> "CreatedKey":
+        """Create a new API key for a tenant."""
+        key_id = f"gk_{environment}_{secrets.token_urlsafe(12)}"
+        key_secret = secrets.token_urlsafe(32)
+        secret_hash = hashlib.sha256(key_secret.encode()).hexdigest()
+        
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO api_keys (key_id, key_hash, tenant_id, description, environment, scopes, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                """,
+                key_id,
+                secret_hash,
+                tenant_id,
+                description,
+                environment,
+                list(scopes or {"read"}),
+            )
+        
+        # Cache the new key
+        if self.cache:
+            await self.cache.set(
+                f"api_key:{key_id}",
+                {
+                    "key_id": key_id,
+                    "tenant_id": tenant_id,
+                    "scopes": list(scopes or {"read"}),
+                    "environment": environment,
+                },
+                ttl=300,
+            )
+        
+        return CreatedKey(key_id=key_id, key_secret=key_secret, environment=environment)
+    
+    async def validate(self, key_secret: str) -> Optional["ValidatedKey"]:
+        """Validate an API key by its secret."""
+        if not key_secret:
+            return None
+        
+        secret_hash = hashlib.sha256(key_secret.encode()).hexdigest()
+        
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT key_id, tenant_id, scopes, environment, revoked_at, expires_at
+                FROM api_keys
+                WHERE key_hash = $1
+                """,
+                secret_hash,
+            )
+            
+            if row is None:
+                return None
+            
+            if row["revoked_at"]:
+                return None
+            
+            if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
+                return None
+            
+            # Update last used
+            await conn.execute(
+                "UPDATE api_keys SET last_used_at = NOW() WHERE key_id = $1",
+                row["key_id"],
+            )
+            
+            return ValidatedKey(
+                key_id=row["key_id"],
+                tenant_id=row["tenant_id"],
+                scopes=set(row["scopes"] or ["read"]),
+                environment=row["environment"],
+            )
+    
+    async def revoke(self, key_id: str) -> bool:
+        """Revoke an API key."""
+        async with self.db_pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE api_keys SET revoked_at = NOW() WHERE key_id = $1",
+                key_id,
+            )
+            # asyncpg returns "UPDATE N" string
+            updated = int(result.split()[-1]) if result else 0
+        
+        if self.cache:
+            await self.cache.delete(f"api_key:{key_id}")
+        
+        return updated > 0
+    
+    async def rotate(self, key_id: str) -> "CreatedKey":
+        """Rotate an API key — revoke old, create new with same settings."""
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT tenant_id, description, environment, scopes FROM api_keys WHERE key_id = $1",
+                key_id,
+            )
+            
+            if row is None:
+                raise APIKeyError(f"Key {key_id} not found")
+            
+            # Revoke old
+            await conn.execute(
+                "UPDATE api_keys SET revoked_at = NOW() WHERE key_id = $1",
+                key_id,
+            )
+        
+        if self.cache:
+            await self.cache.delete(f"api_key:{key_id}")
+        
+        # Create new key with same settings
+        return await self.create(
+            tenant_id=row["tenant_id"],
+            description=row["description"],
+            environment=row["environment"],
+            scopes=set(row["scopes"] or ["read"]),
+        )
+
+
+@dataclass
+class CreatedKey:
+    """Result of creating a new API key."""
+    key_id: str
+    key_secret: str
+    environment: str
+
+
+@dataclass
+class ValidatedKey:
+    """Result of validating an API key."""
+    key_id: str
+    tenant_id: str
+    scopes: Set[str]
+    environment: str
+
+
+__all__ = ["ApiKeyManager", "ApiKey", "APIKeyService", "APIKeyError"]
