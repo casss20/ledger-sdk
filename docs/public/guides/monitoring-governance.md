@@ -25,10 +25,45 @@ CITADEL exposes these metrics at `/metrics`:
 
 ## Grafana Dashboard
 
-Import dashboard `18674` from Grafana.com or use our JSON:
+Import dashboard from the Citadel repository:
 
 ```bash
-curl -L https://docs.CITADEL.dev/assets/grafana-dashboard.json > citadel-dashboard.json
+curl -L https://raw.githubusercontent.com/casss20/ledger-sdk/main/monitoring/grafana/dashboards/citadel-overview.json > citadel-dashboard.json
+```
+
+Or manually create panels using these Prometheus queries:
+
+**Request Rate:**
+```promql
+sum(rate(citadel_http_requests_total[5m])) by (method, path)
+```
+
+**Error Rate:**
+```promql
+sum(rate(citadel_http_requests_total{status=~"5.."}[5m])) 
+/ sum(rate(citadel_http_requests_total[5m]))
+```
+
+**p99 Latency:**
+```promql
+histogram_quantile(0.99, 
+  sum(rate(citadel_http_request_duration_seconds_bucket[5m])) by (le)
+)
+```
+
+**Kill Switch Status:**
+```promql
+citadel_kill_switch_active
+```
+
+**Trust Score Average:**
+```promql
+avg(citadel_trust_score{level!="revoked"})
+```
+
+**Approval Queue Depth:**
+```promql
+citadel_approval_queue_size
 ```
 
 Widgets:
@@ -69,11 +104,14 @@ groups:
 
 Forward audit events to your SIEM:
 
-```python
-CITADEL.config.set_webhook(
-    url="https://splunk.company.com/CITADEL-events",
-    events=["governance.action.denied", "governance.kill_switch.activated"]
-)
+```bash
+curl -X POST https://api.citadelsdk.com/api/v1/webhooks \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://splunk.company.com/citadel-events",
+    "events": ["governance.action.denied", "governance.kill_switch.activated"]
+  }'
 ```
 
 ---

@@ -11,23 +11,29 @@
 
 ## API Key Management
 
-### Rotate keys every 90 days
+### Register an agent and get an API key
 ```bash
-citadel keys rotate --env production
+curl -X POST https://api.citadelsdk.com/api/agent-identities \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"my-agent","name":"My Agent","tenant_id":"demo"}'
+```
+
+### Rotate agent credentials
+```bash
+curl -X POST https://api.citadelsdk.com/api/agent-identities/my-agent/revoke \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Scheduled rotation"}'
 ```
 
 ### Use separate keys per environment
-- `ldk_test_*` — Development only
-- `ldk_live_*` — Production only
+- `dev_tenant` — Development only
+- `prod_tenant` — Production only
 - Never commit keys to version control
 
 ### Enable key restrictions
-```python
-citadel.config.set_key_restrictions(
-    ip_allowlist=["10.0.0.0/8"],
-    time_window={"start": "08:00", "end": "18:00"}
-)
-```
+Restrict by tenant_id and IP at the middleware level in `citadel/api/middleware.py`.
 
 ---
 
@@ -45,15 +51,18 @@ citadel.config.set_key_restrictions(
 Monitor these events:
 - `kill_switch.activated`
 - `policy.modified`
-- `key.rotated`
+- `agent_identity.revoked`
 - `approver.delegated`
 
 Forward to SIEM:
-```python
-citadel.config.set_webhook(
-    url="https://siem.company.com/citadel",
-    events=["kill_switch.activated", "policy.modified"]
-)
+```bash
+curl -X POST https://api.citadelsdk.com/api/v1/webhooks \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://siem.company.com/citadel",
+    "events": ["kill_switch.activated", "policy.modified", "agent_identity.revoked"]
+  }'
 ```
 
 ---
@@ -62,7 +71,10 @@ citadel.config.set_webhook(
 
 Test monthly in staging:
 ```bash
-citadel kill-switch test --env staging --scope all
+curl -X POST https://api.citadelsdk.com/api/v1/governance/kill-switch/test \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"scope": "staging", "dry_run": true}'
 ```
 
 ---
