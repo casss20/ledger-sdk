@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS agents (
+  agent_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL DEFAULT 'dev_tenant',
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'healthy',
+  health_score INT NOT NULL DEFAULT 100,
+  token_spend BIGINT NOT NULL DEFAULT 0,
+  token_budget BIGINT NOT NULL DEFAULT 100000,
+  actions_today INT NOT NULL DEFAULT 0,
+  owner TEXT NOT NULL DEFAULT 'op-1',
+  quarantined BOOLEAN NOT NULL DEFAULT FALSE,
+  last_active TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  compliance TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

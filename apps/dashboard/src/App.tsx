@@ -19,6 +19,7 @@ import {
   type CitadelRole, type RBACPermissions,
   getPermissions, getRoleLabel, getRoleColor, getRoleDescription, isExecutive
 } from "./rbac";
+import { apiFetch } from "./lib/api";
 
 
 
@@ -308,12 +309,24 @@ function CommandBar({ killSwitchActive, onToggleKillSwitch, onNavigate, activePa
 function KpiCards({ agents }: { agents: Agent[] }) {
   const { permissions } = useRBAC();
   const visible = permissions.canActivateAnyAgent ? agents : agents.filter(a => a.owner === CURRENT_USER);
+  const [blocked, setBlocked] = useState("516");
+  const [pending, setPending] = useState("3");
+
+  useEffect(() => {
+    apiFetch<{ blocked_this_month: number; pending_approvals: number }>('/api/dashboard/stats')
+      .then(d => {
+        if (typeof d.blocked_this_month === 'number') setBlocked(String(d.blocked_this_month));
+        if (typeof d.pending_approvals === 'number') setPending(String(d.pending_approvals));
+      })
+      .catch(() => {});
+  }, []);
+
   const cards = [
     { label: "Posture", value: "94.2", sub: "/100", icon: Shield, color: "text-emerald-600", accent: "bg-emerald-500" },
     { label: "Agents", value: `${visible.filter(a => a.status === "healthy").length}/${visible.length}`, sub: visible.filter(a => a.quarantined).length > 0 ? `${visible.filter(a => a.quarantined).length} iso` : "healthy", icon: Server, color: "text-cluely-600", accent: "bg-cluely-500" },
     { label: "Actions", value: visible.filter(a => !a.quarantined).reduce((s, a) => s + a.actionsToday, 0).toLocaleString(), sub: "today", icon: TrendingUp, color: "text-indigo-600", accent: "bg-indigo-500" },
-    { label: "Blocked", value: "516", sub: "0.86%", icon: Ban, color: "text-red-500", accent: "bg-red-500" },
-    { label: "Pending", value: "3", sub: "approvals", icon: ClipboardList, color: "text-amber-600", accent: "bg-amber-500" },
+    { label: "Blocked", value: blocked, sub: "this month", icon: Ban, color: "text-red-500", accent: "bg-red-500" },
+    { label: "Pending", value: pending, sub: "approvals", icon: ClipboardList, color: "text-amber-600", accent: "bg-amber-500" },
     { label: "Latency", value: "1.4ms", sub: "p99 4.2ms", icon: Zap, color: "text-cyan-600", accent: "bg-cyan-500" },
   ];
   return (
@@ -511,6 +524,27 @@ function CitadelLens() {
    ═══════════════════════════════════════════ */
 function AuditStream() {
   const { permissions } = useRBAC();
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
+
+  useEffect(() => {
+    apiFetch<{ events: { id: string; type: string; actor: string; resource: string; status: string; timestamp: string; severity: string }[] }>('/api/dashboard/audit')
+      .then(d => {
+        if (d.events && d.events.length > 0) {
+          setAuditLogs(d.events.map(e => ({
+            id: e.id,
+            timestamp: e.timestamp || "",
+            agent: e.actor,
+            action: e.resource,
+            result: e.status === "approved" ? "allowed" : e.status === "blocked" || e.status === "rejected" ? "denied" : "flagged",
+            policy: e.type,
+            latency: "-",
+            verified: true,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const icon = (r: string) => r === "allowed" ? <CheckCircle2 size={10} className="text-emerald-500 shrink-0" /> : r === "denied" ? <Ban size={10} className="text-red-500 shrink-0" /> : <AlertTriangle size={10} className="text-amber-500 shrink-0" />;
   const resultClass = (r: string) => r === "allowed" ? "text-emerald-700" : r === "denied" ? "text-red-700 font-bold" : "text-amber-700";
   return (
@@ -522,7 +556,7 @@ function AuditStream() {
           <span className="font-mono text-[10px] text-slate-400">Immutable log — SHA-256 verified</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-slate-400">{AUDIT_LOGS.length} entries</span>
+          <span className="font-mono text-[10px] text-slate-400">{auditLogs.length} entries</span>
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </div>
       </div>
@@ -549,7 +583,7 @@ function AuditStream() {
               </tr>
             </thead>
             <tbody className="font-mono text-[11px]">
-              {AUDIT_LOGS.map((log, idx) => (
+              {auditLogs.map((log, idx) => (
                 <tr key={log.id} className="ledger-row border-b border-slate-800/40 transition-colors">
                   <td className="py-2 px-3 text-slate-600">{String(idx + 1).padStart(4, "0")}</td>
                   <td className="py-2 px-2">{log.verified ? <CheckCircle2 size={10} className="text-emerald-500" /> : <XCircle size={10} className="text-slate-600" />}</td>
@@ -703,6 +737,12 @@ function PoliciesPage() {
   const { permissions } = useRBAC();
   const [policies, setPolicies] = useState(INITIAL_POLICIES);
   const [showGate, setShowGate] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ policies: Policy[] }>('/api/policies')
+      .then(d => { if (d.policies && d.policies.length > 0) setPolicies(d.policies); })
+      .catch(() => {});
+  }, []);
   const [gateAction, setGateAction] = useState("");
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -794,6 +834,16 @@ function ConnectorsPage() {
   const [apiKey, setApiKey] = useState("");
   const iconMap: Record<string, React.ElementType> = { Cloud, Brain, MessageSquare, Globe };
   const handleConnect = (id: string) => { if (!apiKey.trim()) return; setConnectors(prev => prev.map(c => c.id === id ? { ...c, connected: true } : c)); setConnectingId(null); setApiKey(""); };
+
+  useEffect(() => {
+    apiFetch<{ connectors: { connector_id: string; name: string; provider: string; icon: string; description: string; connected: boolean }[] }>('/api/connectors')
+      .then(d => {
+        if (d.connectors && d.connectors.length > 0) {
+          setConnectors(d.connectors.map(c => ({ id: c.connector_id, name: c.name, provider: c.provider, icon: c.icon, desc: c.description, connected: c.connected })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -1091,6 +1141,27 @@ function ApprovalsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "denied" | "escalated">("pending");
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
 
+  useEffect(() => {
+    apiFetch<{ approvals: { id: string; action: string; resource: string; risk: string; requested_at: string; assigned_to?: string; reason?: string }[] }>('/api/dashboard/approvals')
+      .then(d => {
+        if (d.approvals && d.approvals.length > 0) {
+          setRequests(d.approvals.map(a => ({
+            id: a.id,
+            agent: a.assigned_to || "unknown",
+            action: `${a.action}:${a.resource}`,
+            risk: (a.risk as ApprovalRequest["risk"]) || "medium",
+            requestedBy: a.assigned_to || "unknown",
+            timestamp: a.requested_at ? new Date(a.requested_at).toLocaleTimeString() : "",
+            status: "pending" as ApprovalRequest["status"],
+            reason: a.reason || "",
+            framework: "",
+            autoBlocked: true,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const canDecide = permissions.canEdit;
   const filtered = requests.filter(r => filter === "all" ? true : r.status === filter);
   const counts = {
@@ -1283,6 +1354,12 @@ export default function App() {
   const [killSwitchActive, setKillSwitchActive] = useState(false);
   const [agents, setAgents] = useState(INITIAL_AGENTS);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ agents: Agent[] }>('/api/agents')
+      .then(d => { if (d.agents && d.agents.length > 0) setAgents(d.agents); })
+      .catch(() => {});
+  }, []);
 
   const handleQuarantine = (id: string) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, quarantined: !a.quarantined, actionsToday: a.quarantined ? (a.id === "a5" ? 18700 : 8000) : 0 } : a));
