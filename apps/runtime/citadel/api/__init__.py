@@ -21,6 +21,7 @@ from prometheus_client import make_asgi_app
 from citadel.config import settings
 from citadel.api.middleware import setup_middleware, setup_cors
 from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard, agents, policies_crud, connectors as connectors_router
+from citadel.api.routers.audit_rich import router as audit_rich_router
 from citadel.billing.routes import router as billing_router
 from citadel.billing.middleware import BillingMiddleware
 from citadel.utils.telemetry import setup_telemetry
@@ -195,6 +196,7 @@ def create_app() -> FastAPI:
     app.include_router(agents.router, prefix="/api")
     app.include_router(policies_crud.router, prefix="/api")
     app.include_router(connectors_router.router, prefix="/api")
+    app.include_router(audit_rich_router, prefix="/api")
     app.include_router(billing_router)
     
     # Prometheus metrics (raw ASGI app at root /metrics)

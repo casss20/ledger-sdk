@@ -116,19 +116,39 @@ const INITIAL_POLICIES: Policy[] = [
   { id: "pol6", name: "Anomaly Z-Score > 3.0", description: "Flag behavior exceeding 3 std deviations.", framework: "NIST", status: "draft", created: "2024-05-12", severity: "medium" },
 ];
 
-const AUDIT_LOGS = [
-  { id: "l1", timestamp: "2024-12-28 14:32:01.243", agent: "nova-v2", action: "stripe.refund_create", result: "allowed", policy: "refund_limit", latency: "1.2ms", verified: true },
-  { id: "l2", timestamp: "2024-12-28 14:32:01.245", agent: "forge-v1", action: "s3.bucket_delete", result: "denied", policy: "destruction_guard", latency: "0.8ms", verified: true },
-  { id: "l3", timestamp: "2024-12-28 14:32:01.248", agent: "cipher-v1", action: "db.phi_query", result: "flagged", policy: "hipaa_access", latency: "2.1ms", verified: true },
-  { id: "l4", timestamp: "2024-12-28 14:32:01.250", agent: "sentinel-v3", action: "slack.message_send", result: "allowed", policy: "comms_ok", latency: "0.6ms", verified: true },
-  { id: "l5", timestamp: "2024-12-28 14:32:01.252", agent: "nova-v2", action: "github.pr_merge", result: "allowed", policy: "ci_approved", latency: "1.0ms", verified: true },
-  { id: "l6", timestamp: "2024-12-28 14:32:01.255", agent: "ghost-v1", action: "aws.iam_escalate", result: "denied", policy: "privilege_guard", latency: "0.9ms", verified: true },
-  { id: "l7", timestamp: "2024-12-28 14:32:01.258", agent: "atlas-v2", action: "openai.chat_complete", result: "allowed", policy: "token_budget_ok", latency: "3.2ms", verified: true },
-  { id: "l8", timestamp: "2024-12-28 14:32:01.260", agent: "drift-v2", action: "db.customer_export", result: "flagged", policy: "gdpr_check", latency: "1.8ms", verified: true },
-  { id: "l9", timestamp: "2024-12-28 14:32:01.263", agent: "forge-v1", action: "stripe.invoice_void", result: "allowed", policy: "invoice_guard", latency: "1.1ms", verified: true },
-  { id: "l10", timestamp: "2024-12-28 14:32:01.265", agent: "nova-v2", action: "s3.object_delete", result: "denied", policy: "destruction_guard", latency: "0.7ms", verified: true },
-  { id: "l11", timestamp: "2024-12-28 14:32:01.268", agent: "cipher-v1", action: "api.key_rotate", result: "allowed", policy: "security_maint", latency: "4.5ms", verified: true },
-  { id: "l12", timestamp: "2024-12-28 14:32:01.270", agent: "sentinel-v3", action: "pagerduty.incident", result: "allowed", policy: "incident_response", latency: "2.3ms", verified: true },
+interface AuditEntry {
+  id: string;
+  trace_id: string;
+  timestamp: string;
+  decision: "allowed" | "blocked" | "escalated";
+  initiator_id: string;
+  initiator_role: string;
+  agent_id: string;
+  action: string;
+  policy_id: string;
+  policy_name: string;
+  reason: string;
+  approver_id?: string;
+  approver_role?: string;
+  latency_ms?: number;
+  environment: string;
+  event_hash?: string;
+  verified: boolean;
+}
+
+const AUDIT_LOGS: AuditEntry[] = [
+  { id:"l1",  trace_id:"trc-001-a2f9", timestamp:"2026-04-25 14:32:01.243", decision:"allowed",   initiator_id:"sarah.chen",    initiator_role:"executive", agent_id:"nova-v2",     action:"stripe.refund_create",   policy_id:"pol-refund-limit",      policy_name:"Refund Limit Guard",          reason:"Amount within $500 threshold. Policy satisfied.",                                    approver_id:undefined,      approver_role:undefined,  latency_ms:1.2, environment:"production", verified:true },
+  { id:"l2",  trace_id:"trc-002-c4d1", timestamp:"2026-04-25 14:32:01.245", decision:"blocked",   initiator_id:"system",         initiator_role:"operator",  agent_id:"forge-v1",    action:"s3.bucket_delete",       policy_id:"pol-destruction-guard", policy_name:"Destruction Guard",           reason:"Bucket contains active production data. Deletion blocked by irreversibility policy.", approver_id:undefined,      approver_role:undefined,  latency_ms:0.8, environment:"production", verified:true },
+  { id:"l3",  trace_id:"trc-003-e7b2", timestamp:"2026-04-25 14:32:01.248", decision:"escalated", initiator_id:"marcus.johnson", initiator_role:"admin",     agent_id:"cipher-v1",   action:"db.phi_query",           policy_id:"pol-hipaa-access",      policy_name:"HIPAA PHI Access",            reason:"PHI scope exceeded operator threshold. Escalated for human review.",                 approver_id:"priya.patel",  approver_role:"auditor",  latency_ms:2.1, environment:"production", verified:true },
+  { id:"l4",  trace_id:"trc-004-f0a3", timestamp:"2026-04-25 14:32:01.250", decision:"allowed",   initiator_id:"alex.rivera",   initiator_role:"operator",  agent_id:"sentinel-v3",  action:"slack.message_send",     policy_id:"pol-comms-ok",          policy_name:"Communications Policy",       reason:"Message passed PII scrub. Channel is approved.",                                     approver_id:undefined,      approver_role:undefined,  latency_ms:0.6, environment:"production", verified:true },
+  { id:"l5",  trace_id:"trc-005-b8c9", timestamp:"2026-04-25 14:32:01.252", decision:"allowed",   initiator_id:"sarah.chen",    initiator_role:"executive", agent_id:"nova-v2",     action:"github.pr_merge",        policy_id:"pol-ci-approved",       policy_name:"CI Gate Policy",              reason:"All required checks passed. Branch protection satisfied.",                           approver_id:undefined,      approver_role:undefined,  latency_ms:1.0, environment:"staging",    verified:true },
+  { id:"l6",  trace_id:"trc-006-d2e5", timestamp:"2026-04-25 14:32:01.255", decision:"blocked",   initiator_id:"system",         initiator_role:"operator",  agent_id:"ghost-v1",    action:"aws.iam_escalate",       policy_id:"pol-privilege-guard",   policy_name:"Privilege Escalation Guard",   reason:"Requested IAM role exceeds agent permission envelope. Zero-trust violation.",        approver_id:undefined,      approver_role:undefined,  latency_ms:0.9, environment:"production", verified:true },
+  { id:"l7",  trace_id:"trc-007-g6h4", timestamp:"2026-04-25 14:32:01.258", decision:"allowed",   initiator_id:"marcus.johnson", initiator_role:"admin",     agent_id:"atlas-v2",    action:"openai.chat_complete",   policy_id:"pol-token-budget",      policy_name:"Token Budget Policy",         reason:"Monthly spend at 61% of budget. Request within allocation.",                        approver_id:undefined,      approver_role:undefined,  latency_ms:3.2, environment:"production", verified:true },
+  { id:"l8",  trace_id:"trc-008-k1l7", timestamp:"2026-04-25 14:32:01.260", decision:"escalated", initiator_id:"system",         initiator_role:"operator",  agent_id:"drift-v2",    action:"db.customer_export",     policy_id:"pol-gdpr-check",        policy_name:"GDPR Export Control",         reason:"Export includes EU citizens. Escalated pending DPO sign-off.",                       approver_id:"priya.patel",  approver_role:"auditor",  latency_ms:1.8, environment:"production", verified:true },
+  { id:"l9",  trace_id:"trc-009-m3n8", timestamp:"2026-04-25 14:32:01.263", decision:"allowed",   initiator_id:"alex.rivera",   initiator_role:"operator",  agent_id:"forge-v1",    action:"stripe.invoice_void",    policy_id:"pol-invoice-guard",     policy_name:"Invoice Guard",               reason:"Invoice is unpaid and within 48h window. Void permitted.",                           approver_id:undefined,      approver_role:undefined,  latency_ms:1.1, environment:"production", verified:true },
+  { id:"l10", trace_id:"trc-010-p5q2", timestamp:"2026-04-25 14:32:01.265", decision:"blocked",   initiator_id:"system",         initiator_role:"operator",  agent_id:"nova-v2",     action:"s3.object_delete",       policy_id:"pol-destruction-guard", policy_name:"Destruction Guard",           reason:"Object tagged retention:7yr. Cannot delete before 2033-04-25.",                     approver_id:undefined,      approver_role:undefined,  latency_ms:0.7, environment:"production", verified:true },
+  { id:"l11", trace_id:"trc-011-r7s0", timestamp:"2026-04-25 14:32:01.268", decision:"allowed",   initiator_id:"marcus.johnson", initiator_role:"admin",     agent_id:"cipher-v1",   action:"api.key_rotate",         policy_id:"pol-security-maint",    policy_name:"Security Maintenance",        reason:"Key is 91 days old. Rotation within policy window (90–120d).",                      approver_id:undefined,      approver_role:undefined,  latency_ms:4.5, environment:"production", verified:true },
+  { id:"l12", trace_id:"trc-012-t9u6", timestamp:"2026-04-25 14:32:01.270", decision:"allowed",   initiator_id:"system",         initiator_role:"operator",  agent_id:"sentinel-v3",  action:"pagerduty.incident",     policy_id:"pol-incident-response", policy_name:"Incident Response Policy",     reason:"P1 alert threshold crossed. Autonomous escalation authorised by policy.",            approver_id:"sarah.chen",   approver_role:"executive",latency_ms:2.3, environment:"production", verified:true },
 ];
 
 /* ── DUAL NAV: Slim Icon-Only Sidebar ── */
@@ -520,87 +540,236 @@ function CitadelLens() {
 
 
 /* ═══════════════════════════════════════════
-   AUDIT LEDGER (Financial Ledger Style)
+   AUDIT LEDGER — Elite Traceability View
    ═══════════════════════════════════════════ */
+type AuditFilter = "all" | "allowed" | "blocked" | "escalated";
+
+function DecisionBadge({ d }: { d: string }) {
+  if (d === "allowed")   return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-bold uppercase tracking-wide"><CheckCircle2 size={8}/>Allowed</span>;
+  if (d === "blocked")   return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wide"><Ban size={8}/>Blocked</span>;
+  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-bold uppercase tracking-wide"><AlertTriangle size={8}/>Escalated</span>;
+}
+
+function RolePip({ role }: { role: string }) {
+  const cls: Record<string, string> = {
+    executive: "bg-amber-400/20 text-amber-300 border-amber-400/30",
+    admin:      "bg-purple-400/20 text-purple-300 border-purple-400/30",
+    operator:   "bg-cluely-400/20 text-cluely-300 border-cluely-400/30",
+    auditor:    "bg-slate-400/20 text-slate-300 border-slate-400/30",
+    system:     "bg-slate-600/30 text-slate-400 border-slate-600/40",
+  };
+  return <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${cls[role] ?? cls.system}`}>{role}</span>;
+}
+
+function EnvPip({ env }: { env: string }) {
+  return env === "production"
+    ? <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20">prod</span>
+    : <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-slate-500/10 text-slate-400 border border-slate-500/20">{env}</span>;
+}
+
+function exportJSON(logs: AuditEntry[]) {
+  const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), entries: logs }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "citadel_audit.json"; a.click();
+}
+
+function exportCSV(logs: AuditEntry[]) {
+  const headers = ["trace_id","timestamp","decision","initiator_id","initiator_role","agent_id","action","policy_name","reason","approver_id","approver_role","latency_ms","environment","verified"];
+  const rows = logs.map(l => headers.map(h => {
+    const v = (l as Record<string, unknown>)[h];
+    return typeof v === "string" && v.includes(",") ? `"${v}"` : String(v ?? "");
+  }).join(","));
+  const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "citadel_audit.csv"; a.click();
+}
+
+function exportPDF(logs: AuditEntry[]) {
+  const html = `<!DOCTYPE html><html><head><title>Citadel Audit Export</title>
+  <style>body{font-family:monospace;font-size:10px;color:#0f172a;padding:24px}
+  h1{font-size:16px;margin-bottom:4px}p{color:#64748b;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase}
+  td{padding:5px 8px;border-bottom:1px solid #e2e8f0;font-size:9px}
+  .allowed{color:#059669;font-weight:bold}.blocked{color:#dc2626;font-weight:bold}.escalated{color:#d97706;font-weight:bold}
+  </style></head><body>
+  <h1>Citadel Governance — Audit Trail</h1>
+  <p>Exported: ${new Date().toISOString()} &nbsp;|&nbsp; ${logs.length} entries &nbsp;|&nbsp; SHA-256 hash-chain verified</p>
+  <table><thead><tr>
+    <th>Trace ID</th><th>Timestamp</th><th>Decision</th><th>Initiator</th><th>Role</th><th>Agent</th><th>Action</th><th>Policy</th><th>Reason</th><th>Approver</th><th>Latency</th>
+  </tr></thead><tbody>
+  ${logs.map(l => `<tr>
+    <td>${l.trace_id}</td><td>${l.timestamp}</td>
+    <td class="${l.decision}">${l.decision.toUpperCase()}</td>
+    <td>${l.initiator_id}</td><td>${l.initiator_role}</td><td>${l.agent_id}</td>
+    <td>${l.action}</td><td>${l.policy_name}</td>
+    <td>${l.reason}</td><td>${l.approver_id ?? "—"}</td>
+    <td>${l.latency_ms != null ? l.latency_ms + "ms" : "—"}</td>
+  </tr>`).join("")}
+  </tbody></table></body></html>`;
+  const w = window.open("", "_blank")!;
+  w.document.write(html); w.document.close(); w.print();
+}
+
 function AuditStream() {
   const { permissions } = useRBAC();
-  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
+  const [logs, setLogs] = useState<AuditEntry[]>(AUDIT_LOGS);
+  const [filter, setFilter] = useState<AuditFilter>("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<{ events: { id: string; type: string; actor: string; resource: string; status: string; timestamp: string; severity: string }[] }>('/api/dashboard/audit')
-      .then(d => {
-        if (d.events && d.events.length > 0) {
-          setAuditLogs(d.events.map(e => ({
-            id: e.id,
-            timestamp: e.timestamp || "",
-            agent: e.actor,
-            action: e.resource,
-            result: e.status === "approved" ? "allowed" : e.status === "blocked" || e.status === "rejected" ? "denied" : "flagged",
-            policy: e.type,
-            latency: "-",
-            verified: true,
-          })));
-        }
-      })
+    apiFetch<{ entries: AuditEntry[] }>('/api/audit?limit=50')
+      .then(d => { if (d.entries?.length) setLogs(d.entries); })
       .catch(() => {});
   }, []);
 
-  const icon = (r: string) => r === "allowed" ? <CheckCircle2 size={10} className="text-emerald-500 shrink-0" /> : r === "denied" ? <Ban size={10} className="text-red-500 shrink-0" /> : <AlertTriangle size={10} className="text-amber-500 shrink-0" />;
-  const resultClass = (r: string) => r === "allowed" ? "text-emerald-700" : r === "denied" ? "text-red-700 font-bold" : "text-amber-700";
+  const copyTrace = (id: string) => {
+    navigator.clipboard.writeText(id).then(() => { setCopied(id); setTimeout(() => setCopied(null), 1500); });
+  };
+
+  const visible = filter === "all" ? logs : logs.filter(l => l.decision === filter);
+
+  const counts = {
+    all: logs.length,
+    allowed: logs.filter(l => l.decision === "allowed").length,
+    blocked: logs.filter(l => l.decision === "blocked").length,
+    escalated: logs.filter(l => l.decision === "escalated").length,
+  };
+
+  const filterBtn = (f: AuditFilter, label: string, color: string) => (
+    <button
+      onClick={() => setFilter(f)}
+      className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border transition-all ${filter === f ? color : "bg-transparent border-slate-700 text-slate-500 hover:border-slate-500"}`}
+    >{label} <span className="ml-1 opacity-60">{counts[f]}</span></button>
+  );
+
   return (
-    <div className="glass-blueprint rounded-2xl overflow-hidden glow-cluely-subtle">
-      <div className="px-5 py-3.5 border-b border-slate-200/40 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Terminal size={15} className="text-cluely-500" />
-          <h3 className="font-display text-sm font-bold text-slate-800 uppercase tracking-tight">Audit Ledger</h3>
-          <span className="font-mono text-[10px] text-slate-400">Immutable log — SHA-256 verified</span>
+    <div className="space-y-0">
+      {/* ── Header ── */}
+      <div className="glass-blueprint rounded-t-2xl px-5 py-4 border-b border-slate-200/40">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <Terminal size={16} className="text-cluely-500" />
+            <div>
+              <h3 className="font-display text-sm font-bold text-slate-800 uppercase tracking-tight">Audit Ledger</h3>
+              <p className="font-mono text-[9px] text-slate-400 mt-0.5">Immutable · SHA-256 hash-chain · Append-only</p>
+            </div>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" />
+          </div>
+          {/* Export buttons */}
+          {permissions.canExportAudit && (
+            <div className="flex items-center gap-2">
+              <button onClick={() => exportJSON(visible)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wide border border-slate-200 transition-colors">
+                <FileSearch size={11}/>JSON
+              </button>
+              <button onClick={() => exportCSV(visible)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wide border border-slate-200 transition-colors">
+                <FileSearch size={11}/>CSV
+              </button>
+              <button onClick={() => exportPDF(visible)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cluely-600 hover:bg-cluely-700 text-white text-[10px] font-bold uppercase tracking-wide transition-colors">
+                <FileSearch size={11}/>PDF
+              </button>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-slate-400">{auditLogs.length} entries</span>
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+
+        {/* ── Filter bar ── */}
+        <div className="flex items-center gap-2 mt-3">
+          {filterBtn("all",       "All",       "bg-slate-800 border-slate-600 text-white")}
+          {filterBtn("allowed",   "Allowed",   "bg-emerald-500/15 border-emerald-500/40 text-emerald-400")}
+          {filterBtn("blocked",   "Blocked",   "bg-red-500/15 border-red-500/40 text-red-400")}
+          {filterBtn("escalated", "Escalated", "bg-amber-500/15 border-amber-500/40 text-amber-400")}
+          <span className="ml-auto font-mono text-[9px] text-slate-400">{visible.length} entries shown</span>
         </div>
       </div>
+
+      {/* ── Terminal table ── */}
       <div className="bg-slate-900 rounded-b-2xl overflow-hidden">
-        <div className="px-4 py-2 flex items-center gap-2 border-b border-slate-700/60">
-          <span className="w-2 h-2 rounded-full bg-[#FF5F57]" />
-          <span className="w-2 h-2 rounded-full bg-[#FFBD2E]" />
-          <span className="w-2 h-2 rounded-full bg-[#28C840]" />
-          <span className="ml-3 font-mono text-[10px] text-slate-600">citadel@governance-audit:~</span>
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-slate-700/50">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+          <span className="ml-3 font-mono text-[10px] text-slate-500">citadel@governance-audit:~ — <span className="text-slate-400">{visible.length} records</span></span>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-700/60">
-                <th className="text-left py-2 px-3 font-mono text-[9px] text-slate-500 uppercase tracking-wider">#</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">V</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Res</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Timestamp</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Agent</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Action</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Result</th>
-                <th className="text-left py-2 px-2 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Policy</th>
-                <th className="text-right py-2 px-3 font-mono text-[9px] text-slate-500 uppercase tracking-wider">Latency</th>
+                {[["#","px-3"],["✓","px-2"],["Trace ID","px-2"],["Timestamp","px-2"],["Decision","px-2"],["Initiator","px-2"],["Role","px-2"],["Agent","px-2"],["Action","px-2"],["Policy","px-2"],["Reason","px-2"],["Approver","px-2"],["ms","px-3 text-right"],["Env","px-2"]].map(([h, cls]) => (
+                  <th key={h} className={`text-left py-2 ${cls} font-mono text-[9px] text-slate-500 uppercase tracking-wider whitespace-nowrap`}>{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="font-mono text-[11px]">
-              {auditLogs.map((log, idx) => (
-                <tr key={log.id} className="ledger-row border-b border-slate-800/40 transition-colors">
-                  <td className="py-2 px-3 text-slate-600">{String(idx + 1).padStart(4, "0")}</td>
-                  <td className="py-2 px-2">{log.verified ? <CheckCircle2 size={10} className="text-emerald-500" /> : <XCircle size={10} className="text-slate-600" />}</td>
-                  <td className="py-2 px-2">{icon(log.result)}</td>
-                  <td className="py-2 px-2 text-slate-500">{log.timestamp}</td>
-                  <td className="py-2 px-2 text-cluely-400">{log.agent}</td>
-                  <td className="py-2 px-2 text-slate-300">{log.action}</td>
-                  <td className={`py-2 px-2 uppercase ${resultClass(log.result)}`}>{log.result}</td>
-                  <td className="py-2 px-2 text-slate-500">{log.policy}</td>
-                  <td className="py-2 px-3 text-right text-slate-500">{log.latency}</td>
-                </tr>
+            <tbody className="font-mono text-[10px]">
+              {visible.map((log, idx) => (
+                <>
+                  <tr
+                    key={log.id}
+                    onClick={() => setExpanded(expanded === log.id ? null : log.id)}
+                    className="ledger-row border-b border-slate-800/40 cursor-pointer transition-colors hover:bg-slate-800/60"
+                  >
+                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{String(idx + 1).padStart(4, "0")}</td>
+                    <td className="py-2 px-2">{log.verified ? <CheckCircle2 size={10} className="text-emerald-500"/> : <XCircle size={10} className="text-red-500"/>}</td>
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      <button
+                        onClick={e => { e.stopPropagation(); copyTrace(log.trace_id); }}
+                        className="text-cluely-400 hover:text-cluely-300 transition-colors"
+                        title="Copy trace ID"
+                      >
+                        {copied === log.trace_id ? "✓ copied" : log.trace_id}
+                      </button>
+                    </td>
+                    <td className="py-2 px-2 text-slate-500 whitespace-nowrap">{log.timestamp}</td>
+                    <td className="py-2 px-2"><DecisionBadge d={log.decision}/></td>
+                    <td className="py-2 px-2 text-slate-300 whitespace-nowrap">{log.initiator_id}</td>
+                    <td className="py-2 px-2"><RolePip role={log.initiator_role}/></td>
+                    <td className="py-2 px-2 text-cluely-400 whitespace-nowrap">{log.agent_id}</td>
+                    <td className="py-2 px-2 text-slate-200 whitespace-nowrap">{log.action}</td>
+                    <td className="py-2 px-2 text-slate-400 whitespace-nowrap max-w-[120px] truncate" title={log.policy_name}>{log.policy_name}</td>
+                    <td className="py-2 px-2 text-slate-500 max-w-[180px] truncate" title={log.reason}>{log.reason}</td>
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      {log.approver_id
+                        ? <span className="text-emerald-400">{log.approver_id} <RolePip role={log.approver_role ?? "auditor"}/></span>
+                        : <span className="text-slate-600">—</span>}
+                    </td>
+                    <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">{log.latency_ms != null ? `${log.latency_ms}ms` : "—"}</td>
+                    <td className="py-2 px-2"><EnvPip env={log.environment}/></td>
+                  </tr>
+                  {expanded === log.id && (
+                    <tr key={`${log.id}-detail`} className="bg-slate-800/80 border-b border-slate-700/60">
+                      <td colSpan={14} className="px-6 py-4">
+                        <div className="grid grid-cols-2 gap-4 text-[10px]">
+                          <div className="space-y-2">
+                            <p className="text-slate-500 uppercase tracking-widest text-[8px] font-bold mb-1">Trace Details</p>
+                            <p><span className="text-slate-500">Trace ID:</span> <span className="text-cluely-300 font-bold">{log.trace_id}</span></p>
+                            <p><span className="text-slate-500">Policy ID:</span> <span className="text-slate-300">{log.policy_id}</span></p>
+                            <p><span className="text-slate-500">Policy:</span> <span className="text-slate-200">{log.policy_name}</span></p>
+                            <p><span className="text-slate-500">Environment:</span> <EnvPip env={log.environment}/></p>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-slate-500 uppercase tracking-widest text-[8px] font-bold mb-1">Decision Rationale</p>
+                            <p className="text-slate-200 leading-relaxed">{log.reason}</p>
+                            {log.approver_id && (
+                              <p className="mt-2"><span className="text-slate-500">Approved by:</span> <span className="text-emerald-400 font-bold">{log.approver_id}</span> <RolePip role={log.approver_role ?? "auditor"}/></p>
+                            )}
+                            {log.event_hash && (
+                              <p className="mt-1"><span className="text-slate-500">Hash:</span> <span className="text-slate-600">{log.event_hash}</span></p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-2 border-t border-slate-700/60 flex items-center gap-2">
-          <span className="text-slate-600">$</span><span className="animate-blink text-emerald-400">_</span>
+
+        <div className="px-5 py-2.5 border-t border-slate-700/60 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-600 font-mono text-[10px]">$</span>
+            <span className="animate-blink text-emerald-400 font-mono text-[10px]">_</span>
+          </div>
+          <span className="font-mono text-[9px] text-slate-600">click any row to expand trace · click trace ID to copy</span>
         </div>
       </div>
     </div>
