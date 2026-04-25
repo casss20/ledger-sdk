@@ -61,10 +61,10 @@ pip install citadel-governance
 ### 2. Point it at the hosted API
 
 ```python
-import citadel
+import citadel_governance as cg
 
-citadel.configure(
-    base_url="https://ledger-sdk.fly.dev",
+cg.configure(
+    base_url="https://api.citadelsdk.com",
     api_key="dev-key-for-testing",
     actor_id="my-agent",
 )
@@ -76,7 +76,7 @@ citadel.configure(
 import asyncio
 
 async def main():
-    result = await citadel.execute(
+    result = await cg.execute(
         action="stripe.refund",
         resource="charge:ch_123",
         payload={"amount": 5000},
@@ -94,14 +94,16 @@ asyncio.run(main())
 
 ### 4. Watch it in the dashboard
 
-Open **[casss20-ledger-sdk-6nlu.vercel.app](https://casss20-ledger-sdk-6nlu.vercel.app)** and log in with `admin` / `admin123`.
+Open **[dashboard.citadelsdk.com](https://dashboard.citadelsdk.com)** and log in with your credentials.
 
 Every action your agent executes appears in the Activity feed in real time. High-risk actions land in the Approval Queue for human review.
+
+> **Demo Environment**: For a quick walkthrough without credentials, try the **[live demo](https://dashboard.citadelsdk.com/demo)** with pre-loaded sample data.
 
 ### Use as a decorator
 
 ```python
-@citadel.guard(action="github.repo_delete", resource="repo:{name}")
+@cg.guard(action="github.repo_delete", resource="repo:{name}")
 async def delete_repo(name: str):
     # Only runs if governance allows it
     await github.repos.delete(name)

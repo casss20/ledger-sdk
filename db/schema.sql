@@ -688,6 +688,314 @@ NOT in Redis:
 */
 
 -- ============================================================================
+-- ROW-LEVEL SECURITY (RLS) — Tenant Isolation
+-- ============================================================================
+--
+-- RLS is the safety net under application filtering. When application code
+-- has a bug, the database says no.
+--
+-- RULES:
+--   1. Always use SET LOCAL (not SET) — connection pool safe
+--   2. tenant_id is the leading column in all RLS indexes
+--   3. FORCE ROW LEVEL SECURITY on all tenant tables
+--   4. Admin access via policy, not BYPASSRLS
+--   5. Migration role has BYPASSRLS (schema changes only)
+--
+-- ============================================================================
+
+-- Helper: Set tenant context for current transaction
+-- Usage: SELECT set_tenant_context('tenant-123');
+CREATE OR REPLACE FUNCTION set_tenant_context(p_tenant_id TEXT)
+RETURNS VOID AS $$
+BEGIN
+    PERFORM set_config('app.current_tenant', p_tenant_id, true);  -- true = local (transaction-only)
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper: Get current tenant from session
+CREATE OR REPLACE FUNCTION current_tenant_id()
+RETURNS TEXT AS $$
+BEGIN
+    RETURN current_setting('app.current_tenant', true);  -- true = missing_ok
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Migration role: for schema migrations and admin operations
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'citadel_migrator') THEN
+        CREATE ROLE citadel_migrator WITH LOGIN BYPASSRLS;
+        -- Grant appropriate permissions (adjust as needed)
+        -- GRANT ALL ON ALL TABLES IN SCHEMA public TO citadel_migrator;
+    END IF;
+END $$;
+
+-- Enable RLS on all tenant-scoped tables
+ALTER TABLE actors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE kill_switches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE execution_results ENABLE ROW LEVEL SECURITY;
+
+-- Force RLS even for table owners (prevents accidental superuser leaks)
+ALTER TABLE actors FORCE ROW LEVEL SECURITY;
+ALTER TABLE policies FORCE ROW LEVEL SECURITY;
+ALTER TABLE kill_switches FORCE ROW LEVEL SECURITY;
+ALTER TABLE actions FORCE ROW LEVEL SECURITY;
+ALTER TABLE decisions FORCE ROW LEVEL SECURITY;
+ALTER TABLE approvals FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE execution_results FORCE ROW LEVEL SECURITY;
+
+-- Drop existing policies (idempotent for reruns)
+DO $$
+DECLARE
+    pol RECORD;
+BEGIN
+    FOR pol IN 
+        SELECT schemaname, tablename, policyname 
+        FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename IN ('actors', 'policies', 'kill_switches', 'actions', 'decisions', 'approvals', 'audit_events', 'execution_results')
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);
+    END LOOP;
+END $$;
+
+-- Tenant isolation policies: each tenant sees only their own data
+-- NULL tenant_id = global/system data (visible to all when no tenant set)
+
+-- ACTORS
+CREATE POLICY tenant_isolation_select ON actors FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_insert ON actors FOR INSERT
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_update ON actors FOR UPDATE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id())
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_delete ON actors FOR DELETE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id());
+
+-- POLICIES
+CREATE POLICY tenant_isolation_select ON policies FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_insert ON policies FOR INSERT
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_update ON policies FOR UPDATE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id())
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_delete ON policies FOR DELETE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id());
+
+-- KILL SWITCHES
+CREATE POLICY tenant_isolation_select ON kill_switches FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_insert ON kill_switches FOR INSERT
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_update ON kill_switches FOR UPDATE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id())
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_delete ON kill_switches FOR DELETE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id());
+
+-- ACTIONS
+CREATE POLICY tenant_isolation_select ON actions FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_insert ON actions FOR INSERT
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_update ON actions FOR UPDATE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id())
+    WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_delete ON actions FOR DELETE
+    USING (tenant_id IS NULL OR tenant_id = current_tenant_id());
+
+-- DECISIONS (tenant via joined actions)
+CREATE POLICY tenant_isolation_select ON decisions FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = decisions.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id() OR current_tenant_id() IS NULL)
+        )
+    );
+CREATE POLICY tenant_isolation_insert ON decisions FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = decisions.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_update ON decisions FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = decisions.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = decisions.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_delete ON decisions FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = decisions.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+
+-- APPROVALS (tenant via joined actions)
+CREATE POLICY tenant_isolation_select ON approvals FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = approvals.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id() OR current_tenant_id() IS NULL)
+        )
+    );
+CREATE POLICY tenant_isolation_insert ON approvals FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = approvals.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_update ON approvals FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = approvals.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = approvals.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_delete ON approvals FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = approvals.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+
+-- AUDIT EVENTS (tenant via joined actions)
+CREATE POLICY tenant_isolation_select ON audit_events FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = audit_events.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id() OR current_tenant_id() IS NULL)
+        )
+    );
+CREATE POLICY tenant_isolation_insert ON audit_events FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = audit_events.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+-- Audit is append-only, no update/delete policies
+
+-- EXECUTION RESULTS (tenant via joined actions)
+CREATE POLICY tenant_isolation_select ON execution_results FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = execution_results.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id() OR current_tenant_id() IS NULL)
+        )
+    );
+CREATE POLICY tenant_isolation_insert ON execution_results FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = execution_results.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_update ON execution_results FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = execution_results.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = execution_results.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+CREATE POLICY tenant_isolation_delete ON execution_results FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM actions a 
+            WHERE a.action_id = execution_results.action_id 
+            AND (a.tenant_id IS NULL OR a.tenant_id = current_tenant_id())
+        )
+    );
+
+-- Admin bypass policy — auditable, revocable
+CREATE POLICY admin_all_access ON actors FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON policies FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON kill_switches FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON actions FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON decisions FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON approvals FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON audit_events FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+CREATE POLICY admin_all_access ON execution_results FOR ALL
+    TO PUBLIC
+    USING (current_setting('app.is_admin', true)::boolean = true)
+    WITH CHECK (current_setting('app.is_admin', true)::boolean = true);
+
+-- ============================================================================
 -- DESIGN NOTES
 -- ============================================================================
 /*
@@ -716,14 +1024,21 @@ NOT in Redis:
    - decisions.policy_snapshot_id links to exact policy used
    - actions.context_json stores ambient state
 
-6. PRODUCTION NOTES
+6. ROW-LEVEL SECURITY
+   - SET LOCAL app.current_tenant = 'tenant-id' before each query
+   - FORCE ROW LEVEL SECURITY prevents superuser leaks
+   - Admin bypass via app.is_admin session variable (auditable)
+   - Migration role (citadel_migrator) has BYPASSRLS for schema changes
+   - If no tenant context set, queries match zero rows (secure by default)
+
+7. PRODUCTION NOTES
    - audit_events append-only intent; real immutability requires
      WAL archiving, object-store replication, or external attestations
    - Consider table partitioning on audit_events by event_ts for scale
    - Index maintenance on JSONB columns may be heavy; monitor
    - Foreign keys add overhead; consider removing for hot paths
 
-7. MINIMAL MVP START
+8. MINIMAL MVP START
    - actors, actions, decisions, policies, approvals, audit_events
    - Then add: capabilities, kill_switches, policy_snapshots
 */

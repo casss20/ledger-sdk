@@ -206,6 +206,20 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
+    # Validate secrets before starting (fail loud in production)
+    secret_errors = settings.validate_secrets()
+    if secret_errors:
+        for error in secret_errors:
+            if error.startswith("CRITICAL"):
+                logger.error(error)
+            else:
+                logger.warning(error)
+        if not settings.debug:
+            raise RuntimeError(
+                f"Production startup blocked: {len(secret_errors)} secret validation errors. "
+                f"See logs above. Set debug=True only for development."
+            )
+
     # Initialize OpenTelemetry
     setup_telemetry(service_name="citadel-api")
     
