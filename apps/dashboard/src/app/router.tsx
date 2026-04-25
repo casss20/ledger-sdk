@@ -8,6 +8,7 @@ import { Integrations } from "../pages/Integrations";
 import { Settings } from "../pages/Settings";
 import { LoginPage } from "../pages/Login";
 import Billing from "../pages/Billing";
+import { Traceability } from "../pages/Traceability";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("auth_token");
@@ -30,6 +31,7 @@ export function AppRouter() {
         <Route path="/overview" element={<Overview />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/traceability" element={<Traceability />} />
         <Route path="/policies" element={<Policies />} />
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/billing" element={<Billing />} />

@@ -8,6 +8,7 @@ import {
   Lock, 
   Zap,
   CreditCard,
+  GitBranch,
   ChevronRight,
   User
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { cn } from '../lib/utils';
 const navItems = [
   { icon: LayoutDashboard, label: 'Overview', path: '/' },
   { icon: Activity, label: 'Activity', path: '/activity' },
+  { icon: GitBranch, label: 'Traceability', path: '/traceability' },
   { icon: ShieldCheck, label: 'Approvals', path: '/approvals' },
   { icon: Lock, label: 'Policies', path: '/policies' },
   { icon: Zap, label: 'Integrations', path: '/integrations' },
