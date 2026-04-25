@@ -160,7 +160,7 @@ jobs:
         if: env.FLY_API_TOKEN != ''
       - name: Deploy to Fly.io
         if: env.FLY_API_TOKEN != ''
-        run: flyctl deploy --remote-only --app ledger-sdk --config fly.toml
+        run: flyctl deploy --remote-only --app citadel-sdk --config fly.toml
       - name: Verify deployment
         if: env.FLY_API_TOKEN != ''
         run: |
