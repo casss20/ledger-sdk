@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "citadel-governance"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI Governance: Constitution + Audit for Agent Builders"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Anthony Cass", email = "casseussergio@gmail.com"}
 ]
@@ -18,10 +18,10 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Security",
@@ -32,9 +32,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.21",
-    "respx>=0.20",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.23",
+    "mypy>=1.8",
+    "ruff>=0.3",
+    "build>=1.0",
 ]
 
 [project.urls]
@@ -42,5 +45,41 @@ Homepage = "https://github.com/casss20/ledger-sdk/tree/master/packages/sdk-pytho
 Repository = "https://github.com/casss20/ledger-sdk"
 Issues = "https://github.com/casss20/ledger-sdk/issues"
 
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+show_error_codes = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["citadel_governance", "citadel"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require a live backend",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["citadel"]
+packages = ["citadel_governance", "citadel"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/citadel_governance",
+    "/citadel",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
