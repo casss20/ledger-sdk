@@ -20,7 +20,7 @@ from prometheus_client import make_asgi_app
 
 from citadel.config import settings
 from citadel.api.middleware import setup_middleware, setup_cors
-from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard, agents, policies_crud, connectors as connectors_router
+from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard, agents, policies_crud, connectors as connectors_router, agent_identity
 from citadel.api.routers.audit_rich import router as audit_rich_router
 from citadel.billing.routes import router as billing_router
 from citadel.billing.middleware import BillingMiddleware
@@ -153,6 +153,15 @@ def create_app() -> FastAPI:
     # Middleware: logging, errors, CORS, request IDs
     setup_middleware(app)
     
+    # ---- NEW: OWASP Security Middleware ----
+    if settings.security_headers_enabled:
+        from citadel.security.owasp_middleware import setup_security_middleware
+        setup_security_middleware(app)
+    
+    # ---- NEW: SRE Structured Logging ----
+    from citadel.sre.structured_logging import StructuredLoggingMiddleware
+    app.add_middleware(StructuredLoggingMiddleware)
+    
     # Setup Auth services
     # Mocking cache with a simple dict for this integration 
     class AppCache:
@@ -197,12 +206,31 @@ def create_app() -> FastAPI:
     app.include_router(policies_crud.router, prefix="/api")
     app.include_router(connectors_router.router, prefix="/api")
     app.include_router(audit_rich_router, prefix="/api")
+    app.include_router(agent_identity.router, prefix="/api")
     app.include_router(billing_router)
     
     # Prometheus metrics (raw ASGI app at root /metrics)
     if settings.metrics_enabled:
         metrics_app = make_asgi_app()
         app.mount(settings.metrics_endpoint, metrics_app)
+    
+    # ---- NEW: SRE Health Check Endpoints ----
+    from citadel.sre.health_checks import HealthCheckManager, HealthCheckResult, HealthStatus
+    health_mgr = HealthCheckManager()
+    db_check = HealthCheckManager.create_db_check(lambda: app.state.db_pool)
+    health_mgr.register("database", db_check)
+    
+    @app.get("/health/ready")
+    async def readiness():
+        result = await health_mgr.run_all_checks()
+        status_code = 200 if result.status == HealthStatus.HEALTHY else 503
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=result.to_dict(), status_code=status_code)
+    
+    @app.get("/health/live")
+    async def liveness():
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content={"status": "ok"})
     
     return app
 
