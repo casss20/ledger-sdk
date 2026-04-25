@@ -774,8 +774,22 @@ body {
 <script>
 const fileCache = {};
 
+let currentFilePath = '';
+
 async function loadFile(path) {
   const contentDiv = document.getElementById('markdown-content');
+
+  // Resolve relative paths
+  if (path.startsWith('../') && currentFilePath) {
+    const currentDir = currentFilePath.split('/').slice(0, -1).join('/');
+    const parentDir = currentDir.split('/').slice(0, -1).join('/');
+    path = parentDir + '/' + path.replace('../', '');
+  } else if (path.startsWith('./') && currentFilePath) {
+    const currentDir = currentFilePath.split('/').slice(0, -1).join('/');
+    path = currentDir + '/' + path.replace('./', '');
+  }
+
+  currentFilePath = path;
 
   if (fileCache[path]) {
     contentDiv.innerHTML = fileCache[path];
@@ -848,54 +862,21 @@ document.addEventListener('click', function(e) {
   const href = link.getAttribute('href');
   if (!href) return;
   
-  // Handle .md file links
-  if (href.endsWith('.md')) {
-    e.preventDefault();
-    loadFile(href);
-    return;
-  }
-  
-  // Handle relative directory links (e.g., ../core-concepts/governance-tokens.md)
+  // Handle .md file links (absolute or relative)
   if (href.includes('.md')) {
     e.preventDefault();
     loadFile(href);
     return;
   }
   
-  // Handle hash-based navigation
-  if (href.startsWith('#')) {
-    e.preventDefault();
-    loadFile(href.slice(1));
-    return;
-  }
-});
-
-// Intercept clicks on markdown links to load via SPA instead of full navigation
-document.addEventListener('click', function(e) {
-  const link = e.target.closest('a');
-  if (!link) return;
-  
-  const href = link.getAttribute('href');
-  if (!href) return;
-  
-  // Handle .md file links
-  if (href.endsWith('.md')) {
-    e.preventDefault();
-    loadFile(href);
+  // Handle hash-based navigation within page
+  if (href.startsWith('#') && !href.includes('.md')) {
+    // Let browser handle anchor scrolling normally
     return;
   }
   
-  // Handle relative directory links (e.g., ../core-concepts/governance-tokens.md)
-  if (href.includes('.md')) {
-    e.preventDefault();
-    loadFile(href);
-    return;
-  }
-  
-  // Handle hash-based navigation
-  if (href.startsWith('#')) {
-    e.preventDefault();
-    loadFile(href.slice(1));
+  // Handle SPA navigation via onclick (already handled by loadFile)
+  if (href === '#' || href.startsWith('javascript:')) {
     return;
   }
 });
