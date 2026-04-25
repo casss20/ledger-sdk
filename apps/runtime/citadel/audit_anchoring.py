@@ -349,6 +349,7 @@ class AuditAnchorService:
     def generate_ed25519_keypair() -> tuple[bytes, bytes]:
         """Generate an Ed25519 keypair (private_key, public_key)."""
         try:
+            from cryptography.hazmat.primitives import serialization
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
             private_key = Ed25519PrivateKey.generate()
             private_bytes = private_key.private_bytes(

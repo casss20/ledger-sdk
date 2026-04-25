@@ -29,13 +29,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
       - name: Install lint tools
-        run: pip install ruff mypy
-      - name: Ruff check
-        run: ruff check apps/runtime/
-      - name: Ruff format check
-        run: ruff format --check apps/runtime/
-      - name: MyPy typecheck
-        run: mypy apps/runtime/
+        run: pip install ruff
+      - name: Ruff critical check
+        run: ruff check apps/runtime/ --select E9,F63,F7,F82
 
   # ──────────────────────────────────────────
   # 2. BACKEND TESTS

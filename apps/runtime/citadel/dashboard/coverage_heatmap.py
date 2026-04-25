@@ -13,7 +13,7 @@ Cell values: Coverage percentage (0-100%) + trend indicator
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 
