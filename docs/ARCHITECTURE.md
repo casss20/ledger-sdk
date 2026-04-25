@@ -273,6 +273,46 @@ Agent → Action Request
 
 ---
 
+## Decision-First Runtime Authorization
+
+Citadel's hardened runtime model separates durable decision truth from short-lived execution proof.
+
+```
+Agent requests sensitive action
+        |
+        v
+Policy and approval state evaluated
+        |
+        v
+Governance decision persisted first
+        |
+        v
+Short-lived gt_cap_ token issued
+        |
+        v
+Runtime gateway introspects token
+        |
+        v
+Expiry, revocation, scope, workspace, and kill-switch state checked
+        |
+        v
+Action executes only when active=true
+        |
+        v
+Outcome links back to token -> decision_id -> policy_version -> approval_state
+```
+
+The decision record is the source of truth. The `gt_cap_` token is a scoped runtime artifact that proves an allowed decision exists, but it is not the root of authority. This lets Citadel revoke a token, revoke a decision, or activate emergency kill-switch state and have the next protected operation fail introspection even if the token has not expired yet.
+
+This preserves the control-plane model:
+
+- `decision_id` is the audit spine.
+- `trace_id` links runtime outcome evidence across systems.
+- `policy_version` and `approval_state` survive the execution chain.
+- Kill switches are central state, not best-effort client behavior.
+
+---
+
 ## Code Organization by Layer
 
 ```

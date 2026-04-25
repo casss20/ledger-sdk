@@ -7,6 +7,7 @@ import { Policies } from "../pages/Policies";
 import { Integrations } from "../pages/Integrations";
 import { Settings } from "../pages/Settings";
 import { LoginPage } from "../pages/Login";
+import Billing from "../pages/Billing";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("auth_token");
@@ -31,6 +32,7 @@ export function AppRouter() {
         <Route path="/activity" element={<Activity />} />
         <Route path="/policies" element={<Policies />} />
         <Route path="/integrations" element={<Integrations />} />
+        <Route path="/billing" element={<Billing />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>

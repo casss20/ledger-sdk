@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     api_key_header: str = "X-API-Key"
     api_keys: str = "dev-key-for-testing"  # Comma-separated list of valid keys
     require_auth: bool = True
+    cors_origins: str = (
+        "https://citadelsdk.com,"
+        "https://www.citadelsdk.com,"
+        "https://dashboard.citadelsdk.com,"
+        "https://*.vercel.app"
+    )
     
     # Rate Limiting
     rate_limit_requests: int = 100  # per window
@@ -64,6 +70,12 @@ class Settings(BaseSettings):
         if not self.api_keys:
             return []
         return [k.strip() for k in self.api_keys.split(",") if k.strip()]
+
+    @property
+    def allowed_cors_origins(self) -> List[str]:
+        if self.debug:
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
     
     @property
     def database_dsn(self) -> str:

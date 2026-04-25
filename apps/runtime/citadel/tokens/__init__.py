@@ -9,7 +9,7 @@ from .governance_decision import (
 from .governance_token import CapabilityToken
 from .decision_engine import DecisionEngine
 from .kill_switch import KillSwitch, KillSwitchRecord, KillSwitchCheck
-from .token_verifier import TokenVerifier, VerificationResult
+from .token_verifier import TokenVerifier, VerificationResult, IntrospectionResult
 from .execution_middleware import ExecutionMiddleware
 from .token_vault import TokenVault
 from .audit_trail import GovernanceAuditTrail
@@ -31,6 +31,7 @@ __all__ = [
     # Verification
     "TokenVerifier",
     "VerificationResult",
+    "IntrospectionResult",
     # Middleware
     "ExecutionMiddleware",
     # Vault
