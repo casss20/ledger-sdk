@@ -291,6 +291,8 @@ class TestAgentAuthService:
             "secret_key_hash": "hash",
             "trust_level": "unverified",
             "verification_status": "pending",
+            "created_at": datetime.utcnow() - timedelta(days=1),
+            "last_verified_at": None,
         }
         
         # Old timestamp should fail
@@ -306,9 +308,10 @@ class TestAgentAuthService:
         
         # Recent timestamp should pass basic check
         recent_ts = str(int(datetime.utcnow().timestamp()))
+        long_sig = "a" * 64  # base64-like string, decoded length ~48 >= 32
         result = await auth_service.verify_request_signature(
             agent_id="test-agent",
-            signature="aGVsbG8=",
+            signature=long_sig,
             timestamp=recent_ts,
             method="GET",
             path="/test",
@@ -376,7 +379,7 @@ class TestSREInfrastructure:
         )
         
         assert result.status == HealthStatus.HEALTHY
-        assert result.healthy is True
+        assert result.to_dict()["status"] == "healthy"
     
     def test_slo_definition(self):
         from citadel.sre.slos import SLODefinition
@@ -395,10 +398,10 @@ class TestSREInfrastructure:
         assert slo.target == 0.999
     
     def test_alert_manager_creation(self):
-        from citadel.sre.alerting import AlertManager, AlertSeverity
+        from citadel.sre.alerting import AlertManager, AlertSeverity, ConsoleChannel
         
-        # Create without webhook to avoid aiohttp dependency
-        manager = AlertManager(webhook_url=None)
+        console = ConsoleChannel()
+        manager = AlertManager(channels=[console])
         
         assert manager is not None
         assert AlertSeverity.WARNING.value == "warning"
