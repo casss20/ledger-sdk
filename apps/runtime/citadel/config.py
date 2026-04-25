@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     api_key_header: str = "X-API-Key"
     api_keys: str = "dev-key-for-testing"  # Comma-separated list of valid keys
     require_auth: bool = True
+    citadel_jwt_secret: str = "secret_key_change_me_in_prod"
+    citadel_admin_bootstrap_username: str = "admin"
+    citadel_admin_bootstrap_password: Optional[str] = None
+    citadel_admin_bootstrap_tenant: str = "demo-tenant"
+    citadel_admin_bootstrap_email: str = "admin@citadel.dev"
+    citadel_admin_bootstrap_role: str = "admin"
     cors_origins: str = (
         "https://citadelsdk.com,"
         "https://www.citadelsdk.com,"
