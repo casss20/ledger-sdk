@@ -25,7 +25,7 @@ export function useAuth() {
   // Listen for storage changes in case of logout from another tab
   useEffect(() => {
     const handleStorageChange = () => {
-      setToken(localStorage.getItem("CITADEL-token"));
+      setToken(localStorage.getItem("auth_token"));
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);

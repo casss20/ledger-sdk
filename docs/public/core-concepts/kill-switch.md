@@ -80,6 +80,18 @@ Action execution
 
 Because the check happens before policy evaluation, a stopped agent cannot bypass governance by exploiting policy loopholes.
 
+For high-risk `gt_cap_` execution paths, the kill switch is also enforced through centralized introspection. A runtime gateway calls `POST /v1/introspect` before the next protected operation. If a global, workspace, actor, action/tool, or resource kill switch matches the token's scope, introspection returns:
+
+```json
+{
+  "active": false,
+  "reason": "kill_switch_active",
+  "kill_switch": true
+}
+```
+
+This invalidates future protected operations without waiting for token expiry. It does not magically stop arbitrary in-flight code; long-running workers should re-check Citadel between critical steps.
+
 ---
 
 ## Activation Methods

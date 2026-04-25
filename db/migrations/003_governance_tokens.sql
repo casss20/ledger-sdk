@@ -10,10 +10,26 @@ DROP TABLE IF EXISTS governance_tokens CASCADE;
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS governance_decisions (
     decision_id     TEXT PRIMARY KEY,
-    decision_type   TEXT NOT NULL CHECK (decision_type IN ('allow', 'deny', 'pending', 'revoked')),
+    decision_type   TEXT NOT NULL CHECK (decision_type IN ('allow', 'deny', 'escalate', 'require_approval', 'pending', 'revoked')),
     tenant_id       TEXT NOT NULL,
     actor_id        TEXT NOT NULL,
+    request_id      TEXT,
+    trace_id        TEXT,
+    workspace_id    TEXT,
+    agent_id        TEXT,
+    subject_type    TEXT NOT NULL DEFAULT 'agent',
+    subject_id      TEXT,
     action          TEXT NOT NULL,
+    resource        TEXT,
+    risk_level      TEXT NOT NULL DEFAULT 'low',
+    policy_version  TEXT NOT NULL DEFAULT 'unknown',
+    approval_state  TEXT NOT NULL DEFAULT 'auto_approved',
+    approved_by     TEXT,
+    approved_at     TIMESTAMPTZ,
+    issued_token_id TEXT,
+    expires_at      TIMESTAMPTZ,
+    revoked_at      TIMESTAMPTZ,
+    revoked_reason  TEXT,
     scope_actions   TEXT[] NOT NULL DEFAULT '{}',
     scope_resources TEXT[] NOT NULL DEFAULT '{}',
     constraints     JSONB NOT NULL DEFAULT '{}',
@@ -44,6 +60,19 @@ CREATE TABLE IF NOT EXISTS governance_tokens (
     decision_id   TEXT REFERENCES governance_decisions(decision_id),
     tenant_id     TEXT NOT NULL,
     actor_id      TEXT NOT NULL,
+    iss           TEXT NOT NULL DEFAULT 'citadel',
+    subject       TEXT,
+    audience      TEXT NOT NULL DEFAULT 'citadel-runtime',
+    workspace_id  TEXT,
+    tool          TEXT,
+    action        TEXT,
+    resource_scope TEXT,
+    risk_level    TEXT NOT NULL DEFAULT 'low',
+    not_before    TIMESTAMPTZ,
+    trace_id      TEXT,
+    approval_ref  TEXT,
+    revoked_at    TIMESTAMPTZ,
+    revoked_reason TEXT,
     scope_actions TEXT[] NOT NULL DEFAULT '{}',
     scope_resources TEXT[] NOT NULL DEFAULT '{}',
     expiry        TIMESTAMPTZ,
@@ -54,6 +83,8 @@ CREATE TABLE IF NOT EXISTS governance_tokens (
 CREATE INDEX IF NOT EXISTS idx_gt_tenant    ON governance_tokens (tenant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gt_decision  ON governance_tokens (decision_id);
 CREATE INDEX IF NOT EXISTS idx_gt_actor     ON governance_tokens (actor_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_gt_active_decision ON governance_tokens (decision_id)
+    WHERE revoked_at IS NULL;
 
 ALTER TABLE governance_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE governance_tokens FORCE ROW LEVEL SECURITY;

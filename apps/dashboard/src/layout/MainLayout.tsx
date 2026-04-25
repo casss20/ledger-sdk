@@ -7,6 +7,7 @@ import {
   Settings, 
   Lock, 
   Zap,
+  CreditCard,
   ChevronRight,
   User
 } from 'lucide-react';
@@ -18,6 +19,7 @@ const navItems = [
   { icon: ShieldCheck, label: 'Approvals', path: '/approvals' },
   { icon: Lock, label: 'Policies', path: '/policies' },
   { icon: Zap, label: 'Integrations', path: '/integrations' },
+  { icon: CreditCard, label: 'Billing', path: '/billing' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

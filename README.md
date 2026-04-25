@@ -21,6 +21,8 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
 - **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
 - **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
+- **Decision-First Runtime Governance**: Sensitive actions persist a durable governance decision before any execution proof is issued. Short-lived `gt_cap_` tokens then reference that `decision_id`, so runtime outcomes can be traced back to policy version, approval state, operator context, and audit evidence.
+- **Runtime Introspection**: High-risk execution paths can call `/v1/introspect` before the next protected operation. Introspection validates token expiry, revocation, workspace/action/resource scope, and central kill-switch state instead of relying on token expiry alone.
 - **Governance Tokens (GT)**: Advanced bypass and delegation system using signed, scoped tokens:
     - `gt_cap_`: Capability delegation for specific resources.
     - `gt_app_`: Pre-authorized approval tokens for automated high-risk tasks.
@@ -32,7 +34,8 @@ The Citadel is built on three core architectural philosophies:
 
 1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
-3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, and Global Kill Switches for emergency intervention.
+3. **Decision-First Execution Rights**: Runtime authorization starts with an auditable decision record, then issues a narrowly scoped, short-lived `gt_cap_` token as execution proof.
+4. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, centralized introspection, and Global Kill Switches for emergency intervention.
 
 ## 📁 Repository Structure
 
@@ -118,12 +121,14 @@ Citadel is tested against adversarial scenarios:
 - **Simulation Scripts**: Run `python tests/simulations/simulate_lockout.py` to verify quota enforcement.
 - **Audit Verification**: Call `await client.verify_audit()` to check the cryptographic integrity of the entire governance chain.
 - **Race Condition Tests**: Extensive regression suite for concurrent action handling.
+- **Capability Introspection Tests**: Runtime tests cover decision-before-token issuance, valid introspection, expired/revoked tokens, scope mismatch, workspace mismatch, kill-switch invalidation, and audit linkage through `decision_id`.
 
 ## Documentation
 
-- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) — Module dependency graph
-- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) — Invariants and edge cases
-- [API Reference](docs/API.md) — HTTP endpoints and schemas
+- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) - Module dependency graph
+- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) - Invariants and edge cases
+- [API Reference](docs/public/api-reference/rest-api.md) - HTTP endpoints and schemas
+- [Changelog](CHANGELOG.md) - Release notes for runtime governance changes
 
 ## Licensing
 

@@ -11,27 +11,28 @@
 
 ## Overview
 
-Governance tokens (`gt_`) are the atomic unit of accountability in Citadel. Every time an agent attempts an action, Citadel creates a token — an immutable, cryptographically signed record of the governance decision.
+Governance tokens (`gt_`) are runtime execution proofs linked to Citadel's durable decision records. Citadel is decision-first: it persists the governance decision before issuing a short-lived token.
 
-Think of them like Stripe's `pm_` PaymentMethod tokens: they reference a decision stored in Citadel's vault, are non-portable to other systems, and accumulate over time to create switching costs.
+Think of them like Stripe's `pm_` PaymentMethod tokens: they reference a record stored in Citadel's vault, are non-portable to other systems, and accumulate over time into compliance evidence. The decision record, not the token, is the source of authority.
 
 ---
 
 ## Token Format
 
 ```
-gt_{base58-encoded-uuid}
+gt_cap_{opaque-random-id}
 ```
 
 Examples:
 ```
-gt_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
-gt_7Xy9Za0Bc1De2Fg3Hi4Jk5Lm
+gt_cap_1Aa2Bb3Cc4Dd5Ee6Ff7Gg8Hh
+gt_cap_7Xy9Za0Bc1De2Fg3Hi4Jk5Lm
 ```
 
-- **Prefix**: `gt_` identifies this as a governance token
-- **Body**: Base58-encoded UUID for compactness and URL safety
-- **Length**: 27 characters total
+- **Prefix**: `gt_cap_` identifies a scoped capability token
+- **Body**: Opaque URL-safe random material
+- **Linkage**: Every token resolves to exactly one `decision_id`
+- **Lifetime**: Short-lived by default, with high-risk execution rights intended to last seconds to minutes
 
 ---
 
@@ -42,20 +43,34 @@ Agent requests action
     ↓
 Citadel evaluates against policies
     ↓
-Decision recorded (allow / deny / approval-required)
+Decision recorded (allow / deny / escalate / require_approval)
     ↓
-Token minted with SHA-256 hash
+If allowed, gt_cap_ token minted and linked to decision_id
     ↓
-Hash chained to previous token
+Runtime gateway introspects token before high-risk execution
     ↓
-Dual-write: immutable archive + searchable index
+Expiry, revocation, scope, workspace, and kill-switch state checked
     ↓
-Token returned to agent
+Action executed only when introspection returns active=true
     ↓
-Action executed (if allowed)
-    ↓
-Outcome recorded and linked to token
+Outcome recorded and linked to token, decision_id, trace_id, policy_version, and approval_state
 ```
+
+---
+
+## Decision-First Introspection
+
+For high-risk operations, runtimes should call `POST /v1/introspect` or `POST /v1/governance/introspect` before executing the next protected operation.
+
+Introspection validates:
+
+- Token existence and format
+- Token expiry and not-before time
+- Token and decision revocation state
+- Requested workspace, action, and resource scope
+- Central kill-switch state
+
+When a matching kill switch is active, introspection returns `active: false` with `reason: "kill_switch_active"`. This stops the next protected operation at the enforcement point. It does not retroactively interrupt arbitrary code already running unless that code cooperatively re-checks Citadel between critical steps.
 
 ---
 
@@ -67,6 +82,7 @@ As your agents run, they generate thousands of `gt_` tokens. Each token referenc
 - The decision (allow/deny/approval)
 - The timestamp and context
 - The agent identity
+- The durable `decision_id`, `trace_id`, policy version, and approval state
 
 **This accumulation creates data gravity.** Like Stripe's card tokens make migration painful (customers must re-enter cards), Citadel's governance tokens make migration legally hazardous — your entire audit history lives in Citadel's vault.
 
