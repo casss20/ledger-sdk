@@ -68,8 +68,12 @@ jobs:
         env:
           PGPASSWORD: citadel
         run: |
-          # Database already created by postgres service; just apply schema
+          # Database already created by postgres service; apply schema + migrations
           psql -h localhost -U citadel -d citadel_test -f db/schema.sql
+          for f in $(ls db/migrations/*.sql | sort); do
+            echo "Applying $f"
+            psql -h localhost -U citadel -d citadel_test -v ON_ERROR_STOP=1 -f "$f"
+          done
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql://citadel:citadel@localhost:5432/citadel_test
