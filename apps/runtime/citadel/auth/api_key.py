@@ -13,7 +13,7 @@ import secrets
 import time
 from typing import List, Optional, Set
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class ApiKey:
         """Check if key has expired."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_valid(self) -> bool:
         """Check if key is currently valid (not expired)."""
@@ -104,7 +104,7 @@ class ApiKeyManager:
             keys.append(ApiKey(
                 key_hash=key_hash,
                 scopes=scopes,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             ))
 
         return cls(keys)
@@ -118,7 +118,7 @@ class ApiKeyManager:
             keys.append(ApiKey(
                 key_hash=key_hash,
                 scopes={"admin"},
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             ))
         return cls(keys)
 
@@ -151,7 +151,7 @@ class ApiKeyManager:
             scopes=api_key.scopes,
             created_at=api_key.created_at,
             expires_at=api_key.expires_at,
-            last_used_at=datetime.utcnow(),
+            last_used_at=datetime.now(timezone.utc),
             tenant_id=api_key.tenant_id,
             description=api_key.description,
         )
@@ -185,7 +185,7 @@ class ApiKeyManager:
         api_key = ApiKey(
             key_hash=key_hash,
             scopes=scopes or {"read"},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             expires_at=expires_at,
             tenant_id=tenant_id,
             description=description,
