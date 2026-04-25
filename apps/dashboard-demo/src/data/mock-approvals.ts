@@ -1,0 +1,40 @@
+import type { ApprovalItem } from "../features/approvals/types";
+
+export const approvals: ApprovalItem[] = [
+  {
+    id: "apr_001",
+    status: "pending",
+    risk: "Critical",
+    agent: "Payments-Agent-01",
+    action: "Issue refund above threshold",
+    target: "Stripe / Customer #2841",
+    policy: "payments.refund.limit",
+    requestedAt: "2026-04-23 01:58",
+    waiting: "12m",
+    decision: "Awaiting review",
+  },
+  {
+    id: "apr_002",
+    status: "blocked",
+    risk: "High",
+    agent: "Outreach-Agent-02",
+    action: "Send unapproved outbound email",
+    target: "CRM / Prospect batch",
+    policy: "communications.approval.required",
+    requestedAt: "2026-04-23 01:42",
+    waiting: "Resolved",
+    decision: "Blocked by policy",
+  },
+  {
+    id: "apr_003",
+    status: "approved",
+    risk: "Medium",
+    agent: "Repo-Agent-07",
+    action: "Merge docs update",
+    target: "GitHub / governance-docs",
+    policy: "repo.write.review",
+    requestedAt: "2026-04-23 01:30",
+    waiting: "4m",
+    decision: "Approved by operator",
+  },
+];
