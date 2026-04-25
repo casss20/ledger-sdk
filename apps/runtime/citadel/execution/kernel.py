@@ -60,6 +60,7 @@ class Kernel:
         self,
         action: Action,
         capability_token: Optional[str] = None,
+        dry_run: bool = False,
     ) -> KernelResult:
         """
         Handle a single action through the governance lifecycle.
@@ -156,6 +157,19 @@ class Kernel:
                 approval_check.reason,
                 policy_snapshot_id=snapshot.snapshot_id if snapshot else None,
                 risk_level=approval_check.risk_level,
+            )
+            return KernelResult(action=action, decision=decision, executed=False, result=None, error=None)
+
+        # 5.5 Dry run: evaluate but don't execute
+        if dry_run:
+            decision = await self._terminal_decision(
+                action,
+                KernelStatus.DRY_RUN,
+                "dry_run",
+                "Dry run — policies evaluated but action not executed",
+                policy_snapshot_id=snapshot.snapshot_id if snapshot else None,
+                capability_token=capability_token,
+                path_taken=precedence_result.path_taken,
             )
             return KernelResult(action=action, decision=decision, executed=False, result=None, error=None)
 

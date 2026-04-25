@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       __API_URL__: JSON.stringify(
         isDev
           ? ''
-          : (process.env.VITE_API_URL || 'https://ledger-sdk.fly.dev')
+          : (process.env.VITE_API_URL || 'https://api.citadelsdk.com')
       ),
     },
     build: {

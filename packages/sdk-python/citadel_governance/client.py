@@ -32,7 +32,7 @@ class CitadelClient:
     Connection options::
 
         client = CitadelClient(
-            base_url="https://ledger-sdk.fly.dev",
+            base_url="https://api.citadelsdk.com",
             api_key="sk_xxx",
             timeout=60.0,
             proxies={"https": "http://proxy.example.com:8080"},

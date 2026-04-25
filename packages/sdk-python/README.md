@@ -14,7 +14,7 @@ pip install citadel-governance
 import citadel_governance as cg
 
 cg.configure(
-    base_url="https://ledger-sdk.fly.dev",
+    base_url="https://api.citadelsdk.com",
     api_key="your-api-key",
     actor_id="my-agent",
 )
@@ -57,14 +57,21 @@ async def refund(charge_id: str, amount: int):
 ## Context manager
 
 ```python
-async with cg.CitadelClient(base_url="https://ledger-sdk.fly.dev") as client:
+async with cg.CitadelClient(base_url="https://api.citadelsdk.com") as client:
     result = await client.execute(action="db.write", resource="users")
 ```
 
 ## Dashboard
 
 Monitor all agent activity, approve requests, and manage policies at:
-**https://casss20-ledger-sdk-6nlu.vercel.app**
+**https://dashboard.citadelsdk.com**
+
+## Links
+
+- **Documentation:** https://citadelsdk.com/docs
+- **Dashboard:** https://dashboard.citadelsdk.com
+- **PyPI:** https://pypi.org/project/citadel-governance/
+- **Source:** https://github.com/casss20/citadel-sdk
 
 ## Testing & Certification
 

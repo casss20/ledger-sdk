@@ -296,11 +296,13 @@ function CodeWindow() {
               <pre className="font-mono text-sm leading-relaxed">
                 <code>
                   <span className="text-blue-400">import</span>{' '}
-                  <span className="text-slate-300">citadel</span>
+                  <span className="text-slate-300">citadel_governance</span>{' '}
+                  <span className="text-blue-400">as</span>{' '}
+                  <span className="text-slate-300">cg</span>
                   {'\n\n'}
                   <span className="text-slate-500">{'# Configure once at startup'}</span>
                   {'\n'}
-                  <span className="text-slate-300">citadel.</span>
+                  <span className="text-slate-300">cg.</span>
                   <span className="text-purple-400">configure</span>
                   <span className="text-slate-300">{'({'}</span>
                   {'\n  '}
@@ -322,7 +324,7 @@ function CodeWindow() {
                   {'\n'}
                   <span className="text-slate-300">result = </span>
                   <span className="text-blue-400">await </span>
-                  <span className="text-slate-300">citadel.</span>
+                  <span className="text-slate-300">cg.</span>
                   <span className="text-purple-400">execute</span>
                   <span className="text-slate-300">{'({'}</span>
                   {'\n  '}
@@ -521,7 +523,7 @@ function Footer() {
           {[
             { label: 'Docs', href: 'https://citadelsdk.com/docs' },
             { label: 'Dashboard', href: '/demo/' },
-            { label: 'GitHub', href: 'https://github.com/casss20/ledger-sdk' },
+            { label: 'GitHub', href: 'https://github.com/casss20/citadel-sdk' },
             { label: 'PyPI', href: 'https://pypi.org/project/citadel-governance/' },
           ].map(({ label, href }) => (
             <a key={label} href={href}

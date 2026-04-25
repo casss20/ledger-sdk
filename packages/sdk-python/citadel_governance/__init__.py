@@ -8,7 +8,7 @@ Recommended import (avoids collision with backend ``citadel`` package):
     import citadel_governance as cg
 
     cg.configure(
-        base_url="https://ledger-sdk.fly.dev",
+        base_url="https://api.citadelsdk.com",
         api_key="your-api-key",
         actor_id="my-agent",
     )
@@ -22,6 +22,12 @@ Recommended import (avoids collision with backend ``citadel`` package):
 Legacy import (still works, emits a DeprecationWarning):
 
     import citadel  # deprecated — will be removed in v1.0
+
+Links:
+- Documentation: https://citadelsdk.com/docs
+- Dashboard: https://dashboard.citadelsdk.com
+- PyPI: https://pypi.org/project/citadel-governance/
+- Source: https://github.com/casss20/citadel-sdk
 """
 
 from citadel_governance._version import __version__

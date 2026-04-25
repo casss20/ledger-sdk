@@ -25,6 +25,7 @@ class KernelStatus(Enum):
     # Success states
     ALLOWED = "ALLOWED"                         # Approved to execute
     EXECUTED = "EXECUTED"                       # Successfully executed
+    DRY_RUN = "DRY_RUN"                         # Evaluated but not executed
     
     # Failure states
     FAILED_EXECUTION = "FAILED_EXECUTION"       # Execution error

@@ -31,6 +31,7 @@ class SubmitActionRequest(BaseModel):
     request_id: Optional[str] = None
     idempotency_key: Optional[str] = Field(None, max_length=256)
     capability_token: Optional[str] = None
+    dry_run: bool = False  # If True, evaluate policies but don't execute
 
 
 class ActionResponse(BaseModel):
@@ -91,7 +92,7 @@ async def submit_action(
         created_at=datetime.utcnow(),
     )
     
-    result = await kernel.handle(action, capability_token=req.capability_token)
+    result = await kernel.handle(action, capability_token=req.capability_token, dry_run=req.dry_run)
     
     # Convert status to lowercase for API consistency
     status_value = result.decision.status.value.lower()
