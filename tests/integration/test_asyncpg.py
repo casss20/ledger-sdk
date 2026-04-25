@@ -12,6 +12,12 @@ async def test_asyncpg_connection():
         pytest.skip(f"Database connection failed: {e}")
         
     try:
+        # Insert actor first (FK requirement)
+        await conn.execute("""
+            INSERT INTO actors (actor_id, actor_type)
+            VALUES ('test_agent', 'agent')
+            ON CONFLICT DO NOTHING
+        """)
         # Insert action
         await conn.execute("""
             INSERT INTO actions (action_id, actor_id, actor_type, action_name, resource)

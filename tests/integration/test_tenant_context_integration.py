@@ -22,9 +22,12 @@ client = TestClient(app)
 
 def test_full_request_flow_missing_tenant_context():
     """
-    Missing header -> 400
+    Missing X-Tenant-ID header -> 400 (auth passes via test key first).
     """
-    response = client.get("/v1/actions/some-uuid")
+    response = client.get(
+        "/v1/actions/some-uuid",
+        headers={"Authorization": "Bearer test-key"},
+    )
     assert response.status_code == 400
     assert "X-Tenant-ID" in response.json()["error"]
 

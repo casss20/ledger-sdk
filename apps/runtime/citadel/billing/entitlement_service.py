@@ -51,7 +51,7 @@ class EntitlementService:
             approval_requests_limit=plan['approval_requests_limit'],
             audit_retention_days=plan['audit_retention_days'],
             features=features,
-            current_period_end=sub['current_period_end'] if sub else None,
+            current_period_end=sub.get('current_period_end') if sub else None,
             in_grace_period=in_grace,
             can_access_api=can_access
         )

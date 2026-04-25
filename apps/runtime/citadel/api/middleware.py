@@ -87,9 +87,12 @@ DEFAULT_DEBUG_ORIGINS = [
 
 def get_cors_origins() -> list:
     """Get allowed CORS origins based on environment"""
-    if settings.debug:
+    # Re-resolve settings dynamically so monkeypatch in tests works.
+    from citadel import config as _config
+    s = _config.settings
+    if s.debug:
         return DEFAULT_DEBUG_ORIGINS
-    env_origins = getattr(settings, "cors_origins", None)
+    env_origins = getattr(s, "cors_origins", None)
     if env_origins:
         return [o.strip() for o in env_origins.split(",") if o.strip()]
     return []

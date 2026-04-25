@@ -50,7 +50,8 @@ async def test_quota_enforcement_logic():
         async def get_usage(self, t, p):
             return {"api_calls": 1200, "active_agents": 1, "approval_requests": 0, "governed_actions": 0, "unique_users": 0}
         async def get_subscription(self, t): return {"plan_code": "free", "status": "active", "grace_until": None}
-        async def get_plan(self, c): return {"code": "free", "api_calls_limit": 1000, "features_json": {}}
+        async def get_plan(self, c): return {"code": "free", "api_calls_limit": 1000, "active_agents_limit": 5, "approval_requests_limit": 100, "audit_retention_days": 30, "features_json": {}}
+        async def get_overrides(self, t): return []
 
     repo = QuotaRepo(None)
     ent_service = EntitlementService(repo)

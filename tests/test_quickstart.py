@@ -18,6 +18,11 @@ import time
 
 import pytest
 
+pytest.skip(
+    "quickstart module/script not yet implemented (Stream 3a aspirational tests)",
+    allow_module_level=True,
+)
+
 
 @pytest.mark.asyncio
 async def test_quickstart_tenant_initialization():

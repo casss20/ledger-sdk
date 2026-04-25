@@ -24,7 +24,7 @@ async def test_rls_blocks_cross_tenant_access(db_pool):
                 INSERT INTO actions (
                     action_id, actor_id, actor_type, action_name, resource, tenant_id,
                     payload_json, context_json, session_id, request_id, created_at
-                ) VALUES ($1, 'test_actor', 'system', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
+                ) VALUES ($1, 'test_actor', 'service', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
             """, action_id)
             
     # Test 1: Query as "acme" -> should see it
@@ -51,7 +51,7 @@ async def test_rls_blocks_update_cross_tenant(db_pool):
                 INSERT INTO actions (
                     action_id, actor_id, actor_type, action_name, resource, tenant_id,
                     payload_json, context_json, session_id, request_id, created_at
-                ) VALUES ($1, 'test_actor', 'system', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
+                ) VALUES ($1, 'test_actor', 'service', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
             """, action_id)
 
     # Try to UPDATE as "competitor"
@@ -73,7 +73,7 @@ async def test_rls_blocks_delete_cross_tenant(db_pool):
                 INSERT INTO actions (
                     action_id, actor_id, actor_type, action_name, resource, tenant_id,
                     payload_json, context_json, session_id, request_id, created_at
-                ) VALUES ($1, 'test_actor', 'system', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
+                ) VALUES ($1, 'test_actor', 'service', 'test.action', 'res1', 'acme', '{}', '{}', 's1', 'r1', NOW())
             """, action_id)
 
     # Try to DELETE as "competitor"
