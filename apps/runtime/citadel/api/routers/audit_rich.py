@@ -17,8 +17,9 @@ router = APIRouter(tags=["audit-rich"])
 
 # ── decision classification ───────────────────────────────────────────────────
 
-_ALLOWED_TYPES = {"execution.allowed", "token.verification", "token.derived", "decision.verification"}
-_BLOCKED_TYPES = {"execution.blocked", "execution.rate_limited", "token.revoked", "decision.revoked"}
+_ALLOWED_TYPES   = {"execution.allowed", "token.verification", "token.derived", "decision.verification"}
+_BLOCKED_TYPES   = {"execution.blocked", "execution.rate_limited", "token.revoked", "decision.revoked"}
+_ESCALATED_TYPES = {"decision.created", "approval.requested"}
 
 
 def _classify(event_type: str) -> str:
@@ -78,7 +79,7 @@ async def list_audit(
     from_ts:     Optional[str]  = Query(None, alias="from"),
     to_ts:       Optional[str]  = Query(None, alias="to"),
 ):
-    pool = request.app.state.pool
+    pool = request.app.state.db_pool
     tenant_id = getattr(request.state, "tenant_id", "demo")
 
     # Build WHERE clauses
@@ -154,7 +155,7 @@ async def export_audit(
     limit:   int           = Query(1000, ge=1, le=10000),
     decision: Optional[str] = Query(None),
 ):
-    pool = request.app.state.pool
+    pool = request.app.state.db_pool
     tenant_id = getattr(request.state, "tenant_id", "demo")
 
     conditions = ["tenant_id = $1"]
@@ -167,6 +168,9 @@ async def export_audit(
     elif decision == "blocked":
         conditions.append(f"event_type = ANY(${p})")
         params.append(list(_BLOCKED_TYPES)); p += 1
+    elif decision == "escalated":
+        conditions.append(f"event_type != ALL(${p})")
+        params.append(list(_ALLOWED_TYPES | _BLOCKED_TYPES)); p += 1
 
     where = " AND ".join(conditions)
 

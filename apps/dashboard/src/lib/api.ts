@@ -35,8 +35,11 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json');
   }
-  if (!headers.has('X-Tenant-ID')) {
-    headers.set('X-Tenant-ID', 'dev_tenant');
+  // Tenant should ultimately come from JWT claim server-side. Only forward
+  // a tenant header if the user explicitly stored one (e.g. tenant switcher).
+  const tenantId = localStorage.getItem('tenant_id');
+  if (tenantId && !headers.has('X-Tenant-ID')) {
+    headers.set('X-Tenant-ID', tenantId);
   }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);

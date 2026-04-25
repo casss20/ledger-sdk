@@ -127,13 +127,18 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 def setup_cors(app: FastAPI) -> None:
     """Add CORS as the outermost middleware so it handles preflight before auth."""
     origins = settings.allowed_cors_origins
+    if not origins:
+        # Fail loud rather than silently opening CORS to "*" with credentials
+        raise RuntimeError(
+            "CORS_ORIGINS / settings.allowed_cors_origins must be configured "
+            "(comma-separated list). Refusing to start with wildcard + credentials."
+        )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins if origins else ["*"],
-        allow_origin_regex=r"https://.*\.vercel\.app$",
+        allow_origins=origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-API-Secret", "X-Tenant-ID"],
     )
 
 

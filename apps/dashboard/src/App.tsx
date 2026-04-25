@@ -865,12 +865,15 @@ function SecurityGateModal({ isOpen, onClose, onUnlock, action }: { isOpen: bool
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
-  const handleVerify = () => {
+  const handleVerify = async () => {
     setVerifying(true); setError("");
-    setTimeout(() => {
-      if (password === "admin123") { setVerifying(false); setPassword(""); onUnlock(); onClose(); }
-      else { setVerifying(false); setError("Invalid credentials. Access denied."); }
-    }, 800);
+    try {
+      // Server-side step-up auth — never trust client-side passcode comparison.
+      await apiFetch('/auth/step-up', { method: 'POST', body: JSON.stringify({ password }) });
+      setVerifying(false); setPassword(""); onUnlock(); onClose();
+    } catch {
+      setVerifying(false); setError("Invalid credentials. Access denied.");
+    }
   };
   if (!isOpen) return null;
   return (
@@ -892,7 +895,7 @@ function SecurityGateModal({ isOpen, onClose, onUnlock, action }: { isOpen: bool
           <button onClick={onClose} className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 font-display text-[10px] font-bold uppercase hover:bg-slate-200">Cancel</button>
           <button onClick={handleVerify} disabled={verifying || !password} className="flex-1 py-2 rounded-xl bg-cluely-500 text-white font-display text-[10px] font-bold uppercase hover:bg-cluely-600 transition-all disabled:opacity-50">{verifying ? "Verifying..." : "Verify"}</button>
         </div>
-        <p className="text-center mt-2 font-mono text-[9px] text-slate-400">Demo: admin123</p>
+        <p className="text-center mt-2 font-mono text-[9px] text-slate-400">Step-up authentication required</p>
       </div>
     </div>
   );

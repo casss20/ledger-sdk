@@ -71,8 +71,9 @@ async def _run_migrations(pool):
                 )
                 logger.info(f"Applied migration: {filename}")
             except Exception as e:
-                logger.warning(f"Migration {filename} failed: {e}")
-                # Continue - some migrations may fail if objects already exist
+                logger.error(f"Migration {filename} failed: {e}")
+                # Fail loud — partial schema is worse than not booting.
+                raise
 
 
 @asynccontextmanager
@@ -99,24 +100,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as mig_exc:
             logger.warning(f"Migration runner warning: {mig_exc}")
         
-        # Seed default admin if operators table exists and is empty
+        # Seed default admin only when an explicit bootstrap password is provided.
+        # We never auto-create admin/admin123 anymore.
         try:
-            async with _pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
-                if row and row['cnt'] == 0:
-                    import hashlib, secrets
-                    salt = secrets.token_hex(16)
-                    iterations = 100000
-                    key = hashlib.pbkdf2_hmac('sha256', b'admin123', salt.encode(), iterations)
-                    password_hash = f"pbkdf2:sha256:{iterations}:{salt}:{key.hex()}"
-                    await conn.execute("""
-                        INSERT INTO operators (operator_id, username, email, password_hash, tenant_id, role, is_active)
-                        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-                        ON CONFLICT (username) DO NOTHING
-                    """, "op_admin_default", "admin", "admin@citadel.dev", password_hash, "demo-tenant", "admin")
-                    logger.info("Seeded default admin operator (admin / admin123)")
+            import os as _os
+            bootstrap_pw = _os.environ.get("CITADEL_ADMIN_BOOTSTRAP_PASSWORD")
+            bootstrap_user = _os.environ.get("CITADEL_ADMIN_BOOTSTRAP_USERNAME", "admin")
+            bootstrap_tenant = _os.environ.get("CITADEL_ADMIN_BOOTSTRAP_TENANT", "demo-tenant")
+            if not bootstrap_pw:
+                logger.info("Operator seed skipped (CITADEL_ADMIN_BOOTSTRAP_PASSWORD not set).")
+            else:
+                async with _pool.acquire() as conn:
+                    row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
+                    if row and row['cnt'] == 0:
+                        import hashlib, secrets
+                        salt = secrets.token_hex(16)
+                        iterations = 100000
+                        key = hashlib.pbkdf2_hmac('sha256', bootstrap_pw.encode(), salt.encode(), iterations)
+                        password_hash = f"pbkdf2:sha256:{iterations}:{salt}:{key.hex()}"
+                        await conn.execute("""
+                            INSERT INTO operators (operator_id, username, email, password_hash, tenant_id, role, is_active)
+                            VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+                            ON CONFLICT (username) DO NOTHING
+                        """, "op_admin_default", bootstrap_user, f"{bootstrap_user}@citadel.local", password_hash, bootstrap_tenant, "admin")
+                        logger.info(f"Bootstrapped admin operator '{bootstrap_user}' for tenant '{bootstrap_tenant}'.")
         except Exception as seed_exc:
-            # Table might not exist yet (migrations not run)
             logger.debug(f"Operator seed skipped: {seed_exc}")
     except Exception as exc:
         logger.exception("Database pool initialization failed; readiness will report unhealthy")
@@ -163,7 +171,15 @@ def create_app() -> FastAPI:
         async def delete(self, k): self.store.pop(k, None)
     
     app.state.cache = AppCache()
-    jwt_service = JWTService(secret_key="secret_key_change_me_in_prod")
+    import os as _os
+    _jwt_secret = _os.environ.get("CITADEL_JWT_SECRET")
+    if not _jwt_secret:
+        if getattr(settings, "debug", False):
+            _jwt_secret = "DEV_ONLY_DO_NOT_USE_IN_PROD"
+            logger.warning("CITADEL_JWT_SECRET not set — using dev-only key. DO NOT deploy this way.")
+        else:
+            raise RuntimeError("CITADEL_JWT_SECRET environment variable must be set in production.")
+    jwt_service = JWTService(secret_key=_jwt_secret)
     
     # Order: Outermost (runs first) to Innermost (runs last)
     
