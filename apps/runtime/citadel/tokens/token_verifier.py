@@ -23,6 +23,17 @@ class VerificationResult:
     decision: Optional[GovernanceDecision] = None
 
 
+@dataclass
+class IntrospectionResult:
+    """RFC 7662-style token introspection result."""
+
+    active: bool
+    reason: Optional[str] = None
+    kill_switch: bool = False
+    decision: Optional[GovernanceDecision] = None
+    token: Optional[dict] = None
+
+
 class TokenVerifier:
     """
     Verify a capability token by resolving its linked GovernanceDecision.
@@ -58,6 +69,20 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "token_not_found", context)
             return VerificationResult(valid=False, reason="token_not_found")
 
+        token_expiry = self._parse_datetime(token_data.get("expiry"))
+        if token_expiry and datetime.now(timezone.utc) > token_expiry:
+            await self._audit_token_verification(token_id, False, "token_expired", context)
+            return VerificationResult(valid=False, reason="token_expired")
+
+        token_nbf = self._parse_datetime(token_data.get("not_before"))
+        if token_nbf and datetime.now(timezone.utc) < token_nbf:
+            await self._audit_token_verification(token_id, False, "token_not_yet_valid", context)
+            return VerificationResult(valid=False, reason="token_not_yet_valid")
+
+        if token_data.get("revoked_at"):
+            await self._audit_token_verification(token_id, False, "token_revoked", context)
+            return VerificationResult(valid=False, reason="token_revoked")
+
         # 2. Resolve linked decision
         decision_id = token_data.get("decision_id")
         if not decision_id:
@@ -70,10 +95,7 @@ class TokenVerifier:
             return VerificationResult(valid=False, reason="decision_not_found")
 
         # Reconstruct GovernanceDecision from dict
-        expiry = decision_data.get("expiry")
-        if isinstance(expiry, str):
-            from datetime import datetime as _dt
-            expiry = _dt.fromisoformat(expiry.replace("Z", "+00:00"))
+        expiry = self._parse_datetime(decision_data.get("expiry") or decision_data.get("expires_at"))
 
         decision = GovernanceDecision(
             decision_id=decision_data["decision_id"],
@@ -81,6 +103,18 @@ class TokenVerifier:
             tenant_id=decision_data["tenant_id"],
             actor_id=decision_data["actor_id"],
             action=decision_data["action"],
+            request_id=decision_data.get("request_id"),
+            trace_id=decision_data.get("trace_id") or token_data.get("trace_id"),
+            workspace_id=decision_data.get("workspace_id") or decision_data["tenant_id"],
+            agent_id=decision_data.get("agent_id") or decision_data["actor_id"],
+            subject_type=decision_data.get("subject_type", "agent"),
+            subject_id=decision_data.get("subject_id") or decision_data["actor_id"],
+            resource=decision_data.get("resource"),
+            risk_level=decision_data.get("risk_level", token_data.get("risk_level", "low")),
+            policy_version=decision_data.get("policy_version", "unknown"),
+            approval_state=decision_data.get("approval_state", "auto_approved"),
+            approved_by=decision_data.get("approved_by"),
+            approved_at=self._parse_datetime(decision_data.get("approved_at")),
             scope=DecisionScope(
                 actions=decision_data["scope_actions"],
                 resources=decision_data["scope_resources"],
@@ -89,8 +123,17 @@ class TokenVerifier:
             expiry=expiry,
             kill_switch_scope=KillSwitchScope(decision_data.get("kill_switch_scope", "request")),
             created_at=decision_data.get("created_at"),
+            issued_token_id=decision_data.get("issued_token_id"),
+            revoked_at=self._parse_datetime(decision_data.get("revoked_at")),
+            revoked_reason=decision_data.get("revoked_reason"),
             reason=decision_data.get("reason", ""),
         )
+
+        workspace_id = context.get("workspace_id")
+        token_workspace = token_data.get("workspace_id") or token_data.get("tenant_id")
+        if workspace_id and workspace_id not in {decision.workspace_id, decision.tenant_id, token_workspace}:
+            await self._audit_token_verification(token_id, False, "workspace_mismatch", context, decision)
+            return VerificationResult(valid=False, reason="workspace_mismatch", decision=decision)
 
         # 3. Check expiry
         if decision.is_expired:
@@ -98,7 +141,7 @@ class TokenVerifier:
             return VerificationResult(valid=False, reason="decision_expired", decision=decision)
 
         # 4. Check revocation
-        if decision.decision_type == DecisionType.REVOKED:
+        if decision.decision_type == DecisionType.REVOKED or decision.revoked_at is not None:
             await self._audit_token_verification(token_id, False, "decision_revoked", context, decision)
             return VerificationResult(valid=False, reason="decision_revoked", decision=decision)
 
@@ -111,12 +154,58 @@ class TokenVerifier:
         if self.kill_switch is not None:
             ks_check = await self.kill_switch.check(decision.actor_id, decision.tenant_id)
             if ks_check.active:
-                await self._audit_token_verification(token_id, False, "kill_switch", context, decision)
-                return VerificationResult(valid=False, reason="kill_switch", decision=decision)
+                await self._audit_token_verification(token_id, False, "kill_switch_active", context, decision)
+                return VerificationResult(valid=False, reason="kill_switch_active", decision=decision)
+
+        if hasattr(self.vault, "check_kill_switch"):
+            switch = await self.vault.check_kill_switch(
+                tenant_id=decision.tenant_id,
+                actor_id=decision.actor_id,
+                action=action,
+                resource=resource,
+                tool=context.get("tool") or token_data.get("tool"),
+            )
+            if switch:
+                await self._audit_token_verification(token_id, False, "kill_switch_active", context, decision)
+                return VerificationResult(valid=False, reason="kill_switch_active", decision=decision)
 
         # All checks passed
         await self._audit_token_verification(token_id, True, "verified", context, decision)
         return VerificationResult(valid=True, decision=decision)
+
+    async def introspect_token(
+        self,
+        token_id: str,
+        required_action: str,
+        required_resource: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        context: dict = None,
+    ) -> IntrospectionResult:
+        """Centralized high-risk runtime introspection."""
+        context = {
+            **(context or {}),
+            "workspace_id": workspace_id or (context or {}).get("workspace_id"),
+        }
+        result = await self.verify_token(
+            token_id,
+            required_action,
+            required_resource,
+            context,
+        )
+        return IntrospectionResult(
+            active=result.valid,
+            reason=None if result.valid else result.reason,
+            kill_switch=result.reason == "kill_switch_active",
+            decision=result.decision,
+            token=await self.vault.resolve_token(token_id, tenant_id=context.get("tenant_id")),
+        )
+
+    def _parse_datetime(self, value):
+        if value is None or isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return value
 
     async def verify_decision(
         self,

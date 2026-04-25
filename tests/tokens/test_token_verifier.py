@@ -200,7 +200,7 @@ class TestTokenVerification:
 
         result = await verifier.verify_token(token.token_id, "file.read")
         assert result.valid is False
-        assert result.reason == "kill_switch"
+        assert result.reason == "kill_switch_active"
 
 
 class TestDecisionVerification:
