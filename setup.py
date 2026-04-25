@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-"""Setup script for citadel-sdk (fallback for older tools)."""
+"""Setup script for citadel-sdk (delegates to pyproject.toml).
 
-from setuptools import setup, find_packages
+This file exists for backward compatibility with older tools.
+The canonical build configuration is in pyproject.toml.
+"""
 
-setup(
-    name="citadel-sdk",
-    use_scm_version=True,
-    setup_requires=["setuptools_scm"],
-    packages=find_packages(where="apps/runtime"),
-    package_dir={"": "apps/runtime"},
-)
+from setuptools import setup
+
+setup()
+

@@ -166,6 +166,34 @@ class DecisionEngine:
         )
 
     async def _get_decision(self, decision_id: str) -> Optional[GovernanceDecision]:
-        """Lookup decision by ID."""
-        # TODO: implement persistence lookup
-        return None
+        """Lookup decision by ID from the decisions table."""
+        import asyncpg
+        from citadel.config import settings
+        
+        conn = await asyncpg.connect(settings.database_dsn)
+        try:
+            row = await conn.fetchrow(
+                """
+                SELECT decision_id, action_id, status, winning_rule, reason,
+                       capability_token, risk_level, risk_score, path_taken,
+                       created_at, executed_at
+                FROM decisions
+                WHERE decision_id = $1
+                """,
+                decision_id,
+            )
+            if row is None:
+                return None
+            
+            # Map database row to GovernanceDecision
+            return GovernanceDecision(
+                decision_id=row["decision_id"],
+                decision_type=DecisionType.ALLOW if row["status"] == "ALLOWED" else DecisionType.DENY,
+                tenant_id="",  # Retrieved via joined action if needed
+                actor_id="",
+                action=row["winning_rule"],
+                scope=DecisionScope(),
+                reason=row["reason"],
+            )
+        finally:
+            await conn.close()

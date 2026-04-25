@@ -2,15 +2,17 @@
 Citadel API Middleware
 
 - Request ID tracing
-- Structured logging
+- Structured logging (JSON or text)
 - Error handling with request IDs
 - CORS (production-locked)
 - Request body size limits
 """
 
+import json
+import logging
 import time
 import uuid
-from typing import Callable
+from typing import Callable, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,9 +26,56 @@ from citadel.security.owasp_middleware import (
 from citadel.config import settings
 
 
-# Production CORS origins — override in .env or settings
-# Default: empty list (no CORS) in production
-# Debug mode: allow localhost origins only
+# ---------------------------------------------------------------------------
+# Structured Logging Setup
+# ---------------------------------------------------------------------------
+
+class JsonFormatter(logging.Formatter):
+    """JSON formatter for structured logging."""
+    def format(self, record):
+        log_obj = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(record.created)),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        # Add extra fields if present
+        for key in ["request_id", "method", "path", "status_code", "duration_ms", "error"]:
+            if hasattr(record, key):
+                log_obj[key] = getattr(record, key)
+        # Add exception info if present
+        if record.exc_info:
+            log_obj["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_obj)
+
+
+def _setup_logging():
+    """Configure root logger based on settings."""
+    root = logging.getLogger()
+    root.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+    
+    # Remove existing handlers to avoid duplicates
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+    
+    handler = logging.StreamHandler()
+    if settings.log_format == "json":
+        handler.setFormatter(JsonFormatter())
+    else:
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        ))
+    root.addHandler(handler)
+
+
+_setup_logging()
+logger = logging.getLogger("citadel.middleware")
+
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+
 DEFAULT_DEBUG_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -40,13 +89,15 @@ def get_cors_origins() -> list:
     """Get allowed CORS origins based on environment"""
     if settings.debug:
         return DEFAULT_DEBUG_ORIGINS
-    # Production: must be explicitly configured
-    # Settings can override with comma-separated origins
     env_origins = getattr(settings, "cors_origins", None)
     if env_origins:
         return [o.strip() for o in env_origins.split(",") if o.strip()]
-    return []  # No CORS in production by default
+    return []
 
+
+# ---------------------------------------------------------------------------
+# Middleware Classes
+# ---------------------------------------------------------------------------
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """Block requests with body larger than max size"""
@@ -60,6 +111,14 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                 size = int(content_length)
                 if size > self.MAX_BODY_SIZE:
                     from fastapi.responses import JSONResponse
+                    logger.warning(
+                        "Request rejected: payload too large",
+                        extra={
+                            "request_id": getattr(request.state, "request_id", "unknown"),
+                            "size": size,
+                            "max_size": self.MAX_BODY_SIZE,
+                        }
+                    )
                     return JSONResponse(
                         status_code=413,
                         content={
@@ -69,7 +128,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         },
                     )
             except ValueError:
-                pass  # Invalid content-length, let downstream handle
+                pass
         
         return await call_next(request)
 
@@ -87,15 +146,37 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
-            print(f"[{request_id}] ERROR {request.method} {request.url.path} - {exc} ({duration_ms:.1f}ms)")
+            logger.error(
+                f"Request error: {request.method} {request.url.path}",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": round(duration_ms, 1),
+                    "error": str(exc),
+                },
+                exc_info=True,
+            )
             raise
         
         duration_ms = (time.time() - start_time) * 1000
+        status_code = response.status_code
         
-        # Log line
-        print(
-            f"[{request_id}] {response.status_code} {request.method} {request.url.path} "
-            f"({duration_ms:.1f}ms)"
+        # Determine log level based on status
+        log_level = logging.INFO if status_code < 400 else logging.WARNING
+        if status_code >= 500:
+            log_level = logging.ERROR
+        
+        logger.log(
+            log_level,
+            f"{request.method} {request.url.path} {status_code}",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": status_code,
+                "duration_ms": round(duration_ms, 1),
+            }
         )
         
         # Add request ID to response headers
@@ -113,10 +194,15 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             request_id = getattr(request.state, "request_id", "unknown")
             
-            # Log full traceback in debug mode
-            if settings.debug:
-                import traceback
-                traceback.print_exc()
+            logger.error(
+                f"Unhandled exception: {exc}",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                },
+                exc_info=True,
+            )
             
             from fastapi.responses import JSONResponse
             return JSONResponse(
@@ -133,7 +219,6 @@ def setup_cors(app: FastAPI) -> None:
     """Add CORS as the outermost middleware so it handles preflight before auth."""
     origins = settings.allowed_cors_origins
     if not origins:
-        # Fail loud rather than silently opening CORS to "*" with credentials
         raise RuntimeError(
             "CORS_ORIGINS / settings.allowed_cors_origins must be configured "
             "(comma-separated list). Refusing to start with wildcard + credentials."

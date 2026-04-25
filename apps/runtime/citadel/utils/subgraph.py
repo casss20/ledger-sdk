@@ -263,8 +263,29 @@ class SubgraphExecutor:
             for dep in deps:
                 if dep in results:
                     # Map dependency output to this action's input
-                    # TODO: Smart input mapping based on types/names
-                    action_inputs['input'] = results[dep]
+                    # Smart mapping: try to match by parameter name or type
+                    dep_result = results[dep]
+                    
+                    # If result is dict, merge it as kwargs
+                    if isinstance(dep_result, dict):
+                        action_inputs.update(dep_result)
+                    else:
+                        # Try to find a parameter that accepts this type
+                        import inspect
+                        sig = inspect.signature(action_fn)
+                        param_names = list(sig.parameters.keys())
+                        
+                        # If action only has one required param, use it
+                        required_params = [
+                            p.name for p in sig.parameters.values()
+                            if p.default is inspect.Parameter.empty and p.name != 'self'
+                        ]
+                        
+                        if len(required_params) == 1 and not action_inputs:
+                            action_inputs[required_params[0]] = dep_result
+                        else:
+                            # Default to 'input' key
+                            action_inputs['input'] = dep_result
             
             # Add initial inputs if this is a root action
             if not deps:

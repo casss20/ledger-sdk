@@ -1,17 +1,16 @@
 """
-GOVERNOR — Central visibility and control plane for Citadel SDK
+GOVERNOR — PostgreSQL-backed visibility and control plane for Citadel SDK
 
-The GOVERNOR is the single source of truth for:
-- What actions are pending (awaiting approval)
-- What actions were skipped (null propagation)
-- What actions failed (error tracking)
-- What actions completed (audit trail)
-- What's deferred to later (scheduler integration)
+The GOVERNOR reads from the canonical database tables:
+- actions (immutable action requests)
+- decisions (terminal decisions, append-only)
+- approvals (human-in-the-loop state)
+- execution_results (execution outcomes)
 
-Like Weft's "orchestrator" but for governance state.
+It does NOT maintain its own state. All state is in PostgreSQL.
 """
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
@@ -22,280 +21,356 @@ logger = logging.getLogger(__name__)
 
 
 class ActionState(Enum):
-    """Lifecycle states for governed actions."""
-    PENDING = "pending"          # Awaiting approval
+    """Lifecycle states derived from decisions + execution_results."""
+    PENDING = "pending"          # Action exists, no decision yet
+    PENDING_APPROVAL = "pending_approval"  # Approval required, not yet decided
     DEFERRED = "deferred"        # Scheduled for later
     SKIPPED = "skipped"          # Null propagation skipped this
-    EXECUTING = "executing"      # Currently running
-    SUCCESS = "success"          # Completed successfully
-    FAILED = "failed"            # Exception raised
-    DENIED = "denied"            # Kill switch or rejection
+    EXECUTING = "executing"      # Decision = ALLOWED, no execution result yet
+    SUCCESS = "success"          # Execution result: success
+    FAILED = "failed"            # Execution result: failed OR decision = FAILED_EXECUTION
+    DENIED = "denied"            # Decision = BLOCKED_* or REJECTED_APPROVAL
     TIMEOUT = "timeout"          # Approval/execution timeout
 
 
 @dataclass
 class ActionRecord:
-    """
-    Complete record of a governed action's lifecycle.
-    Immutable once finalized.
-    """
+    """Read-only view of a governed action's lifecycle."""
     id: str
     action: str
     resource: str
     state: ActionState
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    
+
     # Context
     agent: str = "default"
     risk: str = "LOW"
     approval_level: str = "NONE"
-    
+
     # Execution details
-    args_preview: str = ""           # First 200 chars of args
-    result_preview: str = ""         # First 200 chars of result
+    args_preview: str = ""
+    result_preview: str = ""
     error_message: Optional[str] = None
-    
+
     # Timing
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    
+
     # Links
-    promise_id: Optional[str] = None     # Durable promise if deferred
-    parent_id: Optional[str] = None      # For subgraph relationships
+    promise_id: Optional[str] = None
+    parent_id: Optional[str] = None
     children: List[str] = field(default_factory=list)
-    
+
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def duration_ms(self) -> Optional[int]:
         """Calculate execution duration in milliseconds."""
         if self.started_at and self.completed_at:
             delta = self.completed_at - self.started_at
             return int(delta.total_seconds() * 1000)
         return None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Export as dictionary."""
         data = asdict(self)
         data['state'] = self.state.value
         data['duration_ms'] = self.duration_ms()
-        # Convert datetimes to ISO strings
         for key in ['created_at', 'updated_at', 'started_at', 'completed_at']:
-            if data[key]:
-                data[key] = data[key].isoformat() if isinstance(data[key], datetime) else data[key]
+            if data[key] and isinstance(data[key], datetime):
+                data[key] = data[key].isoformat()
         return data
 
 
 class Governor:
     """
-    Central visibility and control plane.
-    
-    Single source of truth for all governed action state.
-    Used by dashboard, API, and programmatic queries.
+    PostgreSQL-backed visibility and control plane.
+
+    All reads go to the database. No in-memory state.
     """
-    
-    def __init__(self):
-        self._records: Dict[str, ActionRecord] = {}
-        self._by_state: Dict[ActionState, Set[str]] = {
-            state: set() for state in ActionState
-        }
-        self._by_action: Dict[str, Set[str]] = {}
-        self._by_agent: Dict[str, Set[str]] = {}
-        self._pending_promises: Dict[str, str] = {}  # promise_id -> record_id
-        self._lock = asyncio.Lock()
+
+    def __init__(self, pool):
+        self._pool = pool
         self._subscribers: List[callable] = []
-    
-    # =========================================================================
-    # Record Management
-    # =========================================================================
-    
-    async def create(
-        self,
-        action_id: str,
-        action: str,
-        resource: str,
-        agent: str = "default",
-        risk: str = "LOW",
-        approval_level: str = "NONE",
-        args_preview: str = "",
-        parent_id: Optional[str] = None,
-        promise_id: Optional[str] = None,
-    ) -> ActionRecord:
-        """Create a new action record."""
-        async with self._lock:
-            record = ActionRecord(
-                id=action_id,
-                action=action,
-                resource=resource,
-                state=ActionState.PENDING,
-                agent=agent,
-                risk=risk,
-                approval_level=approval_level,
-                args_preview=args_preview[:200],
-                parent_id=parent_id,
-                promise_id=promise_id,
+
+    # =====================================================================
+    # Record Retrieval (from DB)
+    # =====================================================================
+
+    async def get(self, action_id: str) -> Optional[ActionRecord]:
+        """Get a single record by action_id from the database."""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    a.action_id::text as id,
+                    a.action_name as action,
+                    a.resource,
+                    a.actor_id as agent,
+                    a.created_at,
+                    a.payload_json,
+                    d.status as decision_status,
+                    d.winning_rule,
+                    d.reason as decision_reason,
+                    d.risk_level,
+                    d.risk_score,
+                    d.path_taken,
+                    e.success as exec_success,
+                    e.error_message as exec_error,
+                    e.result_json as exec_result,
+                    e.started_at as exec_started,
+                    e.completed_at as exec_completed
+                FROM actions a
+                LEFT JOIN decisions d ON d.action_id = a.action_id
+                LEFT JOIN execution_results e ON e.action_id = a.action_id
+                WHERE a.action_id = $1
+                """,
+                action_id,
             )
-            
-            self._records[action_id] = record
-            self._by_state[ActionState.PENDING].add(action_id)
-            self._by_action.setdefault(action, set()).add(action_id)
-            self._by_agent.setdefault(agent, set()).add(action_id)
-            
-            if promise_id:
-                self._pending_promises[promise_id] = action_id
-            
-            logger.debug(f"[GOVERNOR] Created {action_id}: {action} ({resource})")
-            await self._notify(record)
-            return record
-    
-    async def transition(
-        self,
-        action_id: str,
-        new_state: ActionState,
-        result_preview: str = "",
-        error_message: Optional[str] = None,
-        metadata: Optional[Dict] = None,
-    ) -> Optional[ActionRecord]:
-        """Transition an action to a new state."""
-        async with self._lock:
-            record = self._records.get(action_id)
-            if not record:
-                logger.warning(f"[GOVERNOR] Unknown action: {action_id}")
+            if not row:
                 return None
-            
-            old_state = record.state
-            
-            # Update state tracking
-            self._by_state[old_state].discard(action_id)
-            self._by_state[new_state].add(action_id)
-            
-            # Update record
-            record.state = new_state
-            record.updated_at = datetime.utcnow()
-            
-            if result_preview:
-                record.result_preview = result_preview[:200]
-            if error_message:
-                record.error_message = error_message
-            if metadata:
-                record.metadata.update(metadata)
-            
-            # Timing
-            if new_state == ActionState.EXECUTING:
-                record.started_at = datetime.utcnow()
-            if new_state in (ActionState.SUCCESS, ActionState.FAILED, ActionState.DENIED, ActionState.TIMEOUT):
-                record.completed_at = datetime.utcnow()
-            
-            logger.debug(f"[GOVERNOR] {action_id}: {old_state.value} -> {new_state.value}")
-            await self._notify(record)
-            return record
-    
-    async def skip(
-        self,
-        action_id: str,
-        reason: str = "null_propagation",
-    ) -> Optional[ActionRecord]:
-        """Mark an action as skipped (null propagation)."""
-        return await self.transition(
-            action_id,
-            ActionState.SKIPPED,
-            metadata={"skip_reason": reason}
-        )
-    
-    async def defer(
-        self,
-        action_id: str,
-        promise_id: str,
-        scheduled_for: Optional[datetime] = None,
-    ) -> Optional[ActionRecord]:
-        """Mark an action as deferred to durable execution."""
-        record = await self.transition(
-            action_id,
-            ActionState.DEFERRED,
-            metadata={
-                "promise_id": promise_id,
-                "scheduled_for": scheduled_for.isoformat() if scheduled_for else None,
-            }
-        )
-        if record:
-            self._pending_promises[promise_id] = action_id
-        return record
-    
-    # =========================================================================
-    # Queries
-    # =========================================================================
-    
-    def get(self, action_id: str) -> Optional[ActionRecord]:
-        """Get a single record by ID."""
-        return self._records.get(action_id)
-    
-    def get_by_promise(self, promise_id: str) -> Optional[ActionRecord]:
+            return self._row_to_record(row)
+
+    async def get_by_promise(self, promise_id: str) -> Optional[ActionRecord]:
         """Get record associated with a durable promise."""
-        action_id = self._pending_promises.get(promise_id)
-        if action_id:
-            return self._records.get(action_id)
-        return None
-    
-    def list_by_state(self, state: ActionState, limit: int = 100) -> List[ActionRecord]:
-        """List all actions in a given state."""
-        ids = list(self._by_state[state])[:limit]
-        return [self._records[i] for i in ids if i in self._records]
-    
-    def list_pending(self) -> List[ActionRecord]:
-        """List all pending approvals."""
-        return self.list_by_state(ActionState.PENDING)
-    
-    def list_deferred(self) -> List[ActionRecord]:
-        """List all deferred actions."""
-        return self.list_by_state(ActionState.DEFERRED)
-    
-    def list_skipped(self) -> List[ActionRecord]:
-        """List all skipped actions."""
-        return self.list_by_state(ActionState.SKIPPED)
-    
-    def list_failed(self) -> List[ActionRecord]:
-        """List all failed actions."""
-        return self.list_by_state(ActionState.FAILED)
-    
-    def list_by_agent(self, agent: str, limit: int = 100) -> List[ActionRecord]:
-        """List all actions by agent."""
-        ids = list(self._by_agent.get(agent, set()))[:limit]
-        return [self._records[i] for i in ids if i in self._records]
-    
-    def get_stats(self) -> Dict[str, int]:
-        """Get counts by state."""
-        return {
-            state.value: len(ids)
-            for state, ids in self._by_state.items()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    a.action_id::text as id,
+                    a.action_name as action,
+                    a.resource,
+                    a.actor_id as agent,
+                    a.created_at,
+                    a.payload_json,
+                    d.status as decision_status,
+                    d.winning_rule,
+                    d.reason as decision_reason,
+                    d.risk_level,
+                    d.risk_score,
+                    d.path_taken,
+                    e.success as exec_success,
+                    e.error_message as exec_error,
+                    e.result_json as exec_result,
+                    e.started_at as exec_started,
+                    e.completed_at as exec_completed
+                FROM actions a
+                LEFT JOIN decisions d ON d.action_id = a.action_id
+                LEFT JOIN execution_results e ON e.action_id = a.action_id
+                WHERE a.payload_json->>'promise_id' = $1
+                   OR a.context_json->>'promise_id' = $1
+                LIMIT 1
+                """,
+                promise_id,
+            )
+            if not row:
+                return None
+            return self._row_to_record(row)
+
+    # =====================================================================
+    # Queries by State
+    # =====================================================================
+
+    async def list_by_state(
+        self, state: ActionState, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        """List actions in a given derived state."""
+        # Map ActionState to SQL conditions
+        conditions = {
+            ActionState.PENDING: "d.decision_id IS NULL",
+            ActionState.PENDING_APPROVAL: "d.status = 'PENDING_APPROVAL'",
+            ActionState.DEFERRED: "d.status = 'DEFERRED' OR a.context_json->>'deferred' = 'true'",
+            ActionState.SKIPPED: "d.winning_rule = 'skipped'",
+            ActionState.EXECUTING: "d.status = 'ALLOWED' AND e.execution_id IS NULL",
+            ActionState.SUCCESS: "e.success = true",
+            ActionState.FAILED: "(d.status = 'FAILED_EXECUTION' OR e.success = false)",
+            ActionState.DENIED: "d.status IN ('BLOCKED_SCHEMA','BLOCKED_EMERGENCY','BLOCKED_CAPABILITY','BLOCKED_POLICY','RATE_LIMITED','REJECTED_APPROVAL')",
+            ActionState.TIMEOUT: "d.status IN ('EXPIRED_APPROVAL','TIMEOUT')",
         }
-    
-    def get_summary(self) -> Dict[str, Any]:
+        where_clause = conditions.get(state, "TRUE")
+        tenant_clause = "AND a.tenant_id = $2" if tenant_id else ""
+
+        sql = f"""
+            SELECT
+                a.action_id::text as id,
+                a.action_name as action,
+                a.resource,
+                a.actor_id as agent,
+                a.created_at,
+                a.payload_json,
+                d.status as decision_status,
+                d.winning_rule,
+                d.reason as decision_reason,
+                d.risk_level,
+                d.risk_score,
+                d.path_taken,
+                e.success as exec_success,
+                e.error_message as exec_error,
+                e.result_json as exec_result,
+                e.started_at as exec_started,
+                e.completed_at as exec_completed
+            FROM actions a
+            LEFT JOIN decisions d ON d.action_id = a.action_id
+            LEFT JOIN execution_results e ON e.action_id = a.action_id
+            WHERE {where_clause}
+            {tenant_clause}
+            ORDER BY a.created_at DESC
+            LIMIT $1
+        """
+
+        async with self._pool.acquire() as conn:
+            if tenant_id:
+                rows = await conn.fetch(sql, limit, tenant_id)
+            else:
+                rows = await conn.fetch(sql, limit)
+            return [self._row_to_record(r) for r in rows]
+
+    async def list_pending(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        """List pending approvals (actions awaiting human decision)."""
+        async with self._pool.acquire() as conn:
+            tenant_clause = "AND a.tenant_id = $2" if tenant_id else ""
+            sql = f"""
+                SELECT
+                    a.action_id::text as id,
+                    a.action_name as action,
+                    a.resource,
+                    a.actor_id as agent,
+                    a.created_at,
+                    a.payload_json,
+                    d.status as decision_status,
+                    d.winning_rule,
+                    d.reason as decision_reason,
+                    d.risk_level,
+                    d.risk_score,
+                    d.path_taken,
+                    e.success as exec_success,
+                    e.error_message as exec_error,
+                    e.result_json as exec_result,
+                    e.started_at as exec_started,
+                    e.completed_at as exec_completed
+                FROM actions a
+                JOIN approvals ap ON ap.action_id = a.action_id
+                LEFT JOIN decisions d ON d.action_id = a.action_id
+                LEFT JOIN execution_results e ON e.action_id = a.action_id
+                WHERE ap.status = 'pending'
+                {tenant_clause}
+                ORDER BY
+                    CASE ap.priority
+                        WHEN 'critical' THEN 1
+                        WHEN 'high' THEN 2
+                        WHEN 'medium' THEN 3
+                        ELSE 4
+                    END,
+                    ap.created_at DESC
+                LIMIT $1
+            """
+            if tenant_id:
+                rows = await conn.fetch(sql, limit, tenant_id)
+            else:
+                rows = await conn.fetch(sql, limit)
+            return [self._row_to_record(r) for r in rows]
+
+    async def list_deferred(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        return await self.list_by_state(ActionState.DEFERRED, limit, tenant_id)
+
+    async def list_skipped(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        return await self.list_by_state(ActionState.SKIPPED, limit, tenant_id)
+
+    async def list_failed(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        return await self.list_by_state(ActionState.FAILED, limit, tenant_id)
+
+    async def list_by_agent(
+        self, agent: str, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[ActionRecord]:
+        async with self._pool.acquire() as conn:
+            tenant_clause = "AND a.tenant_id = $3" if tenant_id else ""
+            sql = f"""
+                SELECT
+                    a.action_id::text as id,
+                    a.action_name as action,
+                    a.resource,
+                    a.actor_id as agent,
+                    a.created_at,
+                    a.payload_json,
+                    d.status as decision_status,
+                    d.winning_rule,
+                    d.reason as decision_reason,
+                    d.risk_level,
+                    d.risk_score,
+                    d.path_taken,
+                    e.success as exec_success,
+                    e.error_message as exec_error,
+                    e.result_json as exec_result,
+                    e.started_at as exec_started,
+                    e.completed_at as exec_completed
+                FROM actions a
+                LEFT JOIN decisions d ON d.action_id = a.action_id
+                LEFT JOIN execution_results e ON e.action_id = a.action_id
+                WHERE a.actor_id = $1
+                {tenant_clause}
+                ORDER BY a.created_at DESC
+                LIMIT $2
+            """
+            if tenant_id:
+                rows = await conn.fetch(sql, agent, limit, tenant_id)
+            else:
+                rows = await conn.fetch(sql, agent, limit)
+            return [self._row_to_record(r) for r in rows]
+
+    # =====================================================================
+    # Statistics
+    # =====================================================================
+
+    async def get_stats(self, tenant_id: Optional[str] = None) -> Dict[str, int]:
+        """Get counts by derived state."""
+        stats = {s.value: 0 for s in ActionState}
+        for state in ActionState:
+            records = await self.list_by_state(state, limit=10000, tenant_id=tenant_id)
+            stats[state.value] = len(records)
+        return stats
+
+    async def get_summary(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """Get executive summary of current state."""
-        stats = self.get_stats()
-        pending = self.list_pending()
-        failed = self.list_failed()
-        
+        stats = await self.get_stats(tenant_id)
+        pending = await self.list_pending(limit=5, tenant_id=tenant_id)
+        failed = await self.list_failed(limit=5, tenant_id=tenant_id)
+
+        async with self._pool.acquire() as conn:
+            total_row = await conn.fetchrow(
+                "SELECT COUNT(*) as total FROM actions WHERE tenant_id = $1 OR $1 IS NULL",
+                tenant_id,
+            )
+            total = total_row['total'] if total_row else 0
+
         return {
-            "total_actions": len(self._records),
+            "total_actions": total,
             "by_state": stats,
             "requires_attention": {
-                "pending_approvals": len(pending),
-                "failed_actions": len(failed),
+                "pending_approvals": stats.get("pending_approval", 0),
+                "failed_actions": stats.get("failed", 0),
                 "deferred_actions": stats.get("deferred", 0),
             },
-            "latest_pending": [r.to_dict() for r in pending[:5]],
-            "latest_failed": [r.to_dict() for r in failed[:5]],
+            "latest_pending": [r.to_dict() for r in pending],
+            "latest_failed": [r.to_dict() for r in failed],
         }
-    
-    # =========================================================================
+
+    # =====================================================================
     # Subscriptions
-    # =========================================================================
-    
+    # =====================================================================
+
     def subscribe(self, callback: callable):
-        """Subscribe to state changes."""
+        """Subscribe to state changes (notified on explicit transitions)."""
         self._subscribers.append(callback)
-    
+
     async def _notify(self, record: ActionRecord):
         """Notify all subscribers of a state change."""
         for callback in self._subscribers:
@@ -306,50 +381,94 @@ class Governor:
                     callback(record)
             except Exception as e:
                 logger.error(f"[GOVERNOR] Subscriber error: {e}")
-    
-    # =========================================================================
-    # Cleanup
-    # =========================================================================
-    
-    async def cleanup_old(self, hours: int = 24):
-        """Remove records older than N hours."""
-        cutoff = datetime.utcnow() - __import__('datetime').timedelta(hours=hours)
-        to_remove = []
-        
-        async with self._lock:
-            for action_id, record in self._records.items():
-                if record.created_at < cutoff:
-                    to_remove.append(action_id)
-            
-            for action_id in to_remove:
-                self._remove(action_id)
-        
-        logger.info(f"[GOVERNOR] Cleaned up {len(to_remove)} old records")
-        return len(to_remove)
-    
-    def _remove(self, action_id: str):
-        """Internal remove without lock."""
-        record = self._records.pop(action_id, None)
-        if record:
-            self._by_state[record.state].discard(action_id)
-            self._by_action.get(record.action, set()).discard(action_id)
-            self._by_agent.get(record.agent, set()).discard(action_id)
-            if record.promise_id:
-                self._pending_promises.pop(record.promise_id, None)
 
+    # =====================================================================
+    # Row Mapping
+    # =====================================================================
 
-# Singleton
-governor = Governor()
+    def _row_to_record(self, row) -> ActionRecord:
+        """Convert a DB row to an ActionRecord."""
+        # Derive state from decision + execution result
+        state = self._derive_state(row)
 
+        # Extract args preview from payload
+        payload = row.get('payload_json') or {}
+        args_preview = str(payload)[:200] if payload else ""
 
-def get_governor() -> Governor:
-    """Get the global governor instance."""
-    return governor
+        # Extract result preview from execution result
+        exec_result = row.get('exec_result')
+        result_preview = str(exec_result)[:200] if exec_result else ""
+
+        # Extract error
+        error_message = row.get('exec_error') or row.get('decision_reason')
+
+        # Timing
+        started_at = row.get('exec_started')
+        completed_at = row.get('exec_completed')
+        updated_at = row.get('created_at')  # actions table is immutable, use created
+
+        return ActionRecord(
+            id=row['id'],
+            action=row['action'],
+            resource=row['resource'],
+            state=state,
+            created_at=row['created_at'],
+            updated_at=updated_at or datetime.utcnow(),
+            agent=row.get('agent', 'default'),
+            risk=row.get('risk_level', 'LOW') or 'LOW',
+            approval_level='NONE',  # Could be enriched from approvals table
+            args_preview=args_preview,
+            result_preview=result_preview,
+            error_message=error_message,
+            started_at=started_at,
+            completed_at=completed_at,
+            metadata={
+                'winning_rule': row.get('winning_rule'),
+                'path_taken': row.get('path_taken'),
+                'risk_score': row.get('risk_score'),
+            },
+        )
+
+    def _derive_state(self, row) -> ActionState:
+        """Derive ActionState from decision_status + execution result."""
+        decision_status = row.get('decision_status')
+        exec_success = row.get('exec_success')
+
+        if decision_status is None:
+            return ActionState.PENDING
+
+        # Map decision statuses
+        if decision_status in ('PENDING_APPROVAL',):
+            return ActionState.PENDING_APPROVAL
+        if decision_status in ('DEFERRED',):
+            return ActionState.DEFERRED
+        if decision_status in ('BLOCKED_SCHEMA', 'BLOCKED_EMERGENCY', 'BLOCKED_CAPABILITY',
+                                'BLOCKED_POLICY', 'RATE_LIMITED', 'REJECTED_APPROVAL'):
+            return ActionState.DENIED
+        if decision_status in ('EXPIRED_APPROVAL', 'TIMEOUT'):
+            return ActionState.TIMEOUT
+        if decision_status == 'FAILED_EXECUTION':
+            return ActionState.FAILED
+        if decision_status == 'ALLOWED':
+            if exec_success is True:
+                return ActionState.SUCCESS
+            elif exec_success is False:
+                return ActionState.FAILED
+            else:
+                return ActionState.EXECUTING
+        if decision_status in ('EXECUTED',):
+            if exec_success is True:
+                return ActionState.SUCCESS
+            elif exec_success is False:
+                return ActionState.FAILED
+            else:
+                return ActionState.EXECUTING
+
+        return ActionState.PENDING
 
 
 __all__ = [
     'Governor',
     'ActionRecord',
     'ActionState',
-    'get_governor',
 ]

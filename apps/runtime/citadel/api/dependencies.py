@@ -1,7 +1,7 @@
 """
 Citadel API Dependencies
 
-- API key authentication
+- API key authentication (hashed, scoped)
 - Rate limiting
 - Kernel factory (singleton per request)
 """
@@ -11,6 +11,7 @@ from fastapi import HTTPException, Header, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from citadel.config import settings
+from citadel.auth.api_key import ApiKeyManager
 from citadel.execution.kernel import Kernel
 from citadel.core.repository import Repository
 from citadel.services.policy_resolver import PolicyResolver, PolicyEvaluator
@@ -24,6 +25,15 @@ from citadel.tokens import TokenVault, KillSwitch, TokenVerifier
 # Global pool reference (set in lifespan)
 _pool: Optional = None
 
+# API Key Manager (initialized from settings)
+_api_key_manager: Optional[ApiKeyManager] = None
+
+def get_api_key_manager() -> ApiKeyManager:
+    global _api_key_manager
+    if _api_key_manager is None:
+        _api_key_manager = ApiKeyManager.from_settings(settings.api_keys)
+    return _api_key_manager
+
 security = HTTPBearer(auto_error=False)
 
 
@@ -31,13 +41,11 @@ async def require_api_key(
     request: Request,
     api_key: Optional[str] = Header(None, alias=settings.api_key_header),
 ) -> str:
-    """Validate API key from header."""
+    """Validate API key from header using hashed, scoped key management."""
     if not settings.require_auth:
         return "anonymous"
     
-    # Demo/dev key bypass: if key matches simple valid_api_keys, allow without secret
-    if api_key and api_key in settings.valid_api_keys:
-        return api_key
+    manager = get_api_key_manager()
     
     # Check header
     key = api_key
@@ -52,10 +60,11 @@ async def require_api_key(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if key not in settings.valid_api_keys:
+    validated = manager.validate(key)
+    if validated is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid API key",
+            detail="Invalid or expired API key",
         )
     
     return key

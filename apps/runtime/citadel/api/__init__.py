@@ -13,6 +13,7 @@ Run: uvicorn citadel.api:app --reload
 
 from contextlib import asynccontextmanager
 import logging
+import os
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
@@ -67,7 +68,13 @@ async def _ensure_bootstrap_operator(pool) -> None:
                 row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
                 if row and row["cnt"] > 0:
                     return
-                password = "admin123"
+                # Dev-only fallback: generate a random password and log it once
+                import secrets
+                password = secrets.token_urlsafe(16)
+                logger.warning(
+                    "Bootstrap password not configured. Generated dev-only password. "
+                    "Set CITADEL_ADMIN_BOOTSTRAP_PASSWORD in production."
+                )
 
             import hashlib
 
@@ -206,6 +213,20 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
+    # Validate secrets before starting (fail loud in production)
+    secret_errors = settings.validate_secrets()
+    if secret_errors:
+        for error in secret_errors:
+            if error.startswith("CRITICAL"):
+                logger.error(error)
+            else:
+                logger.warning(error)
+        if not settings.debug:
+            raise RuntimeError(
+                f"Production startup blocked: {len(secret_errors)} secret validation errors. "
+                f"See logs above. Set debug=True only for development."
+            )
+
     # Initialize OpenTelemetry
     setup_telemetry(service_name="citadel-api")
     
@@ -238,7 +259,7 @@ def create_app() -> FastAPI:
     app.state.cache = AppCache()
     jwt_secret = settings.citadel_jwt_secret
     if not jwt_secret or jwt_secret == "secret_key_change_me_in_prod":
-        if settings.debug:
+        if settings.debug or os.environ.get("CITADEL_TESTING") == "true":
             jwt_secret = "DEV_ONLY_DO_NOT_USE_IN_PROD"
             logger.warning("CITADEL_JWT_SECRET not set; using a dev-only key.")
         else:

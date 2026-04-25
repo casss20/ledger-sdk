@@ -15,8 +15,7 @@ Rule: No decision logic leaks across modules. Each module has one job.
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any, Callable, Awaitable
-from dataclasses import dataclass
+from typing import Optional
 
 from citadel.actions import Action, Decision, KernelStatus, KernelResult
 
@@ -40,13 +39,13 @@ class Kernel:
 
     def __init__(
         self,
-        repository: 'Repository',
-        policy_resolver: 'PolicyResolver',
-        precedence: 'Precedence',
-        approval_service: 'ApprovalService',
-        capability_service: 'CapabilityService',
-        audit_service: 'AuditService',
-        executor: 'Executor',
+        repository,
+        policy_resolver,
+        precedence,
+        approval_service,
+        capability_service,
+        audit_service,
+        executor,
     ):
         self.repo = repository
         self.policy = policy_resolver
@@ -242,163 +241,3 @@ class Kernel:
         await self.repo.save_decision(decision)
         await self.audit.decision_made(action, decision)
         return decision
-
-
-@dataclass
-class PrecedenceResult:
-    """Result of precedence evaluation."""
-    blocked: bool
-    status: Optional[KernelStatus]
-    winning_rule: Optional[str]
-    reason: Optional[str]
-    path_taken: Optional[str]
-
-
-class Precedence:
-    """
-    Evaluates governance precedence: kill switch -> capability -> policy.
-
-    No decision logic leaks outside this module.
-    """
-
-    async def evaluate(
-        self,
-        action: Action,
-        snapshot: Optional[Any],  # PolicySnapshot
-        capability_token: Optional[str],
-        caps: 'CapabilityService',
-        audit: 'AuditService',
-    ) -> PrecedenceResult:
-        """
-        Evaluate precedence chain.
-
-        Order: Kill Switch -> Capability -> Policy
-        """
-        # 1. Kill switch check (highest precedence)
-        kill_switch = await self._check_kill_switch(action)
-        if kill_switch.active:
-            await audit.kill_switch_checked(action, kill_switch)
-            return PrecedenceResult(
-                blocked=True,
-                status=KernelStatus.BLOCKED_EMERGENCY,
-                winning_rule="kill_switch_active",
-                reason=kill_switch.reason,
-                path_taken="blocked"
-            )
-
-        # 2. Capability check (if token provided)
-        if capability_token:
-            cap_check = await caps.validate(capability_token, action)
-            await audit.capability_checked(action, cap_check)
-
-            if not cap_check.valid:
-                return PrecedenceResult(
-                    blocked=True,
-                    status=KernelStatus.BLOCKED_CAPABILITY,
-                    winning_rule="capability_invalid",
-                    reason=cap_check.reason,
-                    path_taken="blocked"
-                )
-
-        # 3. Policy evaluation
-        if snapshot:
-            policy_result = self._evaluate_policy(snapshot, action)
-
-            if policy_result.effect == "BLOCK":
-                return PrecedenceResult(
-                    blocked=True,
-                    status=KernelStatus.BLOCKED_POLICY,
-                    winning_rule=policy_result.rule_name,
-                    reason=policy_result.reason,
-                    path_taken="blocked"
-                )
-            elif policy_result.effect == "PENDING_APPROVAL":
-                # Don't block here - let approval_service handle
-                return PrecedenceResult(
-                    blocked=False,
-                    status=None,
-                    winning_rule=policy_result.rule_name,
-                    reason=policy_result.reason,
-                    path_taken="approval_required"
-                )
-
-        # 4. Path selection (from RUNTIME.md)
-        path = self._select_path(action, snapshot)
-
-        return PrecedenceResult(
-            blocked=False,
-            status=None,
-            winning_rule="allowed",
-            reason="All checks passed",
-            path_taken=path
-        )
-
-    async def _check_kill_switch(self, action: Action) -> Any:
-        """Check if kill switch is active for action scope."""
-        # Delegates to repository
-        pass
-
-    def _evaluate_policy(self, snapshot: Any, action: Action) -> Any:
-        """Evaluate policy rules against action."""
-        # Returns PolicyEvaluationResult with effect
-        pass
-
-    def _select_path(self, action: Action, snapshot: Any) -> str:
-        """Select execution path: fast, standard, structured, high_risk."""
-        # From RUNTIME.md path selection
-        if self._is_fast_path(action):
-            return "fast"
-        elif self._is_high_risk(action):
-            return "high_risk"
-        elif self._is_structured(action):
-            return "structured"
-        return "standard"
-
-    def _is_fast_path(self, action: Action) -> bool:
-        """Trusted actor + known action + no risk flags."""
-        pass
-
-    def _is_high_risk(self, action: Action) -> bool:
-        """Irreversible + high stakes + production."""
-        pass
-
-    def _is_structured(self, action: Action) -> bool:
-        """Multi-step + needs planning."""
-        pass
-
-
-# Placeholder classes for type hints
-class Repository:
-    async def save_action(self, action: Action): pass
-    async def save_decision(self, decision: Decision): pass
-    async def find_decision_by_idempotency(self, actor_id: str, key: str) -> Optional[Decision]: pass
-    async def save_execution_result(self, action_id: uuid.UUID, success: bool, result: Any, error: Optional[str] = None): pass
-
-
-class PolicyResolver:
-    async def resolve(self, action: Action) -> Any: pass  # Returns PolicySnapshot
-
-
-class ApprovalService:
-    async def check_required(self, action: Action, snapshot: Any) -> Any: pass  # Returns ApprovalCheck
-    async def create_pending(self, action: Action, check: Any) -> uuid.UUID: pass  # Returns approval_id
-
-
-class CapabilityService:
-    async def validate(self, token: str, action: Action) -> Any: pass  # Returns CapabilityCheck
-
-
-class AuditService:
-    async def action_received(self, action: Action): pass
-    async def policy_evaluated(self, action: Action, snapshot: Any): pass
-    async def kill_switch_checked(self, action: Action, kill_switch: Any): pass
-    async def capability_checked(self, action: Action, check: Any): pass
-    async def approval_requested(self, action: Action, approval_id: uuid.UUID): pass
-    async def decision_made(self, action: Action, decision: Decision): pass
-    async def action_executed(self, action: Action, result: Any): pass
-    async def action_failed(self, action: Action, error: str): pass
-    async def idempotent_return(self, action: Action, cached: Decision): pass
-
-
-class Executor:
-    async def run(self, action: Action) -> Any: pass

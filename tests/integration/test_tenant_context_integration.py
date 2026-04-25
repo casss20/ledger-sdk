@@ -3,7 +3,12 @@ End-to-end integration test: Request comes in, middleware sets context,
 RLS filters data, response goes out.
 """
 
+import os
 import pytest
+
+# Set testing mode BEFORE importing app to skip startup secret validation
+os.environ["CITADEL_TESTING"] = "true"
+
 from fastapi.testclient import TestClient
 from citadel.api import app
 import uuid

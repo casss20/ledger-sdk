@@ -208,31 +208,42 @@ class Validator:
         return None
     
     def print_report(self):
-        """Print validation report to console."""
+        """Print validation report to console (uses logging)."""
         errors = [i for i in self.issues if i.severity == ValidationSeverity.ERROR]
         warnings = [i for i in self.issues if i.severity == ValidationSeverity.WARNING]
         
-        print("\n" + "="*60)
-        print("Citadel SDK Validation Report")
-        print("="*60)
+        report_lines = [
+            "="*60,
+            "Citadel SDK Validation Report",
+            "="*60,
+        ]
         
         if not self.issues:
-            print("✅ All checks passed — architecture is sound")
+            report_lines.append("✅ All checks passed — architecture is sound")
         else:
             if errors:
-                print(f"\n❌ ERRORS ({len(errors)}):")
+                report_lines.append(f"\n❌ ERRORS ({len(errors)}):")
                 for issue in errors:
-                    print(f"  [{issue.action}] {issue.field}")
-                    print(f"    {issue.message}")
+                    report_lines.append(f"  [{issue.action}] {issue.field}")
+                    report_lines.append(f"    {issue.message}")
                     if issue.suggestion:
-                        print(f"    💡 {issue.suggestion}")
+                        report_lines.append(f"    💡 {issue.suggestion}")
             
             if warnings:
-                print(f"\n⚠️ WARNINGS ({len(warnings)}):")
+                report_lines.append(f"\n⚠️ WARNINGS ({len(warnings)}):")
                 for issue in warnings:
-                    print(f"  [{issue.action}] {issue.field}: {issue.message}")
+                    report_lines.append(f"  [{issue.action}] {issue.field}: {issue.message}")
         
-        print("="*60 + "\n")
+        report_lines.append("="*60)
+        
+        # Log as a single multi-line message
+        report_text = "\n".join(report_lines)
+        if errors:
+            logger.error(report_text)
+        elif warnings:
+            logger.warning(report_text)
+        else:
+            logger.info(report_text)
 
 
 # Singleton
