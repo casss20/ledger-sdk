@@ -17,18 +17,32 @@ Rotate API keys every 90 days without breaking agent functionality.
 ## Implementation
 
 ```python
-# Rotate key for an agent
-new_key = CITADEL.agents.rotate_key(
-    agent_id="payment-agent",
-    grace_period="24h"  # Old key valid for 24h
+# Rotate credentials for an agent (revoke + re-register)
+import requests
+
+BASE = "https://api.citadelsdk.com/api"
+ADMIN_JWT = "your-admin-jwt"
+
+# 1. Revoke old credentials
+resp = requests.post(
+    f"{BASE}/agent-identities/payment-agent/revoke",
+    headers={"Authorization": f"Bearer {ADMIN_JWT}"},
+    json={"reason": "Scheduled 90-day rotation"}
 )
+resp.raise_for_status()
 
-# Update agent configuration
-agent.update_key(new_key)
+# 2. Re-register to get new credentials
+resp = requests.post(
+    f"{BASE}/agent-identities",
+    headers={"Authorization": f"Bearer {ADMIN_JWT}"},
+    json={"agent_id": "payment-agent", "name": "Payment Agent", "tenant_id": "demo"}
+)
+new_creds = resp.json()
+print(f"New API key: {new_creds['api_key']}")
+print(f"New secret (STORE ONCE): {new_creds['secret_key']}")
 
-# Verify old key is invalidated
-old_key_valid = CITADEL.keys.verify(old_key)
-assert old_key_valid is False
+# 3. Update agent configuration
+agent.update_key(new_creds['api_key'])
 ```
 
 ---

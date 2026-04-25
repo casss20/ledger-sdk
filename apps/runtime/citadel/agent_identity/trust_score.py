@@ -49,12 +49,128 @@ class TrustScorer:
     - Human approvals required
     """
     
-    def __init__(self, db_pool):
+    def __init__(self, db_pool=None):
         self.db = db_pool
     
+    @staticmethod
+    def compute_score(
+        verified: bool,
+        health_score: int,
+        quarantined: bool,
+        actions_today: int,
+        token_spend: int,
+        token_budget: int,
+        compliance_tags: list,
+        created_at: datetime,
+        failed_challenges: int = 0,
+        challenge_count: int = 0,
+    ) -> tuple[float, TrustLevel, Dict[str, float]]:
+        """
+        Synchronous trust score computation from raw data.
+        
+        Used by the agents router when it already has the identity
+        and agent rows fetched from the database.
+        
+        Returns: (score: float, level: TrustLevel, factors: dict)
+        """
+        factors: Dict[str, float] = {}
+        score = 0.0
+        
+        # Verification factor (0.25)
+        if verified:
+            score += 0.25
+            factors["verification"] = 0.25
+        else:
+            factors["verification"] = 0.0
+        
+        # Age factor (0.02 per day, max 0.15)
+        age_days = (datetime.utcnow() - created_at).days if created_at else 0
+        age_bonus = min(age_days * 0.02, 0.15)
+        score += age_bonus
+        factors["age_days"] = age_days
+        factors["age_bonus"] = age_bonus
+        
+        # Health factor (max 0.20)
+        health_factor = (health_score / 100) * 0.20
+        score += health_factor
+        factors["health"] = health_factor
+        
+        # Quarantine penalty
+        if quarantined:
+            score -= 0.30
+            factors["quarantine"] = -0.30
+        else:
+            factors["quarantine"] = 0.10
+            score += 0.10
+        
+        # Action rate factor
+        if actions_today > 1000:
+            score -= 0.10
+            factors["action_rate"] = -0.10
+        elif actions_today > 100:
+            factors["action_rate"] = 0.05
+            score += 0.05
+        else:
+            factors["action_rate"] = 0.10
+            score += 0.10
+        
+        # Compliance factor
+        required_tags = {"gdpr", "hipaa", "soc2"}
+        present = set(t.lower() for t in compliance_tags) & required_tags
+        if present:
+            score += 0.15
+            factors["compliance"] = 0.15
+        else:
+            factors["compliance"] = -0.15
+            score -= 0.15
+        
+        # Budget factor
+        if token_budget > 0:
+            budget_ratio = token_spend / token_budget
+            if budget_ratio > 0.9:
+                score -= 0.05
+                factors["budget"] = -0.05
+            else:
+                factors["budget"] = 0.05
+                score += 0.05
+        else:
+            factors["budget"] = 0.0
+        
+        # Challenge reliability
+        if challenge_count > 0:
+            fail_rate = failed_challenges / max(challenge_count, 1)
+            if fail_rate > 0.5:
+                score -= 0.05
+                factors["challenge_reliability"] = -0.05
+            else:
+                factors["challenge_reliability"] = 0.05
+                score += 0.05
+        else:
+            factors["challenge_reliability"] = 0.0
+        
+        # Clamp
+        score = max(0.0, min(1.0, score))
+        
+        # Determine level
+        if score >= 0.8:
+            level = TrustLevel.HIGHLY_TRUSTED
+        elif score >= 0.6:
+            level = TrustLevel.TRUSTED
+        elif score >= 0.4:
+            level = TrustLevel.STANDARD
+        elif score >= 0.2:
+            level = TrustLevel.UNVERIFIED
+        else:
+            level = TrustLevel.REVOKED
+        
+        return score, level, factors
+    
     async def calculate_score(self, agent_id: str) -> TrustScore:
-        """Calculate trust score for an agent."""
+        """Calculate trust score for an agent (async, DB-backed)."""
         factors = {}
+        
+        if not self.db:
+            return TrustScore(agent_id=agent_id, score=0.0, level=TrustLevel.REVOKED)
         
         async with self.db.acquire() as conn:
             # Get identity
@@ -177,6 +293,9 @@ class TrustScorer:
         """Calculate and update an agent's trust level."""
         score = await self.calculate_score(agent_id)
         
+        if not self.db:
+            return score
+        
         async with self.db.acquire() as conn:
             await conn.execute(
                 """
@@ -203,6 +322,9 @@ class TrustScorer:
     
     async def evaluate_all(self) -> Dict[str, TrustScore]:
         """Evaluate trust scores for all agents."""
+        if not self.db:
+            return {}
+        
         async with self.db.acquire() as conn:
             rows = await conn.fetch("SELECT agent_id FROM agents")
         

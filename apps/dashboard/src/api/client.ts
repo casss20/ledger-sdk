@@ -143,4 +143,68 @@ export const auditApi = {
   }>('/governance/audit/verify'),
 };
 
+// Agent Identities
+export interface AgentIdentity {
+  agent_id: string;
+  tenant_id: string;
+  public_key: string;
+  trust_level: string;
+  verification_status: string;
+  created_at: string;
+  last_verified_at?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TrustScore {
+  agent_id: string;
+  score: number;
+  level: string;
+  factors: Record<string, number>;
+}
+
+export interface CapabilityToken {
+  type: string;
+  agent_id: string;
+  action: string;
+  resource: string;
+  issued_at: string;
+  expires_at: string;
+  trust_level: string;
+}
+
+export const agentIdentityApi = {
+  list: (tenantId?: string) =>
+    fetchApi<{ identities: AgentIdentity[]; count: number }>(
+      '/agent-identities',
+      { params: tenantId ? { tenant_id: tenantId } : undefined }
+    ),
+  get: (agentId: string) =>
+    fetchApi<AgentIdentity>(`/agent-identities/${agentId}`),
+  register: (data: { agent_id: string; name: string; tenant_id: string; owner?: string }) =>
+    fetchApi<{ agent_id: string; api_key: string; secret_key: string; public_key: string; trust_score: number; trust_level: string }>(
+      '/agent-identities',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+  authenticate: (agentId: string, secretKey: string) =>
+    fetchApi<{ agent_id: string; authenticated: boolean; tenant_id: string; trust_level: string; verification_status: string }>(
+      `/agent-identities/${agentId}/authenticate`,
+      { method: 'POST', body: JSON.stringify({ secret_key: secretKey }) }
+    ),
+  trust: (agentId: string) =>
+    fetchApi<TrustScore>(`/agent-identities/${agentId}/trust`),
+  capability: (agentId: string, action: string, resource: string, context?: Record<string, unknown>) =>
+    fetchApi<{ verified: boolean; authorized: boolean; token: CapabilityToken | null; error?: string }>(
+      `/agent-identities/${agentId}/capability`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ action, resource, context }),
+      }
+    ),
+  revoke: (agentId: string, reason: string) =>
+    fetchApi<{ agent_id: string; revoked: boolean; reason: string }>(
+      `/agent-identities/${agentId}/revoke`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
+};
+
 export type { ApiError };

@@ -59,7 +59,7 @@ async def get_dashboard_stats(
             tenant_id
         ) or 0
         
-        # Active agents
+        # Active agents (from actions table — agents that performed actions)
         active_agents = await conn.fetchval(
             """
             SELECT COUNT(DISTINCT actor_id) FROM actions 
@@ -68,6 +68,48 @@ async def get_dashboard_stats(
             """,
             tenant_id
         ) or 0
+
+        # ---- Agent Identity Stats ----
+        registered_identities = await conn.fetchval(
+            "SELECT COUNT(*) FROM agent_identities WHERE tenant_id = $1",
+            tenant_id
+        ) or 0
+
+        verified_identities = await conn.fetchval(
+            """
+            SELECT COUNT(*) FROM agent_identities
+            WHERE tenant_id = $1 AND verified = TRUE AND revoked = FALSE
+            """,
+            tenant_id
+        ) or 0
+
+        revoked_identities = await conn.fetchval(
+            """
+            SELECT COUNT(*) FROM agent_identities
+            WHERE tenant_id = $1 AND revoked = TRUE
+            """,
+            tenant_id
+        ) or 0
+
+        avg_trust_score = await conn.fetchval(
+            """
+            SELECT COALESCE(AVG(trust_score), 0.0)
+            FROM agent_identities
+            WHERE tenant_id = $1 AND revoked = FALSE
+            """,
+            tenant_id
+        ) or 0.0
+
+        trust_breakdown = await conn.fetch(
+            """
+            SELECT trust_level, COUNT(*) as cnt
+            FROM agent_identities
+            WHERE tenant_id = $1 AND revoked = FALSE
+            GROUP BY trust_level
+            """,
+            tenant_id
+        )
+        trust_levels = {row["trust_level"]: row["cnt"] for row in trust_breakdown}
 
         kill_switches_active = await conn.fetchval(
             """
@@ -103,6 +145,13 @@ async def get_dashboard_stats(
             "approved_this_month": approved_month,
             "blocked_this_month": blocked_month,
             "active_agents_24h": active_agents,
+            "agent_identities": {
+                "registered": registered_identities,
+                "verified": verified_identities,
+                "revoked": revoked_identities,
+                "avg_trust_score": round(float(avg_trust_score), 3),
+                "trust_level_breakdown": trust_levels,
+            },
         }
 
 @router.get("/dashboard/approvals")

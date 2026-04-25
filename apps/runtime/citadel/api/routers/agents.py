@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
+import hashlib
+import secrets
 
 router = APIRouter(tags=["agents"])
 
@@ -23,6 +26,14 @@ class AgentPatch(BaseModel):
     status: Optional[str] = None
     actions_today: Optional[int] = None
     token_spend: Optional[int] = None
+
+
+class AgentTrustScoreResponse(BaseModel):
+    """Trust score response (computed from agent + identity tables)."""
+    agent_id: str
+    trust_score: float
+    trust_level: str
+    factors: Dict[str, Any]
 
 
 @router.get("/agents")
@@ -92,7 +103,6 @@ async def toggle_quarantine(agent_id: str, request: Request):
             raise HTTPException(status_code=404, detail="Agent not found")
 
         new_quarantined = not current["quarantined"]
-        # Zero out actions_today when quarantining
         new_actions_today = 0 if new_quarantined else None
 
         if new_actions_today is not None:
@@ -151,3 +161,59 @@ async def patch_agent(agent_id: str, body: AgentPatch, request: Request):
     if not row:
         raise HTTPException(status_code=404, detail="Agent not found")
     return dict(row)
+
+
+# ============================================================================
+# Agent Identity Trust Score (reads from agent_identity module)
+# ============================================================================
+
+@router.get("/agents/{agent_id}/trust", response_model=AgentTrustScoreResponse)
+async def get_agent_trust_score(agent_id: str, request: Request):
+    """
+    Get the current trust score for an agent.
+    
+    This endpoint reads from the agent_identities table maintained by the
+    agent_identity module. It provides a lightweight read-only view for
+    dashboard and agent listings.
+    """
+    from citadel.agent_identity.trust_score import TrustScorer, TrustLevel
+    
+    async with request.app.state.db_pool.acquire() as conn:
+        identity = await conn.fetchrow(
+            """
+            SELECT id, trust_score, trust_level, verified, created_at, updated_at,
+                   failed_challenges, challenge_count
+            FROM agent_identities
+            WHERE agent_id = $1 AND revoked = FALSE
+            """,
+            agent_id,
+        )
+        if not identity:
+            raise HTTPException(status_code=404, detail="Agent identity not found")
+        
+        agent = await conn.fetchrow(
+            "SELECT health_score, quarantined, actions_today, token_spend, token_budget, compliance, created_at "
+            "FROM agents WHERE agent_id = $1",
+            agent_id,
+        )
+        
+        scorer = TrustScorer()
+        score, level, factors = scorer.compute_score(
+            verified=identity["verified"],
+            health_score=agent["health_score"] if agent else 100,
+            quarantined=agent["quarantined"] if agent else False,
+            actions_today=agent["actions_today"] if agent else 0,
+            token_spend=agent["token_spend"] if agent else 0,
+            token_budget=agent["token_budget"] if agent else 100000,
+            compliance_tags=agent["compliance"] if agent else [],
+            created_at=identity["created_at"],
+            failed_challenges=identity["failed_challenges"] or 0,
+            challenge_count=identity["challenge_count"] or 0,
+        )
+    
+    return AgentTrustScoreResponse(
+        agent_id=agent_id,
+        trust_score=score,
+        trust_level=level.value,
+        factors=factors,
+    )

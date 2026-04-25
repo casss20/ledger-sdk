@@ -9,7 +9,8 @@ import {
   Zap,
   CreditCard,
   ChevronRight,
-  User
+  User,
+  Fingerprint
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -17,6 +18,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Overview', path: '/' },
   { icon: Activity, label: 'Activity', path: '/activity' },
   { icon: ShieldCheck, label: 'Approvals', path: '/approvals' },
+  { icon: Fingerprint, label: 'Agents', path: '/agents' },
   { icon: Lock, label: 'Policies', path: '/policies' },
   { icon: Zap, label: 'Integrations', path: '/integrations' },
   { icon: CreditCard, label: 'Billing', path: '/billing' },

@@ -18,48 +18,54 @@ When Agent A calls Agent B, both must prove their identity to prevent spoofing a
 
 ### Register agents
 
-```python
+```bash
 # Register both agents
-CITADEL.agents.register(agent_id="agent-a", role="processor")
-CITADEL.agents.register(agent_id="agent-b", role="validator")
+curl -X POST https://api.citadelsdk.com/api/agent-identities \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent-a", "name": "Processor", "tenant_id": "demo"}'
+
+curl -X POST https://api.citadelsdk.com/api/agent-identities \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent-b", "name": "Validator", "tenant_id": "demo"}'
 ```
 
-### Issue auth token
+### Verify both agents
 
-```python
-# Agent A requests permission to call Agent B
-auth_token = CITADEL.agents.authenticate(
-    from_agent="agent-a",
-    to_agent="agent-b",
-    permissions=["read", "write"],
-    expiry="1h"
-)
+```bash
+# Operator verifies both agents
+curl -X POST https://api.citadelsdk.com/api/agent-identities/agent-a/verify \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"verifier_id": "op-admin"}'
+
+curl -X POST https://api.citadelsdk.com/api/agent-identities/agent-b/verify \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"verifier_id": "op-admin"}'
 ```
 
-### Verify on receipt
+### Issue capability token (Agent A → Agent B)
 
-```python
-# Agent B verifies the token
-claims = CITADEL.agents.verify_auth(
-    agent_id="agent-b",
-    token=auth_token
-)
-
-print(claims.from_agent)  # "agent-a"
-print(claims.permissions)  # ["read", "write"]
-print(claims.expiry)  # ISO timestamp
+```bash
+# Agent A requests capability to interact with Agent B's resource
+curl -X POST https://api.citadelsdk.com/api/agent-identities/agent-a/capability \
+  -H "Authorization: Bearer $AGENT_A_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "delegate",
+    "resource": "agent-b",
+    "context": {"permissions": ["read", "write"], "correlation_id": "task-123"}
+  }'
 ```
 
-### Mutual authentication
+### Verify on receipt (Agent B checks)
 
-```python
-# Agent B responds with its own token
-response_token = CITADEL.agents.authenticate(
-    from_agent="agent-b",
-    to_agent="agent-a",
-    permissions=["respond"],
-    correlation_id=auth_token.id
-)
+```bash
+# Agent B checks trust of Agent A before accepting work
+curl https://api.citadelsdk.com/api/agent-identities/agent-a/trust \
+  -H "Authorization: Bearer $AGENT_B_API_KEY"
 ```
 
 ---

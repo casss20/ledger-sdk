@@ -7,6 +7,7 @@ import { Policies } from "../pages/Policies";
 import { Integrations } from "../pages/Integrations";
 import { Settings } from "../pages/Settings";
 import { LoginPage } from "../pages/Login";
+import { Agents } from "../pages/Agents";
 import Billing from "../pages/Billing";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export function AppRouter() {
         <Route path="/policies" element={<Policies />} />
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/agents" element={<Agents />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>

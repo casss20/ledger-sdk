@@ -17,24 +17,35 @@ When an agent's trust score drops below threshold, automatically remove risky pe
 ## Implementation
 
 ```python
-# Monitor trust score
-score = CITADEL.trust.get_score(agent_id="data-agent")
+# Monitor trust score and downgrade capabilities
+import requests
 
-if score.value < 300:
-    # Downgrade: remove write access
-    CITADEL.agents.update_capabilities(
-        agent_id="data-agent",
-        remove=["database.write", "api.delete"]
+BASE = "https://api.citadelsdk.com/api"
+ADMIN_JWT = "your-admin-jwt"
+
+# Get current trust score
+resp = requests.get(
+    f"{BASE}/agent-identities/data-agent/trust",
+    headers={"Authorization": f"Bearer {ADMIN_JWT}"}
+)
+trust = resp.json()
+score = trust["trust_score"]
+
+if score < 0.30:
+    # Downgrade: quarantine agent (removes all capabilities)
+    requests.post(
+        f"{BASE}/agents/data-agent/quarantine",
+        headers={"Authorization": f"Bearer {ADMIN_JWT}"}
     )
-
     # Alert
-    CITADEL.alerts.send(
-        channel="#agent-ops",
-        message=f"Agent data-agent downgraded. Trust score: {score.value}"
+    print(f"ALERT: Agent data-agent quarantined. Trust score: {score}")
+elif score > 0.60:
+    # Restore: unquarantine if previously downgraded
+    requests.post(
+        f"{BASE}/agents/data-agent/quarantine",
+        headers={"Authorization": f"Bearer {ADMIN_JWT}"}
     )
-elif score.value > 600 and agent.is_downgraded:
-    # Restore capabilities
-    CITADEL.agents.restore_capabilities(agent_id="data-agent")
+    print(f"Agent data-agent restored. Trust score: {score}")
 ```
 
 ---

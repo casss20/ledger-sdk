@@ -21,11 +21,16 @@ npm install @citadel/sdk @citadel/sdk-openai
 
 ```typescript
 import { Agent } from 'openai-agents';
-import { CITADELGuardrail } from '@citadel/sdk-openai';
+import { CitadelGuardrail } from '@citadel/sdk-openai';
 
-const CITADEL = new CITADELClient({ apiKey: 'ldk_test_...' });
+const CITADEL_BASE = 'https://api.citadelsdk.com/api';
+const API_KEY = 'ak_demo_...';
 
-const guardrail = new CITADELGuardrail({ client: CITADEL, agentId: 'openai-agent-01' });
+const guardrail = new CitadelGuardrail({
+  baseUrl: CITADEL_BASE,
+  apiKey: API_KEY,
+  agentId: 'openai-agent-01'
+});
 
 const agent = new Agent({
   name: 'EmailAgent',
@@ -57,10 +62,18 @@ import { handoff } from 'openai-agents';
 const salesAgent = new Agent({ name: 'Sales', guardrails: [guardrail] });
 const supportAgent = new Agent({ name: 'Support', guardrails: [guardrail] });
 
+// Issue capability token for handoff
+const resp = await fetch(`${CITADEL_BASE}/agent-identities/sales/capability`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'handoff', resource: 'support', context: {} })
+});
+const { token } = await resp.json();
+
 await handoff({
   from: salesAgent,
   to: supportAgent,
-  authToken: CITADEL.agents.authenticate('sales', 'support')
+  authToken: token  // Capability token from Citadel
 });
 ```
 

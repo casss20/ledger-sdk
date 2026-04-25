@@ -107,19 +107,27 @@ task_simple = Task(
 When agents hand off work, verify identity:
 
 ```python
-# Agent A completes task, generates auth token
+# Agent A completes task, generates capability token for handoff
 task_result = task1.execute()
-auth_token = CITADEL.agents.authenticate(
-    from_agent="researcher-01",
-    to_agent="writer-01",
-    task_id=task_result.id
-)
 
-# Agent B verifies before accepting
-is_valid = CITADEL.agents.verify_auth(
-    agent_id="writer-01",
-    token=auth_token
+resp = requests.post(
+    f"{CITADEL_BASE}/agent-identities/researcher-01/capability",
+    headers={"Authorization": f"Bearer {RESEARCHER_API_KEY}"},
+    json={
+        "action": "delegate",
+        "resource": "writer-01",
+        "context": {"task_id": task_result.id}
+    }
 )
+auth_token = resp.json()["token"]
+
+# Agent B verifies trust of Agent A before accepting
+resp = requests.get(
+    f"{CITADEL_BASE}/agent-identities/researcher-01/trust",
+    headers={"Authorization": f"Bearer {WRITER_API_KEY}"}
+)
+trust = resp.json()
+is_valid = trust["level"] in ["trusted", "highly_trusted"]
 ```
 
 ---

@@ -17,27 +17,33 @@ Test third-party or experimental agents without risking production systems.
 ## Implementation
 
 ```python
-# Create sandboxed agent context
-sandbox = CITADEL.agents.create_sandbox(
-    agent_id="experimental-agent",
-    restrictions={
-        "network": "none",
-        "filesystem": "read-only",
-        "execution_time": "5m",
-        "memory": "512MB"
+# Create a quarantined agent for sandbox testing
+import requests
+
+BASE = "https://api.citadelsdk.com/api"
+ADMIN_JWT = "your-admin-jwt"
+
+# 1. Create agent in quarantined state
+resp = requests.post(
+    f"{BASE}/agents",
+    headers={"Authorization": f"Bearer {ADMIN_JWT}"},
+    json={
+        "agent_id": "experimental-agent",
+        "name": "Experimental Agent",
+        "quarantined": True,
+        "token_budget": 1000,
+        "compliance": ["sandbox"]
     }
 )
+resp.raise_for_status()
 
-# Run agent in sandbox
-with sandbox:
-    action = citadel.govern(
-        agent_id="experimental-agent",
-        action="code.execute",
-        params={"code": "print('hello')"}
-    )
-    result = action.execute()
-
-# Sandbox is automatically destroyed
+# 2. Register identity (but keep quarantined)
+resp = requests.post(
+    f"{BASE}/agent-identities",
+    headers={"Authorization": f"Bearer {ADMIN_JWT}"},
+    json={"agent_id": "experimental-agent", "name": "Experimental", "tenant_id": "demo"}
+)
+print("Sandbox agent created and quarantined")
 ```
 
 ---

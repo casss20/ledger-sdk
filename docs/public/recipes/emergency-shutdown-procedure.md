@@ -16,28 +16,25 @@ A security breach is detected. You need to immediately halt all agent activity w
 
 ## Immediate Shutdown
 
-```python
-# Stop everything
-CITADEL.kill_switch.activate(
-    scope="organization",
-    reason="Security breach investigation - unauthorized data access detected",
-    duration="indefinite",
-    require_cso_approval=True
-)
+```bash
+# Activate kill switch for entire tenant
+curl -X POST https://api.citadelsdk.com/api/v1/governance/kill-switch \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "tenant",
+    "reason": "Security breach investigation - unauthorized data access detected"
+  }'
 ```
 
 ---
 
 ## Verify Propagation
 
-```python
+```bash
 # Check all agents are stopped
-agents = CITADEL.agents.list()
-for agent in agents:
-    status = CITADEL.agents.get_status(agent.id)
-    assert status.state == "stopped", f"Agent {agent.id} still running!"
-
-print("All agents stopped successfully")
+curl https://api.citadelsdk.com/api/agents \
+  -H "Authorization: Bearer $ADMIN_JWT" | jq '.agents[] | {agent_id, quarantined}'
 ```
 
 ---
@@ -53,27 +50,19 @@ In-flight actions at shutdown time are handled according to policy:
 
 ## Gradual Resume
 
-```python
-# Resume low-risk agents first
-CITADEL.kill_switch.deactivate(
-    agent_id="monitoring-agent",
-    reason="Low risk, monitoring only"
-)
+```bash
+# Clear kill switch for a specific agent (requires admin)
+curl -X POST https://api.citadelsdk.com/api/v1/governance/kill-switch/clear \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "monitoring-agent",
+    "reason": "Low risk, monitoring only"
+  }'
 
-# Wait for confirmation
- time.sleep(300)
-
-# Resume medium-risk
-CITADEL.kill_switch.deactivate(
-    namespace="customer-support",
-    reason="Support queue backing up"
-)
-
-# Finally resume all
-CITADEL.kill_switch.deactivate(
-    scope="organization",
-    reason="Investigation complete, no compromise confirmed"
-)
+# Then unquarantine
+curl -X POST https://api.citadelsdk.com/api/agents/monitoring-agent/quarantine \
+  -H "Authorization: Bearer $ADMIN_JWT"
 ```
 
 ---
