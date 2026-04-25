@@ -575,7 +575,7 @@ function exportJSON(logs: AuditEntry[]) {
 function exportCSV(logs: AuditEntry[]) {
   const headers = ["trace_id","timestamp","decision","initiator_id","initiator_role","agent_id","action","policy_name","reason","approver_id","approver_role","latency_ms","environment","verified"];
   const rows = logs.map(l => headers.map(h => {
-    const v = (l as Record<string, unknown>)[h];
+    const v = (l as unknown as Record<string, unknown>)[h];
     return typeof v === "string" && v.includes(",") ? `"${v}"` : String(v ?? "");
   }).join(","));
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
