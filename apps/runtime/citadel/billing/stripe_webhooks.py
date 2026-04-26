@@ -61,7 +61,8 @@ class StripeWebhookHandler:
             # Use constant-time comparison to prevent timing attacks
             return hmac.compare_digest(expected, signature)
             
-        except Exception:
+        except (ValueError, TypeError, KeyError, UnicodeDecodeError) as sig_err:
+            logger.warning(f"Stripe signature verification error: {sig_err}")
             return False
 
     async def handle(self, event: Dict[str, Any]):

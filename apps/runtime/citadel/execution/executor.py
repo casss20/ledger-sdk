@@ -55,5 +55,9 @@ class Executor:
         """
         try:
             return await func(*args, **kwargs)
-        except Exception:
+        except (asyncpg.PostgresError, ConnectionError, TimeoutError, ValueError, TypeError) as exec_err:
+            logger.warning(f"Primary execution failed ({type(exec_err).__name__}), falling back: {exec_err}")
             return await fallback(*args, **kwargs)
+        except Exception as unexpected_err:
+            logger.error(f"Unexpected execution error ({type(unexpected_err).__name__}): {unexpected_err}", exc_info=True)
+            raise

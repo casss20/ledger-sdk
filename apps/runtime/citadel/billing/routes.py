@@ -78,8 +78,8 @@ async def stripe_webhook(request: Request, repo: BillingRepository = Depends(get
     try:
         await handler.handle(event)
         await repo.mark_event_processed(event["id"])
-    except Exception as e:
-        await repo.mark_event_processed(event["id"], error=str(e))
-        raise HTTPException(status_code=500, detail="Webhook processing failed")
+    except (ValueError, TypeError, KeyError, RuntimeError, ConnectionError) as webhook_err:
+        await repo.mark_event_processed(event["id"], error=f"{type(webhook_err).__name__}: {webhook_err}")
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {type(webhook_err).__name__}")
 
     return {"status": "ok"}

@@ -158,8 +158,8 @@ async def _run_migrations(pool):
                     "INSERT INTO _migrations (filename) VALUES ($1)", filename
                 )
                 logger.info(f"Applied migration: {filename}")
-            except Exception as e:
-                logger.error(f"Migration {filename} failed: {e}")
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as mig_err:
+                logger.error(f"Migration {filename} failed ({type(mig_err).__name__}): {mig_err}")
                 # Fail loud â€” partial schema is worse than not booting.
                 raise
 
@@ -185,16 +185,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Run migrations on startup
         try:
             await _run_migrations(_pool)
-        except Exception as mig_exc:
-            logger.warning(f"Migration runner warning: {mig_exc}")
+        except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as mig_exc:
+            logger.warning(f"Migration runner warning ({type(mig_exc).__name__}): {mig_exc}")
         
         # Ensure the configured bootstrap admin exists after migrations.
         try:
             await _ensure_bootstrap_operator(_pool)
-        except Exception as seed_exc:
-            logger.debug(f"Operator seed skipped: {seed_exc}")
-    except Exception as exc:
-        logger.exception("Database pool initialization failed; readiness will report unhealthy")
+        except (asyncpg.PostgresError, ConnectionError, TimeoutError, RuntimeError) as seed_exc:
+            logger.debug(f"Operator seed skipped ({type(seed_exc).__name__}): {seed_exc}")
+    except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as exc:
+        logger.exception(f"Database pool initialization failed ({type(exc).__name__}); readiness will report unhealthy")
         app.state.db_pool = None
         app.state.db_startup_error = str(exc)
     

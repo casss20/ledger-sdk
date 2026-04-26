@@ -111,17 +111,11 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
                 ):
                     return await call_next(request)
                     
-        except TenantContextError as e:
-            logger.error(f"Tenant context error: {e}")
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "error": "Tenant context failed",
-                    "detail": "Data isolation violated",
-                }
-            )
-        except Exception as e:
-            logger.exception(f"Middleware error: {e}")
+        except (TenantContextError, ValueError, TypeError) as e:
+            logger.error(f"Tenant middleware error ({type(e).__name__}): {e}")
+            raise
+        except (ConnectionError, TimeoutError, RuntimeError) as infra_err:
+            logger.exception(f"Infrastructure error in tenant middleware: {infra_err}")
             raise
     
     def _is_valid_tenant_id(self, tenant_id: str) -> bool:

@@ -116,7 +116,8 @@ async def set_db_tenant_context(
     finally:
         try:
             await connection.execute("RESET app.current_tenant_id")
-        except:
+        except (asyncpg.PostgresError, ConnectionError, RuntimeError) as cleanup_err:
+            logger.debug(f"Failed to reset tenant context: {cleanup_err}")
             pass
 
 class TenantAwarePool:
@@ -137,7 +138,7 @@ class TenantAwarePool:
                         ctx = get_tenant_context()
                         await conn.execute("SELECT set_tenant_context($1)", ctx.tenant_id)
                     yield conn
-                except Exception:
+                except (asyncpg.PostgresError, ConnectionError, TimeoutError, RuntimeError):
                     # Transaction will rollback automatically on exception
                     raise
                 finally:

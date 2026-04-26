@@ -37,7 +37,7 @@ def _row_to_dict(row) -> dict:
     if isinstance(payload, str):
         try:
             payload = json.loads(payload)
-        except Exception:
+        except (json.JSONDecodeError, TypeError, ValueError):
             payload = {}
 
     decision = _classify(row["event_type"])

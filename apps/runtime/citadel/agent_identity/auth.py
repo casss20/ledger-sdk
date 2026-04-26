@@ -88,7 +88,7 @@ class AgentAuthService:
         try:
             decoded = base64.b64decode(signature)
             return len(decoded) >= 32  # Basic length check
-        except Exception:
+        except (ValueError, TypeError, binascii.Error) as crypto_err:
             return False
     
     async def generate_challenge(self, agent_id: str) -> Dict[str, str]:

@@ -168,8 +168,8 @@ class RateLimiter:
             }
             return True, headers, None
             
-        except Exception as e:
-            logger.warning(f"Redis rate limit failed, falling back to memory: {e}")
+        except (ConnectionError, TimeoutError, ValueError, TypeError, RuntimeError) as redis_err:
+            logger.warning(f"Redis rate limit failed ({type(redis_err).__name__}), falling back to memory: {redis_err}")
             return await self._check_memory(key, config)
     
     async def _check_memory(self, key: str, config: RateLimitConfig) -> Tuple[bool, Dict, Optional[int]]:

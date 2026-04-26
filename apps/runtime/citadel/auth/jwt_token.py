@@ -214,7 +214,8 @@ class JWTService:
                     await cache.set(f"revoked_token:{claims.jti}", True, ttl=ttl)
                 else:
                     cache.set(f"revoked_token:{claims.jti}", True, ttl=ttl)
-            except Exception:
+            except (ConnectionError, TimeoutError, ValueError, TypeError) as cache_err:
+                logger.warning(f"Failed to cache revoked token: {cache_err}")
                 pass
         
         logger.info(f"JWT token revoked for user {claims.user_id}")

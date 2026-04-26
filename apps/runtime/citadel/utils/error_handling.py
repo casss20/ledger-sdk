@@ -69,9 +69,9 @@ class FallbackHandler:
                     result = fn(*args, **kwargs)
                 return True, result, None
                 
-            except Exception as e:
-                last_error = e
-                logger.warning(f"[Fallback] Attempt {attempt + 1} failed: {e}")
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, ValueError, TypeError, RuntimeError) as retry_err:
+                last_error = retry_err
+                logger.warning(f"[Fallback] Attempt {attempt + 1} failed ({type(retry_err).__name__}): {retry_err}")
                 
                 if attempt < self.max_retries:
                     wait = self.backoff * (2 ** attempt)
@@ -87,9 +87,9 @@ class FallbackHandler:
                     result = self.fallback_fn(*args, error=last_error, **kwargs)
                 logger.info(f"[Fallback] Fallback executed successfully")
                 return True, result, None
-            except Exception as e:
-                logger.error(f"[Fallback] Fallback also failed: {e}")
-                last_error = e
+            except (ValueError, TypeError, RuntimeError, ConnectionError, TimeoutError) as fallback_err:
+                logger.error(f"[Fallback] Fallback also failed ({type(fallback_err).__name__}): {fallback_err}")
+                last_error = fallback_err
         
         # Return default if set
         if self.default_value is not None:
@@ -243,8 +243,8 @@ class DeadLetterQueue:
                 )
             finally:
                 await conn.close()
-        except Exception as db_err:
-            logger.warning(f"[DeadLetter] Could not persist to database: {db_err}")
+        except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError) as db_err:
+            logger.warning(f"[DeadLetter] Could not persist to database ({type(db_err).__name__}): {db_err}")
     
     async def dequeue(self, action_id: str) -> Optional[dict]:
         """Remove and return an entry from the dead letter queue."""

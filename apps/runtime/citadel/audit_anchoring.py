@@ -143,7 +143,8 @@ class AuditAnchorService:
                 public_key = private_key.public_key()
                 public_key.verify(bytes.fromhex(signature), message)
                 return True
-            except Exception:
+            except (ValueError, TypeError, RuntimeError, ImportError) as crypto_err:
+                logger.warning(f"Ed25519 signature verification failed ({type(crypto_err).__name__}): {crypto_err}")
                 return False
         return False
     

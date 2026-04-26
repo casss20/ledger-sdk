@@ -55,8 +55,8 @@ class OperatorService:
                 iterations
             )
             return new_key.hex() == stored_key
-        except Exception as e:
-            logger.error(f"Password verification error: {e}")
+        except (ValueError, IndexError, TypeError, RuntimeError) as verify_err:
+            logger.error(f"Password verification error ({type(verify_err).__name__}): {verify_err}")
             return False
 
     async def authenticate(self, username: str, password: str) -> Optional[Operator]:

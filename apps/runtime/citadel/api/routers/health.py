@@ -55,8 +55,8 @@ async def readiness_check(request: Request):
         async with pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         return ReadinessResponse(ready=True, database="connected")
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database unreachable: {e}")
+    except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError) as db_err:
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {type(db_err).__name__}")
 
 
 @router.get("/health/live")

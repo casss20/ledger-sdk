@@ -116,11 +116,12 @@ class Kernel:
         try:
             snapshot = await self.policy.resolve(action)
             await self.audit.policy_evaluated(action, snapshot)
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, RuntimeError, ConnectionError, TimeoutError) as policy_err:
+            logger.error(f"Policy resolution failed ({type(policy_err).__name__}): {policy_err}", exc_info=True)
             decision = await self._terminal_decision(
-                action, KernelStatus.BLOCKED_SCHEMA, "policy_resolution_failed", str(e)
+                action, KernelStatus.BLOCKED_SCHEMA, "policy_resolution_failed", str(policy_err)
             )
-            return KernelResult(action=action, decision=decision, executed=False, result=None, error=str(e))
+            return KernelResult(action=action, decision=decision, executed=False, result=None, error=str(policy_err))
 
         # 4. Precedence evaluation (kill switch -> capability -> policy)
         precedence_result = await self.precedence.evaluate(
@@ -178,11 +179,12 @@ class Kernel:
             executed = True
             exec_status = KernelStatus.EXECUTED
             exec_error = None
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, ConnectionError, TimeoutError) as exec_err:
             result = None
             executed = False
             exec_status = KernelStatus.FAILED_EXECUTION
-            exec_error = str(e)
+            exec_error = str(exec_err)
+            logger.error(f"Action execution failed ({type(exec_err).__name__}): {exec_err}", exc_info=True)
 
         # 7. Write terminal decision
         decision = await self._terminal_decision(

@@ -149,8 +149,8 @@ class Validator:
             try:
                 custom_issues = validator_fn(config)
                 issues.extend(custom_issues)
-            except Exception as e:
-                logger.error(f"[Validator] Custom validator failed: {e}")
+            except (ValueError, TypeError, KeyError, RuntimeError) as validator_err:
+                logger.error(f"[Validator] Custom validator failed ({type(validator_err).__name__}): {validator_err}")
         
         return issues
     
