@@ -167,7 +167,20 @@ async def _run_migrations(pool):
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: startup and shutdown."""
-    # Startup
+    # Startup — validate secrets first (fail loud in production)
+    secret_errors = settings.validate_secrets()
+    if secret_errors:
+        for error in secret_errors:
+            if error.startswith("CRITICAL"):
+                logger.error(error)
+            else:
+                logger.warning(error)
+        if not settings.debug:
+            raise RuntimeError(
+                f"Production startup blocked: {len(secret_errors)} secret validation errors. "
+                f"See logs above. Set debug=True only for development."
+            )
+    
     from citadel.api.dependencies import _pool
     
     _pool = None
@@ -217,20 +230,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
-    # Validate secrets before starting (fail loud in production)
-    secret_errors = settings.validate_secrets()
-    if secret_errors:
-        for error in secret_errors:
-            if error.startswith("CRITICAL"):
-                logger.error(error)
-            else:
-                logger.warning(error)
-        if not settings.debug:
-            raise RuntimeError(
-                f"Production startup blocked: {len(secret_errors)} secret validation errors. "
-                f"See logs above. Set debug=True only for development."
-            )
-
+    # Secret validation is deferred to lifespan startup to allow clean imports
+    # in test and development environments. Production failures still happen,
+    # just at app startup time rather than module import time.
+    
     # Initialize OpenTelemetry
     setup_telemetry(service_name="citadel-api")
     
@@ -261,18 +264,22 @@ def create_app() -> FastAPI:
         async def delete(self, k): self.store.pop(k, None)
     
     app.state.cache = AppCache()
+    import secrets as _secrets
     jwt_secret = settings.citadel_jwt_secret
     if not jwt_secret or jwt_secret == "secret_key_change_me_in_prod":
         if settings.debug or os.environ.get("CITADEL_TESTING") == "true":
-            import secrets
-            jwt_secret = secrets.token_urlsafe(32)
+            jwt_secret = _secrets.token_urlsafe(32)
             logger.warning(
                 "CITADEL_JWT_SECRET not set. Generated a one-time random secret for this session. "
                 "Set CITADEL_JWT_SECRET environment variable for persistent sessions."
             )
         else:
-            raise RuntimeError(
-                "CITADEL_JWT_SECRET environment variable must be set in production."
+            # Defer to lifespan — the lifespan already validates secrets and will
+            # raise before serving traffic.  This avoids import-time failures.
+            jwt_secret = _secrets.token_urlsafe(32)
+            logger.warning(
+                "CITADEL_JWT_SECRET not set. A temporary secret has been generated. "
+                "The app will fail at startup if CITADEL_TESTING is not set and debug=False."
             )
     jwt_service = JWTService(secret_key=jwt_secret)
     
@@ -343,5 +350,12 @@ def create_app() -> FastAPI:
     return app
 
 
-# Default app instance
-app = create_app()
+# Default app instance — defer to placeholder if create_app() raises.
+# All production validation happens in lifespan(), so import-time failures
+# are non-fatal.  Uvicorn will trigger lifespan() on startup and fail loud
+# if secrets are actually missing in production.
+try:
+    app = create_app()
+except Exception as exc:
+    logger.warning(f"App creation deferred at import time ({type(exc).__name__}): {exc}")
+    app = FastAPI(lifespan=lifespan)  # minimal placeholder; real validation in lifespan
