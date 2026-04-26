@@ -26,9 +26,14 @@ The score is a weighted combination:
 Target: 5 tests passing.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+import asyncpg
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -224,8 +229,8 @@ class PostureScoreService:
                 )
                 if uncovered_row:
                     metrics["uncovered_actions"] = uncovered_row["count"]
-            except Exception:
-                pass  # Table or column may not exist
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: uncovered actions query failed: %s", e)
 
             # Count unapproved high-risk actions (priority = critical/high)
             try:
@@ -240,8 +245,8 @@ class PostureScoreService:
                 )
                 if unapproved_row:
                     metrics["unapproved_high_risk"] = unapproved_row["count"]
-            except Exception:
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: unapproved query failed: %s", e)
 
             # Count low trust agents (check metadata_json for trust_level)
             try:
@@ -259,8 +264,8 @@ class PostureScoreService:
                 )
                 if low_trust_row:
                     metrics["low_trust_agents"] = low_trust_row["count"]
-            except Exception:
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: low trust agents query failed: %s", e)
 
             # Count approval backlog
             try:
@@ -274,8 +279,8 @@ class PostureScoreService:
                 )
                 if backlog_row:
                     metrics["approval_backlog"] = backlog_row["count"]
-            except Exception:
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: backlog query failed: %s", e)
 
             # Count total actions in last 24h
             try:
@@ -290,8 +295,8 @@ class PostureScoreService:
                 )
                 if total_row:
                     metrics["total_actions_24h"] = max(total_row["count"], 1)
-            except Exception:
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: total actions query failed: %s", e)
 
             # Get previous score (from last calculation)
             try:
@@ -306,8 +311,8 @@ class PostureScoreService:
                 )
                 if prev_row:
                     metrics["previous_score"] = prev_row["score"]
-            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError):
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: previous score query failed: %s", e)
 
             # Kill switch test info
             try:
@@ -322,8 +327,8 @@ class PostureScoreService:
                 if ks_row and ks_row["last_test"]:
                     days = (datetime.now(timezone.utc) - ks_row["last_test"]).days
                     metrics["days_since_kill_switch_test"] = days
-            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError):
-                pass
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: kill switch query failed: %s", e)
 
         return metrics
 
@@ -345,5 +350,5 @@ class PostureScoreService:
                     str(score.recommendations),
                     score.calculated_at,
                 )
-            except Exception:
-                pass  # Table may not exist
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                logger.warning("Posture metrics: save score failed: %s", e)

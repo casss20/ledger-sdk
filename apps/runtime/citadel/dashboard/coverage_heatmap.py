@@ -12,9 +12,13 @@ Dimensions:
 Cell values: Coverage percentage (0-100%) + trend indicator
 """
 
+import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -147,8 +151,8 @@ class HeatmapGenerator:
                 for row in rows:
                     key = f"{row['scope_type']}:{row['scope_value']}"
                     counts[key] = row["count"]
-        except Exception:
-            pass
+        except (TypeError, ValueError, RuntimeError) as e:
+            logger.warning("Failed to fetch policy counts: %s", e)
         return counts
 
     async def _get_action_counts(self, tenant_id: str) -> dict:
@@ -169,8 +173,8 @@ class HeatmapGenerator:
                 )
                 for row in rows:
                     counts[row["action_name"]] = row["count"]
-        except Exception:
-            pass
+        except (TypeError, ValueError, RuntimeError) as e:
+            logger.warning("Failed to fetch action counts: %s", e)
         return counts
 
     def _calculate_cell(
@@ -200,9 +204,8 @@ class HeatmapGenerator:
 
         # If no real data, generate synthetic but deterministic coverage
         if total == 0:
-            import hashlib
             seed = f"{tenant_id}:{stage}:{category}"
-            hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+            hash_val = int(hashlib.sha256(seed.encode()).hexdigest(), 16)
             coverage = (hash_val % 100)
             total = (hash_val % 50) + 1
             covered = int(total * coverage / 100)

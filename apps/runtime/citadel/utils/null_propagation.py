@@ -166,8 +166,8 @@ def null_safe(fn: Callable, action_id: str = None) -> Callable:
                     from .governor import get_governor
                     gov = get_governor()
                     asyncio.create_task(gov.skip(action_id, reason=str(e)))
-                except Exception:
-                    pass
+                except (ImportError, AttributeError, RuntimeError) as gov_err:
+                    logger.debug("NullSafe: governor skip failed: %s", gov_err)
             return NullValue  # Propagate skip
     
     @wraps(fn)
