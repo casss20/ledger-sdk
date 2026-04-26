@@ -88,4 +88,6 @@ This package is validated before every release. See the [QA Gate Evidence](docs/
 
 ## License
 
-MIT
+Apache License 2.0
+
+This SDK is open-source. The Citadel runtime uses a different (BSL-style) license. See the root `LICENSE` file for details.

@@ -125,7 +125,7 @@ function Hero() {
           </div>
 
           <p className="mt-4 text-slate-400 text-sm font-sans">
-            No credit card required · MIT licensed · 5-minute setup
+            No credit card required · Apache 2.0 SDK · 5-minute setup
           </p>
 
           {/* Pill strip */}
@@ -437,7 +437,7 @@ const allFeatures = [
   { icon: Lock,        title: 'Kill Switch',        body: 'One click blocks all agent actions globally, per tenant, or per agent. Instant.',       color: 'text-red-600',     bg: 'bg-red-50'     },
   { icon: FileText,    title: 'Tamper-Proof Audit', body: 'Every decision is cryptographically hashed and chained. Cannot be modified.',           color: 'text-emerald-600', bg: 'bg-emerald-50' },
   { icon: GitBranch,   title: 'Multi-Tenant',       body: 'PostgreSQL Row-Level Security. Each customer sees only their own data.',                color: 'text-sky-600',     bg: 'bg-sky-50'     },
-  { icon: Globe,       title: 'Open SDK',           body: 'pip install citadel-governance. Works with LangChain, AutoGen, custom. MIT licensed.', color: 'text-teal-600',    bg: 'bg-teal-50'    },
+  { icon: Globe,       title: 'Open SDK',           body: 'pip install citadel-governance. Works with LangChain, AutoGen, custom. Apache 2.0.', color: 'text-teal-600',    bg: 'bg-teal-50'    },
 ]
 
 function FeaturesGrid() {
@@ -500,7 +500,7 @@ function CTA() {
         </div>
 
         <p className="mt-6 font-sans text-sm text-slate-400">
-          MIT licensed · Hosted API · No credit card required
+          Apache 2.0 SDK · Hosted API · No credit card required
         </p>
       </div>
     </section>
@@ -533,7 +533,7 @@ function Footer() {
           ))}
         </div>
 
-        <p className="font-sans text-sm text-slate-400">© 2026 Citadel. MIT License.</p>
+        <p className="font-sans text-sm text-slate-400">© 2026 Citadel SDK Authors. Open SDK under Apache 2.0.</p>
       </div>
     </footer>
   )
