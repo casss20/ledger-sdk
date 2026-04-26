@@ -68,12 +68,16 @@ async def _ensure_bootstrap_operator(pool) -> None:
                 row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM operators")
                 if row and row["cnt"] > 0:
                     return
-                # Dev-only fallback: generate a random password and log it once
+                # Dev-only fallback: generate a random password and log a hash (not the password itself)
                 import secrets
                 password = secrets.token_urlsafe(16)
+                # Log only a truncated hash for verification, never the actual password
+                import hashlib
+                pass_hint = hashlib.sha256(password.encode()).hexdigest()[:8]
                 logger.warning(
-                    "Bootstrap password not configured. Generated dev-only password. "
-                    "Set CITADEL_ADMIN_BOOTSTRAP_PASSWORD in production."
+                    "Bootstrap password not configured. Generated dev-only password "
+                    "(hash hint: %s...). Set CITADEL_ADMIN_BOOTSTRAP_PASSWORD in production.",
+                    pass_hint,
                 )
 
             import hashlib
@@ -260,8 +264,12 @@ def create_app() -> FastAPI:
     jwt_secret = settings.citadel_jwt_secret
     if not jwt_secret or jwt_secret == "secret_key_change_me_in_prod":
         if settings.debug or os.environ.get("CITADEL_TESTING") == "true":
-            jwt_secret = "DEV_ONLY_DO_NOT_USE_IN_PROD"
-            logger.warning("CITADEL_JWT_SECRET not set; using a dev-only key.")
+            import secrets
+            jwt_secret = secrets.token_urlsafe(32)
+            logger.warning(
+                "CITADEL_JWT_SECRET not set. Generated a one-time random secret for this session. "
+                "Set CITADEL_JWT_SECRET environment variable for persistent sessions."
+            )
         else:
             raise RuntimeError(
                 "CITADEL_JWT_SECRET environment variable must be set in production."

@@ -8,16 +8,44 @@ Thank you for your interest in Citadel! This document will get you from zero to 
 
 ## 📋 Table of Contents
 
-1. [Getting Started](#getting-started)
-2. [Development Environment](#development-environment)
-3. [Running Tests](#running-tests)
-4. [Linting & Type Checking](#linting--type-checking)
-5. [Coding Standards](#coding-standards)
-6. [Commit & PR Guidelines](#commit--pr-guidelines)
-7. [How to Report Bugs](#how-to-report-bugs)
-8. [How to Propose Features](#how-to-propose-features)
-9. [Choosing Issues to Work On](#choosing-issues-to-work-on)
-10. [Good First Contributions](#-good-first-contributions)
+1. [Security](#security)
+2. [Getting Started](#getting-started)
+3. [Development Environment](#development-environment)
+4. [Running Tests](#running-tests)
+5. [Linting & Type Checking](#linting--type-checking)
+6. [Coding Standards](#coding-standards)
+7. [Commit & PR Guidelines](#commit--pr-guidelines)
+8. [How to Report Bugs](#how-to-report-bugs)
+9. [How to Propose Features](#how-to-propose-features)
+10. [Choosing Issues to Work On](#choosing-issues-to-work-on)
+11. [Good First Contributions](#-good-first-contributions)
+
+---
+
+## Security
+
+Citadel is a governance SDK that enterprises and AI agents depend on. Security is not optional.
+
+### Quick Security Rules
+
+- **Never hardcode secrets** — passwords, API keys, JWT secrets must come from environment variables
+- **Never log sensitive data** — redact `password`, `token`, `api_key`, `secret` from all logs
+- **Always use parameterized queries** — never f-strings or `.format()` for SQL values
+- **Validate all input** — Pydantic models, FastAPI `Query()` validators, length limits
+- **Fail closed** — if enforcement logic crashes, default to `deny`, not `allow`
+- **Catch specific exceptions** — `except Exception` masks security issues; be specific and re-raise
+
+### Reporting Security Issues
+
+**Do NOT open a public issue.**
+
+Email: `security@citadelsdk.com` with:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if you have one)
+
+See [docs/SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) for the full security development guide. See [SECURITY.md](SECURITY.md) for the project security policy.
 
 ---
 
@@ -312,14 +340,27 @@ docs: clarify tenant isolation in CONTRIBUTING
 test(runtime): add race condition test for kill switch
 ```
 
+### Security-Specific Checklist
+
+- [ ] No hardcoded secrets (passwords, API keys, JWT secrets)
+- [ ] No `print()` or `logging.info()` of sensitive data (passwords, tokens, API keys)
+- [ ] All SQL uses parameterized queries (asyncpg `$1`, `$2` — no f-strings or `.format()`)
+- [ ] Input validation on all API endpoints (Pydantic models, FastAPI `Query()` validators)
+- [ ] Rate limiting on sensitive endpoints (auth, billing, admin)
+- [ ] Tests cover both success and failure paths (including auth failures)
+- [ ] Security tests pass (`pytest tests/security/`)
+- [ ] Bandit scan passes (`bandit -r apps/runtime/citadel/`)
+
 ### Pull Request Checklist
 
 Before opening a PR, verify:
 
 - [ ] I have read [CONTRIBUTING.md](CONTRIBUTING.md)
+- [ ] I have read [docs/SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) (for security-related changes)
 - [ ] My code follows the style guidelines (Black, Ruff, MyPy)
 - [ ] I have added tests for my changes
 - [ ] All tests pass locally (`pytest tests/...`)
+- [ ] I have run security scans (`bandit -r apps/runtime/citadel/`)
 - [ ] I have updated the CHANGELOG.md (if user-facing)
 - [ ] I have updated relevant documentation
 - [ ] My commit messages follow Conventional Commits
@@ -354,8 +395,9 @@ How you tested this. Commands run, edge cases considered.
 
 1. All PRs need at least **one approving review** from a maintainer
 2. CI must pass (lint + tests + builds)
-3. PRs that touch `apps/runtime/` security code need **two approvals**
-4. We aim to review within **48 hours** on weekdays
+3. PRs that touch `apps/runtime/` **security code** need **two approvals**
+4. PRs that touch `apps/runtime/citadel/security/`, `citadel/auth/`, `citadel/tokens/`, `citadel/billing/`, or `db/schema.sql` require **2 maintainer approvals**
+5. We aim to review within **48 hours** on weekdays
 
 ---
 

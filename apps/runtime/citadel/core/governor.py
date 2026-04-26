@@ -379,8 +379,10 @@ class Governor:
                     await callback(record)
                 else:
                     callback(record)
-            except Exception as e:
-                logger.error(f"[GOVERNOR] Subscriber error: {e}")
+            except (TypeError, ValueError, RuntimeError) as e:
+                logger.error(f"[GOVERNOR] Subscriber callback error ({type(e).__name__}): {e}")
+            except Exception as unexpected_e:
+                logger.error(f"[GOVERNOR] Unexpected subscriber error ({type(unexpected_e).__name__}): {unexpected_e}")
 
     # =====================================================================
     # Row Mapping

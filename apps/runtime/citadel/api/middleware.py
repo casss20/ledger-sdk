@@ -148,16 +148,17 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except (asyncpg.PostgresError, ConnectionError, TimeoutError) as exc:
             duration_ms = (time.time() - start_time) * 1000
             logger.error(
-                f"Request error: {request.method} {request.url.path}",
+                f"Request database/connection error: {request.method} {request.url.path}",
                 extra={
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "duration_ms": round(duration_ms, 1),
                     "error": str(exc),
+                    "error_type": type(exc).__name__,
                 },
                 exc_info=True,
             )

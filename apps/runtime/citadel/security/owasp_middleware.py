@@ -276,8 +276,12 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                                     "code": "INPUT_VALIDATION_ERROR",
                                 }
                             )
-        except Exception:
+        except (ValueError, TypeError, RuntimeError) as body_err:
+            self.logger.debug(f"Could not read request body for input validation: {body_err}")
             pass  # If we can't read body, proceed
+        except Exception as unexpected_err:
+            self.logger.warning(f"Unexpected error during input validation: {unexpected_err}")
+            pass
         
         return await call_next(request)
 
@@ -350,7 +354,11 @@ class SSRFProtectionMiddleware(BaseHTTPMiddleware):
                 return False
             
             return True
-        except Exception:
+        except (ValueError, TypeError) as url_err:
+            self.logger.debug(f"URL validation error for SSRF check: {url_err}")
+            return False
+        except Exception as unexpected_err:
+            self.logger.warning(f"Unexpected error during URL validation: {unexpected_err}")
             return False
     
     async def dispatch(self, request: Request, call_next) -> Response:

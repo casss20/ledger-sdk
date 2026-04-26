@@ -44,16 +44,20 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
     
     # Database
-    database_url: str = "postgresql://Citadel:Citadel@localhost:5432/citadel_test"
+    # SECURITY: No default credentials. Must be set via CITADEL_DATABASE_URL env var.
+    # Example: postgresql://user:pass@localhost:5432/citadel
+    database_url: str = ""
     db_min_size: int = 2
     db_max_size: int = 10
     
     # API Security
     api_key_header: str = "X-API-Key"
     # Format: "key:scope1,scope2|key2:scope1" or "key1,key2" for backward compat
-    api_keys: str = "dev-key-for-testing:admin"  # Scoped key format
+    # SECURITY: Default empty — must be set in production. Dev scripts should export CITADEL_API_KEYS.
+    api_keys: str = ""  # No default keys — startup validation will warn if empty in prod
     require_auth: bool = True
-    citadel_jwt_secret: str = "secret_key_change_me_in_prod"
+    # SECURITY: Default empty — must be set in production. Dev/testing will auto-generate a random one-time secret.
+    citadel_jwt_secret: str = ""
     citadel_admin_bootstrap_username: str = "admin"
     citadel_admin_bootstrap_password: Optional[str] = None
     citadel_admin_bootstrap_tenant: str = "demo-tenant"
@@ -137,22 +141,21 @@ class Settings(BaseSettings):
             return []
         
         errors = []
-        if not self.debug:
-            if self.citadel_jwt_secret == "secret_key_change_me_in_prod":
-                errors.append(
-                    "CRITICAL: citadel_jwt_secret is using the default value. "
-                    "Set a strong random secret via CITADEL_JWT_SECRET env var."
-                )
-            if self.api_keys == "dev-key-for-testing:admin":
-                errors.append(
-                    "CRITICAL: api_keys is using the default dev key. "
-                    "Set production keys via CITADEL_API_KEYS env var."
-                )
-            if self.citadel_admin_bootstrap_password is None:
-                errors.append(
-                    "WARNING: citadel_admin_bootstrap_password is not set. "
-                    "The admin account will have a weak default password."
-                )
+        if not self.citadel_jwt_secret:
+            errors.append(
+                "CRITICAL: citadel_jwt_secret is not set. "
+                "Set a strong random secret via CITADEL_JWT_SECRET env var."
+            )
+        if not self.api_keys:
+            errors.append(
+                "CRITICAL: api_keys is not set. "
+                "Set production keys via CITADEL_API_KEYS env var."
+            )
+        if self.citadel_admin_bootstrap_password is None:
+            errors.append(
+                "WARNING: citadel_admin_bootstrap_password is not set. "
+                "The admin account will have a weak default password."
+            )
         return errors
 
 
