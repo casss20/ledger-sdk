@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
+
+from citadel.api.dependencies import require_api_key
 
 router = APIRouter(tags=["policies"])
 
@@ -21,7 +23,7 @@ class PolicyPatch(BaseModel):
 
 
 @router.get("/policies")
-async def list_policies(request: Request):
+async def list_policies(request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(
@@ -32,7 +34,7 @@ async def list_policies(request: Request):
 
 
 @router.post("/policies")
-async def create_policy(body: PolicyCreate, request: Request):
+async def create_policy(body: PolicyCreate, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -51,7 +53,7 @@ async def create_policy(body: PolicyCreate, request: Request):
 
 
 @router.patch("/policies/{policy_id}")
-async def patch_policy(policy_id: str, body: PolicyPatch, request: Request):
+async def patch_policy(policy_id: str, body: PolicyPatch, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
@@ -106,7 +108,7 @@ async def patch_policy(policy_id: str, body: PolicyPatch, request: Request):
 
 
 @router.delete("/policies/{policy_id}")
-async def delete_policy(policy_id: str, request: Request):
+async def delete_policy(policy_id: str, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         result = await conn.execute(

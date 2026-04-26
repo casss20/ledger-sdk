@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import hashlib
 import secrets
+
+from citadel.api.dependencies import require_api_key
 
 router = APIRouter(tags=["agents"])
 
@@ -38,7 +40,7 @@ class AgentTrustScoreResponse(BaseModel):
 
 
 @router.get("/agents")
-async def list_agents(request: Request):
+async def list_agents(request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(
@@ -49,7 +51,7 @@ async def list_agents(request: Request):
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str, request: Request):
+async def get_agent(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -63,7 +65,7 @@ async def get_agent(agent_id: str, request: Request):
 
 
 @router.post("/agents")
-async def create_agent(body: AgentCreate, request: Request):
+async def create_agent(body: AgentCreate, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -92,7 +94,7 @@ async def create_agent(body: AgentCreate, request: Request):
 
 
 @router.post("/agents/{agent_id}/quarantine")
-async def toggle_quarantine(agent_id: str, request: Request):
+async def toggle_quarantine(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         current = await conn.fetchrow(
@@ -135,7 +137,7 @@ async def toggle_quarantine(agent_id: str, request: Request):
 
 
 @router.patch("/agents/{agent_id}")
-async def patch_agent(agent_id: str, body: AgentPatch, request: Request):
+async def patch_agent(agent_id: str, body: AgentPatch, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
@@ -169,7 +171,7 @@ async def patch_agent(agent_id: str, body: AgentPatch, request: Request):
 # ============================================================================
 
 @router.get("/agents/{agent_id}/trust", response_model=AgentTrustScoreResponse)
-async def get_agent_trust_score(agent_id: str, request: Request):
+async def get_agent_trust_score(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     """
     Get the current trust score for an agent.
     

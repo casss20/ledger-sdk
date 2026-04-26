@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
+
+from citadel.api.dependencies import require_api_key
 
 router = APIRouter(tags=["connectors"])
 
@@ -10,7 +12,7 @@ class ConnectBody(BaseModel):
 
 
 @router.get("/connectors")
-async def list_connectors(request: Request):
+async def list_connectors(request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(
@@ -21,7 +23,7 @@ async def list_connectors(request: Request):
 
 
 @router.post("/connectors/{connector_id}/connect")
-async def connect_connector(connector_id: str, body: ConnectBody, request: Request):
+async def connect_connector(connector_id: str, body: ConnectBody, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     # Store only the last 4 chars as a hint, never the full key
     hint = None
@@ -46,7 +48,7 @@ async def connect_connector(connector_id: str, body: ConnectBody, request: Reque
 
 
 @router.post("/connectors/{connector_id}/disconnect")
-async def disconnect_connector(connector_id: str, request: Request):
+async def disconnect_connector(connector_id: str, request: Request, _: str = Depends(require_api_key)):
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(

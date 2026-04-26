@@ -11,8 +11,8 @@ import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel, Field, field_validator
 
 from citadel.execution.kernel import Kernel
 from citadel.api.dependencies import get_kernel, require_api_key
@@ -22,7 +22,14 @@ router = APIRouter(tags=["approvals"])
 
 class ApprovalDecisionRequest(BaseModel):
     reviewed_by: str = Field(..., min_length=1, max_length=128)
-    reason: Optional[str] = "Reviewed and approved"
+    reason: Optional[str] = Field(default="Reviewed and approved", max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v.strip()) == 0:
+            raise ValueError("reason cannot be empty")
+        return v
 
 
 class ApprovalResponse(BaseModel):
@@ -44,8 +51,8 @@ class ApprovalListResponse(BaseModel):
 
 @router.get("/approvals", response_model=ApprovalListResponse)
 async def list_approvals(
-    limit: int = 100,
-    status_filter: Optional[str] = None,
+    limit: int = Query(100, ge=1, le=500),
+    status_filter: Optional[str] = Query(None, max_length=32),
     kernel: Kernel = Depends(get_kernel),
     api_key: str = Depends(require_api_key),
 ):

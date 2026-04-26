@@ -7,9 +7,11 @@ Uses the agent_identity module for all operations:
 - TrustScorer for behavior-based trust scoring
 - AgentVerifier for governance token bridging
 """
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+
+from citadel.api.dependencies import require_api_key
 
 router = APIRouter(tags=["agent-identity"])
 
@@ -19,8 +21,8 @@ router = APIRouter(tags=["agent-identity"])
 class RegisterAgentRequest(BaseModel):
     agent_id: str = Field(..., min_length=1, max_length=128)
     name: str = Field(..., min_length=1, max_length=256)
-    tenant_id: str = "dev_tenant"
-    owner: str = "op-1"
+    tenant_id: str = Field("dev_tenant", min_length=1, max_length=128)
+    owner: str = Field("op-1", min_length=1, max_length=128)
 
 
 class RegisterAgentResponse(BaseModel):
@@ -31,8 +33,8 @@ class RegisterAgentResponse(BaseModel):
 
 
 class AuthenticateRequest(BaseModel):
-    agent_id: str
-    secret_key: str
+    agent_id: str = Field(..., min_length=1, max_length=128)
+    secret_key: str = Field(..., min_length=1, max_length=4096)
 
 
 class AuthenticateResponse(BaseModel):
@@ -44,7 +46,7 @@ class AuthenticateResponse(BaseModel):
 
 
 class VerifyAgentRequest(BaseModel):
-    verifier_id: str
+    verifier_id: str = Field(..., min_length=1, max_length=128)
 
 
 class VerifyAgentResponse(BaseModel):
@@ -54,7 +56,7 @@ class VerifyAgentResponse(BaseModel):
 
 
 class RevokeAgentRequest(BaseModel):
-    reason: str = "Revoked by operator"
+    reason: str = Field(default="Revoked by operator", max_length=500)
 
 
 class RevokeAgentResponse(BaseModel):
@@ -70,7 +72,7 @@ class ChallengeResponse(BaseModel):
 
 
 class VerifyChallengeRequest(BaseModel):
-    response: str
+    response: str = Field(..., min_length=1, max_length=4096)
 
 
 class VerifyChallengeResponse(BaseModel):
@@ -102,8 +104,8 @@ class ListIdentitiesResponse(BaseModel):
 
 
 class IssueCapabilityRequest(BaseModel):
-    action: str
-    resource: str
+    action: str = Field(..., min_length=1, max_length=256)
+    resource: str = Field(..., min_length=1, max_length=256)
     context: Dict[str, Any] = {}
 
 
@@ -129,7 +131,7 @@ def _get_db_pool(request: Request):
 # ─── Endpoints ───
 
 @router.post("/agent-identities", response_model=RegisterAgentResponse, status_code=201)
-async def register_agent(body: RegisterAgentRequest, request: Request):
+async def register_agent(body: RegisterAgentRequest, request: Request, _: str = Depends(require_api_key)):
     """
     Register a new agent with cryptographic identity.
 
@@ -158,7 +160,7 @@ async def register_agent(body: RegisterAgentRequest, request: Request):
 
 
 @router.post("/agent-identities/{agent_id}/authenticate", response_model=AuthenticateResponse)
-async def authenticate_agent(agent_id: str, body: AuthenticateRequest, request: Request):
+async def authenticate_agent(agent_id: str, body: AuthenticateRequest, request: Request, _: str = Depends(require_api_key)):
     """Authenticate an agent using its secret key."""
     from citadel.agent_identity.identity import IdentityManager
 
@@ -179,7 +181,7 @@ async def authenticate_agent(agent_id: str, body: AuthenticateRequest, request: 
 
 
 @router.get("/agent-identities/{agent_id}", response_model=AgentIdentityOut)
-async def get_agent_identity(agent_id: str, request: Request):
+async def get_agent_identity(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     """Get an agent's cryptographic identity."""
     from citadel.agent_identity.identity import IdentityManager
 
@@ -205,7 +207,8 @@ async def get_agent_identity(agent_id: str, request: Request):
 @router.get("/agent-identities", response_model=ListIdentitiesResponse)
 async def list_agent_identities(
     request: Request,
-    tenant_id: Optional[str] = None,
+    tenant_id: Optional[str] = Query(None, min_length=1, max_length=128),
+    _: str = Depends(require_api_key),
 ):
     """List all agent identities, optionally filtered by tenant."""
     from citadel.agent_identity.identity import IdentityManager
@@ -235,7 +238,7 @@ async def list_agent_identities(
 
 
 @router.post("/agent-identities/{agent_id}/verify", response_model=VerifyAgentResponse)
-async def verify_agent(agent_id: str, body: VerifyAgentRequest, request: Request):
+async def verify_agent(agent_id: str, body: VerifyAgentRequest, request: Request, _: str = Depends(require_api_key)):
     """Mark an agent identity as verified by a human operator."""
     from citadel.agent_identity.identity import IdentityManager
 
@@ -255,7 +258,7 @@ async def verify_agent(agent_id: str, body: VerifyAgentRequest, request: Request
 
 
 @router.post("/agent-identities/{agent_id}/revoke", response_model=RevokeAgentResponse)
-async def revoke_agent(agent_id: str, body: RevokeAgentRequest, request: Request):
+async def revoke_agent(agent_id: str, body: RevokeAgentRequest, request: Request, _: str = Depends(require_api_key)):
     """Revoke an agent's cryptographic identity."""
     from citadel.agent_identity.identity import IdentityManager
 
@@ -276,7 +279,7 @@ async def revoke_agent(agent_id: str, body: RevokeAgentRequest, request: Request
 # ─── Challenge-Response ───
 
 @router.post("/agent-identities/{agent_id}/challenge", response_model=ChallengeResponse)
-async def generate_challenge(agent_id: str, request: Request):
+async def generate_challenge(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     """Generate a challenge nonce for agent authentication."""
     from citadel.agent_identity.auth import AgentAuthService
 
@@ -292,7 +295,7 @@ async def generate_challenge(agent_id: str, request: Request):
 
 
 @router.post("/agent-identities/{agent_id}/challenge/verify", response_model=VerifyChallengeResponse)
-async def verify_challenge(agent_id: str, body: VerifyChallengeRequest, request: Request):
+async def verify_challenge(agent_id: str, body: VerifyChallengeRequest, request: Request, _: str = Depends(require_api_key)):
     """Verify a challenge response from an agent."""
     from citadel.agent_identity.auth import AgentAuthService
 
@@ -306,7 +309,7 @@ async def verify_challenge(agent_id: str, body: VerifyChallengeRequest, request:
 # ─── Trust Scoring ───
 
 @router.get("/agent-identities/{agent_id}/trust", response_model=TrustScoreResponse)
-async def get_trust_score(agent_id: str, request: Request):
+async def get_trust_score(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     """Get the current trust score for an agent."""
     from citadel.agent_identity.trust_score import TrustScorer
 
@@ -326,7 +329,7 @@ async def get_trust_score(agent_id: str, request: Request):
 
 
 @router.post("/agent-identities/{agent_id}/trust/update", response_model=TrustScoreResponse)
-async def update_trust_score(agent_id: str, request: Request):
+async def update_trust_score(agent_id: str, request: Request, _: str = Depends(require_api_key)):
     """Recalculate and update an agent's trust score."""
     from citadel.agent_identity.trust_score import TrustScorer
 
@@ -343,7 +346,7 @@ async def update_trust_score(agent_id: str, request: Request):
 
 
 @router.post("/agent-identities/trust/evaluate-all")
-async def evaluate_all_trust_scores(request: Request):
+async def evaluate_all_trust_scores(request: Request, _: str = Depends(require_api_key)):
     """Recalculate trust scores for all agents."""
     from citadel.agent_identity.trust_score import TrustScorer
 
@@ -366,7 +369,7 @@ async def evaluate_all_trust_scores(request: Request):
 # ─── Capability Token Issuance (Governance Bridge) ───
 
 @router.post("/agent-identities/{agent_id}/capability", response_model=IssueCapabilityResponse)
-async def issue_capability(agent_id: str, body: IssueCapabilityRequest, request: Request):
+async def issue_capability(agent_id: str, body: IssueCapabilityRequest, request: Request, _: str = Depends(require_api_key)):
     """
     Verify agent identity and issue a capability token.
 

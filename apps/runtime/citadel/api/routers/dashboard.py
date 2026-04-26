@@ -1,20 +1,21 @@
 import uuid
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from typing import Dict, Any, List, Optional, Literal
 from pydantic import BaseModel, Field
 from citadel.execution.kernel import Kernel
-from citadel.api.dependencies import get_kernel
+from citadel.api.dependencies import get_kernel, require_api_key
 
 router = APIRouter(tags=["dashboard"])
 
 class ApprovalDecisionRequest(BaseModel):
     reviewed_by: str = Field(..., min_length=1, max_length=128)
-    reason: Optional[str] = "Reviewed and approved"
+    reason: Optional[str] = Field(default="Reviewed and approved", max_length=500)
 
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     request: Request,
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Get consolidated statistics for the dashboard."""
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
@@ -158,6 +159,7 @@ async def get_dashboard_stats(
 async def list_dashboard_approvals(
     request: Request,
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ):
     """List pending approvals for the dashboard operator."""
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
@@ -194,6 +196,7 @@ async def approve_dashboard_request(
     approval_id: str,
     req: ApprovalDecisionRequest,
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ):
     """Approve a request via the dashboard."""
     try:
@@ -214,6 +217,7 @@ async def reject_dashboard_request(
     approval_id: str,
     req: ApprovalDecisionRequest,
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ):
     """Reject a request via the dashboard."""
     try:
@@ -232,9 +236,10 @@ async def reject_dashboard_request(
 @router.get("/dashboard/audit")
 async def list_dashboard_audit(
     request: Request,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0, le=10000),
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ):
     """List recent audit logs for the dashboard operator."""
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
@@ -280,6 +285,7 @@ async def trigger_kill_switch(
     body: KillSwitchBody,
     request: Request,
     kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
 ):
     tenant_id = getattr(request.state, "tenant_id", None)
     user_id = getattr(request.state, "user_id", None)

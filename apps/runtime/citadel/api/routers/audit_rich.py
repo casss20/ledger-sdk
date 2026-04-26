@@ -10,8 +10,10 @@ import io
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request, Query, Depends
 from fastapi.responses import StreamingResponse
+
+from citadel.api.dependencies import require_api_key
 
 router = APIRouter(tags=["audit-rich"])
 
@@ -72,12 +74,13 @@ async def list_audit(
     request: Request,
     limit:       int            = Query(50,  ge=1, le=500),
     offset:      int            = Query(0,   ge=0, le=10000),
-    decision:    Optional[str]  = Query(None, description="allowed | blocked | escalated"),
-    agent_id:    Optional[str]  = Query(None),
-    policy_id:   Optional[str]  = Query(None),
-    environment: Optional[str]  = Query(None),
+    decision:    Optional[str]  = Query(None, description="allowed | blocked | escalated", max_length=16),
+    agent_id:    Optional[str]  = Query(None, max_length=128),
+    policy_id:   Optional[str]  = Query(None, max_length=128),
+    environment: Optional[str]  = Query(None, max_length=64),
     from_ts:     Optional[str]  = Query(None, alias="from", max_length=64),
     to_ts:       Optional[str]  = Query(None, alias="to", max_length=64),
+    _: str = Depends(require_api_key),
 ):
     pool = request.app.state.db_pool
     tenant_id = getattr(request.state, "tenant_id", "demo")
@@ -151,9 +154,10 @@ async def list_audit(
 @router.get("/audit/export")
 async def export_audit(
     request: Request,
-    format:  str           = Query("json", description="json | csv"),
+    format:  str           = Query("json", description="json | csv", max_length=8),
     limit:   int           = Query(1000, ge=1, le=10000),
-    decision: Optional[str] = Query(None),
+    decision: Optional[str] = Query(None, max_length=16),
+    _: str = Depends(require_api_key),
 ):
     pool = request.app.state.db_pool
     tenant_id = getattr(request.state, "tenant_id", "demo")
