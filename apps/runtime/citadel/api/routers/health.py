@@ -16,7 +16,6 @@ router = APIRouter(tags=["health"])
 
 class HealthResponse(BaseModel):
     status: str
-    version: str
     database: str
 
 
@@ -35,7 +34,6 @@ async def health_check(request: Request):
     
     return HealthResponse(
         status="healthy",
-        version=settings.app_version,
         database=db_status,
     )
 
@@ -45,18 +43,19 @@ async def readiness_check(request: Request):
     """Readiness probe: verify database connectivity."""
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
+        # SECURITY: Never leak internal error details to the client.
+        logger = logging.getLogger(__name__)
         startup_error = getattr(request.app.state, "db_startup_error", None)
-        detail = "Database pool not initialized"
         if startup_error:
-            detail = f"{detail}: {startup_error}"
-        raise HTTPException(status_code=503, detail=detail)
+            logger.error(f"DB startup error: {startup_error}")
+        raise HTTPException(status_code=503, detail="Database pool not initialized")
     
     try:
         async with pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         return ReadinessResponse(ready=True, database="connected")
     except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError) as db_err:
-        raise HTTPException(status_code=503, detail=f"Database unreachable: {type(db_err).__name__}")
+        raise HTTPException(status_code=503, detail="Database unreachable")
 
 
 @router.get("/health/live")

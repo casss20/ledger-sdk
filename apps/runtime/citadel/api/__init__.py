@@ -274,12 +274,10 @@ def create_app() -> FastAPI:
                 "Set CITADEL_JWT_SECRET environment variable for persistent sessions."
             )
         else:
-            # Defer to lifespan — the lifespan already validates secrets and will
-            # raise before serving traffic.  This avoids import-time failures.
-            jwt_secret = _secrets.token_urlsafe(32)
-            logger.warning(
-                "CITADEL_JWT_SECRET not set. A temporary secret has been generated. "
-                "The app will fail at startup if CITADEL_TESTING is not set and debug=False."
+            # Production: fail loud
+            raise RuntimeError(
+                "CITADEL_JWT_SECRET is not set or uses the default placeholder. "
+                "Set a secure secret via the CITADEL_JWT_SECRET environment variable."
             )
     jwt_service = JWTService(secret_key=jwt_secret)
     
@@ -324,10 +322,33 @@ def create_app() -> FastAPI:
     app.include_router(agent_identity.router, prefix="/api")
     app.include_router(billing_router)
     
-    # Prometheus metrics (raw ASGI app at root /metrics)
+    # Prometheus metrics (protected with API key auth)
     if settings.metrics_enabled:
+        from fastapi import Depends
         metrics_app = make_asgi_app()
-        app.mount(settings.metrics_endpoint, metrics_app)
+        
+        async def _metrics_auth(request, call_next):
+            from fastapi.responses import JSONResponse
+            api_key = request.headers.get(settings.api_key_header)
+            if not api_key:
+                return JSONResponse(status_code=401, content={"error": "unauthenticated"})
+            manager = get_api_key_manager()
+            validated = manager.validate(api_key)
+            if validated is None:
+                return JSONResponse(status_code=403, content={"error": "forbidden"})
+            return await call_next(request)
+        
+        # Wrap metrics app with simple auth middleware
+        from starlette.middleware.base import BaseHTTPMiddleware
+        class MetricsAuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                return await _metrics_auth(request, call_next)
+        
+        from starlette.applications import Starlette
+        metrics_wrapper = Starlette()
+        metrics_wrapper.add_middleware(MetricsAuthMiddleware)
+        metrics_wrapper.mount("/", metrics_app)
+        app.mount(settings.metrics_endpoint, metrics_wrapper)
     
     # ---- NEW: SRE Health Check Endpoints ----
     from citadel.sre.health_checks import HealthCheckManager, HealthCheckResult, HealthStatus

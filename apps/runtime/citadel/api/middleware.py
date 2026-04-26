@@ -104,7 +104,10 @@ def get_cors_origins() -> list:
 # ---------------------------------------------------------------------------
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Block requests with body larger than max size"""
+    """Block requests with body larger than max size.
+    
+    Also enforces a max read on streamed/chunked request bodies.
+    """
     
     MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB default
     
@@ -133,6 +136,29 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     )
             except ValueError:
                 pass
+        
+        # For chunked/streamed bodies with no Content-Length, wrap the receive
+        # channel so we can enforce the limit as the body is consumed.
+        if not content_length:
+            from starlette.types import Message
+            bytes_read = 0
+            async def limiting_receive() -> Message:
+                nonlocal bytes_read
+                message = await request.receive()
+                if message.get("type") == "http.request":
+                    chunk = message.get("body", b"")
+                    bytes_read += len(chunk)
+                    if bytes_read > self.MAX_BODY_SIZE:
+                        logger.warning(
+                            "Request rejected: chunked payload too large",
+                            extra={
+                                "request_id": getattr(request.state, "request_id", "unknown"),
+                                "max_size": self.MAX_BODY_SIZE,
+                            }
+                        )
+                        raise RuntimeError("Request body exceeds size limit")
+                return message
+            request._receive = limiting_receive
         
         return await call_next(request)
 
@@ -214,7 +240,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "error": "internal_error",
-                    "message": str(exc) if settings.debug else "Internal server error",
+                    "message": "Internal server error",
                     "request_id": request_id,
                 },
             )
@@ -222,11 +248,27 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
 def setup_cors(app: FastAPI) -> None:
     """Add CORS as the outermost middleware so it handles preflight before auth."""
-    origins = settings.allowed_cors_origins
+    origins = get_cors_origins()
+    
+    # Allow empty origins in testing mode (tests don't need CORS)
+    if os.environ.get("CITADEL_TESTING") == "true":
+        return
+    
+    # SECURITY: Validate origins — no wildcards, no empty list in production
+    for origin in origins:
+        if "*" in origin:
+            raise RuntimeError(
+                f"CORS origin contains wildcard: {origin}. "
+                "Wildcards are not allowed when allow_credentials=True."
+            )
+    
+    if not origins and not settings.debug:
+        raise RuntimeError(
+            "CORS_ORIGINS must be configured in production. "
+            "Refusing to start without explicit origins."
+        )
+    
     if not origins:
-        # Allow empty origins in testing mode (tests don't need CORS)
-        if os.environ.get("CITADEL_TESTING") == "true":
-            return
         raise RuntimeError(
             "CORS_ORIGINS / settings.allowed_cors_origins must be configured "
             "(comma-separated list). Refusing to start with wildcard + credentials."

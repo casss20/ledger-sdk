@@ -50,10 +50,6 @@ async def require_api_key(
     # Check header
     key = api_key
     if not key:
-        # Try query param fallback
-        key = request.query_params.get("api_key")
-    
-    if not key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API key required",

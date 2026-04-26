@@ -6,7 +6,7 @@ GET /v1/audit/verify - Verify audit chain integrity
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from citadel.execution.kernel import Kernel
@@ -25,11 +25,13 @@ class AuditVerifyResponse(BaseModel):
 
 @router.get("/audit/verify", response_model=AuditVerifyResponse)
 async def verify_audit(
+    request: Request,
     kernel: Kernel = Depends(get_kernel),
     _: str = Depends(require_api_key),
 ):
     """Verify the audit chain integrity."""
-    result = await kernel.repo.verify_audit_chain()
+    tenant_id = getattr(request.state, "tenant_id", None)
+    result = await kernel.repo.verify_audit_chain(tenant_id=tenant_id)
     
     return AuditVerifyResponse(
         valid=result['valid'],

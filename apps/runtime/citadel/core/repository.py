@@ -369,10 +369,19 @@ class Repository:
                 """, action_id, event_type, json.dumps(payload) if payload else '{}', prev_hash, event_hash, actor_id, tenant_id)
                 return row['event_id']
     
-    async def verify_audit_chain(self) -> Dict:
-        """Verify hash chain integrity."""
+    async def verify_audit_chain(self, tenant_id: Optional[str] = None) -> Dict:
+        """Verify hash chain integrity scoped to tenant."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT * FROM verify_audit_chain()")
+            if tenant_id:
+                row = await conn.fetchrow(
+                    """SELECT * FROM verify_audit_chain() 
+                        WHERE tenant_id = $1""",
+                    tenant_id
+                )
+            else:
+                row = await conn.fetchrow("SELECT * FROM verify_audit_chain()")
+            if row is None:
+                return {'valid': True, 'checked_count': 0, 'first_event_id': None, 'last_event_id': None, 'broken_at_event_id': None}
             return {
                 'valid': row['valid'],
                 'checked_count': row['checked_count'],

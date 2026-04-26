@@ -33,7 +33,7 @@ jobs:
       - name: Ruff critical check (syntax / undefined)
         run: ruff check apps/runtime/ --select E9,F63,F7,F82
       - name: Ruff full lint
-        run: ruff check apps/runtime/ || true
+        run: ruff check apps/runtime/
 
   # ──────────────────────────────────────────
   # 2. BACKEND TYPECHECK
@@ -52,7 +52,7 @@ jobs:
           pip install -e ".[all]"
           pip install mypy
       - name: mypy check
-        run: mypy apps/runtime/citadel --ignore-missing-imports --no-error-summary || true
+        run: mypy apps/runtime/citadel --ignore-missing-imports --no-error-summary
 
   # ──────────────────────────────────────────
   # 3. BACKEND TESTS

@@ -6,7 +6,7 @@ GET /v1/metrics/summary - Human-readable metrics summary
 
 from typing import Dict, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from citadel.execution.kernel import Kernel
@@ -26,30 +26,32 @@ class MetricsSummaryResponse(BaseModel):
 
 @router.get("/metrics/summary", response_model=MetricsSummaryResponse)
 async def metrics_summary(
+    request: Request,
     kernel: Kernel = Depends(get_kernel),
     _: str = Depends(require_api_key),
 ):
     """Human-readable governance metrics."""
+    tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     async with kernel.repo.pool.acquire() as conn:
-        actions_total = await conn.fetchval("SELECT COUNT(*) FROM actions")
+        actions_total = await conn.fetchval("SELECT COUNT(*) FROM actions WHERE tenant_id = $1", tenant_id)
         
         decision_rows = await conn.fetch(
-            "SELECT status, COUNT(*) as count FROM decisions GROUP BY status"
+            "SELECT status, COUNT(*) as count FROM decisions WHERE tenant_id = $1 GROUP BY status", tenant_id
         )
         decisions_by_status = {r['status']: r['count'] for r in decision_rows}
         
         pending_approvals = await conn.fetchval(
-            "SELECT COUNT(*) FROM approvals WHERE status = 'pending'"
+            "SELECT COUNT(*) FROM approvals WHERE status = 'pending' AND tenant_id = $1", tenant_id
         )
         
-        audit_events = await conn.fetchval("SELECT COUNT(*) FROM audit_events")
+        audit_events = await conn.fetchval("SELECT COUNT(*) FROM audit_events WHERE tenant_id = $1", tenant_id)
         
         kill_switches_active = await conn.fetchval(
-            "SELECT COUNT(*) FROM kill_switches WHERE enabled = TRUE"
+            "SELECT COUNT(*) FROM kill_switches WHERE enabled = TRUE AND tenant_id = $1", tenant_id
         )
         
         capabilities_active = await conn.fetchval(
-            "SELECT COUNT(*) FROM capabilities WHERE revoked = FALSE AND uses < max_uses"
+            "SELECT COUNT(*) FROM capabilities WHERE revoked = FALSE AND uses < max_uses AND tenant_id = $1", tenant_id
         )
     
     return MetricsSummaryResponse(

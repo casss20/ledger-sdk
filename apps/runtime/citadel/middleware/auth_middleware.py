@@ -14,12 +14,32 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 import logging
 from urllib.parse import parse_qs
+import time
 
 from citadel.auth.jwt_token import JWTService, JWTError
 from citadel.auth.api_key import APIKeyService, APIKeyError
 from citadel.auth.operator import OperatorService
 
 logger = logging.getLogger(__name__)
+
+# Simple in-memory rate limiter for login attempts
+# In production, use Redis-backed rate limiting
+_login_attempts = {}
+_MAX_LOGIN_ATTEMPTS = 5
+_LOGIN_WINDOW_SECONDS = 900  # 15 minutes
+
+def _check_login_rate_limit(identifier: str) -> bool:
+    """Return True if allowed, False if rate limited."""
+    now = time.time()
+    attempts = _login_attempts.get(identifier, [])
+    # Remove attempts outside the window
+    attempts = [t for t in attempts if now - t < _LOGIN_WINDOW_SECONDS]
+    if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
+        _login_attempts[identifier] = attempts
+        return False
+    attempts.append(now)
+    _login_attempts[identifier] = attempts
+    return True
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
@@ -78,13 +98,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         import os
         from citadel.config import settings as _settings
-        # Dev-mode bypass: ONLY when settings.debug is also true (not a runtime env switch)
-        if (os.getenv("CITADEL_DEV_MODE") == "true" or os.getenv("LEDGER_DEV_MODE") == "true") and getattr(_settings, "debug", False):
-            request.state.tenant_id = "dev_tenant"
-            request.state.user_id = "dev_user"
-            request.state.role = "admin"
-            return await call_next(request)
-
+        # SECURITY: Dev-mode bypass completely removed. Authentication is never
+        # bypassed, even in debug mode. Use test fixtures or mock auth for tests.
+        
         # Exempt paths (health, docs, login)
         if request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)
@@ -105,11 +121,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         api_key_id = request.headers.get("X-API-Key")
         api_key_secret = request.headers.get("X-API-Secret")
         
-        # Demo/dev key bypass: if key matches simple valid_api_keys, allow without secret
-        from citadel.config import settings
-        if api_key_id and api_key_id in settings.valid_api_keys:
-            request.state.tenant_id = "demo-tenant"
-            return await call_next(request)
+        # SECURITY: Removed demo/dev key bypass. Always require both key ID and secret.
         
         if not api_key_id or not api_key_secret:
             logger.warning(f"Missing API key credentials: {request.url.path}")
@@ -208,6 +220,13 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
         if not username or not password:
             raise HTTPException(status_code=400, detail="Username and password are required")
 
+        # Rate limiting by username and IP
+        client_ip = request.client.host if request.client else "unknown"
+        rate_key = f"{username}:{client_ip}"
+        if not _check_login_rate_limit(rate_key):
+            logger.warning(f"Login rate limit exceeded for {username} from {client_ip}")
+            raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+
         operator_service = OperatorService(db)
         operator = await operator_service.authenticate(username, password)
         
@@ -270,12 +289,11 @@ def setup_auth_endpoints(app: FastAPI, jwt_service: JWTService):
             raise HTTPException(status_code=401, detail="Authentication required")
 
         operator_service = OperatorService(db)
-        # Re-authenticate by user_id + password.
-        operator = await operator_service.authenticate_by_id(user_id, password) \
-            if hasattr(operator_service, "authenticate_by_id") else None
-        if not operator:
-            # Fallback: try username == user_id (compat for current schema)
-            operator = await operator_service.authenticate(user_id, password)
+        # SECURITY: Removed fallback to authenticate(user_id, password).
+        # authenticate_by_id is the only valid path for step-up auth.
+        if not hasattr(operator_service, "authenticate_by_id"):
+            raise HTTPException(status_code=501, detail="Step-up authentication not available")
+        operator = await operator_service.authenticate_by_id(user_id, password)
         if not operator:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 

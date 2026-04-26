@@ -345,11 +345,28 @@ class TestStripeWebhookHMAC:
         assert not handler.verify_signature(tampered_payload, sig_header)
     
     def test_no_secret_allows_in_dev(self):
-        """Without webhook secret, verification passes with warning (dev only)"""
-        handler = StripeWebhookHandler(None, webhook_secret=None)
-        
-        payload = b'{"test": "event"}'
-        assert handler.verify_signature(payload, None)
+        """Without webhook secret, verification passes with warning in dev only."""
+        from citadel.config import settings
+        original_debug = settings.debug
+        try:
+            settings.debug = True
+            handler = StripeWebhookHandler(None, webhook_secret=None)
+            payload = b'{"test": "event"}'
+            assert handler.verify_signature(payload, None)
+        finally:
+            settings.debug = original_debug
+    
+    def test_no_secret_rejects_in_prod(self):
+        """Without webhook secret, verification rejects in production."""
+        from citadel.config import settings
+        original_debug = settings.debug
+        try:
+            settings.debug = False
+            handler = StripeWebhookHandler(None, webhook_secret=None)
+            payload = b'{"test": "event"}'
+            assert not handler.verify_signature(payload, None)
+        finally:
+            settings.debug = original_debug
 
 
 class TestSecurityHeaders:

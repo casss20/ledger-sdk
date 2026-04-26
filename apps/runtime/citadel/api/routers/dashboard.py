@@ -292,6 +292,11 @@ async def trigger_kill_switch(
     if not tenant_id or not user_id:
         raise HTTPException(status_code=401, detail="unauthenticated")
 
+    # Role check: only admin can trigger kill switches
+    role = getattr(request.state, "role", None)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
     # Validate target_id belongs to this tenant when scoped to an agent
     if body.scope == "agent":
         if not body.target_id:

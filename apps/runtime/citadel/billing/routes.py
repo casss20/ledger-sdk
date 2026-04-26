@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
+from citadel.api.dependencies import require_api_key
 from .repository import BillingRepository
 from .stripe_client import StripeClient
 from .stripe_webhooks import StripeWebhookHandler
@@ -11,7 +12,7 @@ def get_repo(request: Request):
     return BillingRepository(request.app.state.db_pool)
 
 @router.get("/summary")
-async def get_billing_summary(request: Request, repo: BillingRepository = Depends(get_repo)):
+async def get_billing_summary(request: Request, repo: BillingRepository = Depends(get_repo), _: str = Depends(require_api_key)):
     tenant_id = request.state.tenant_id
     entitlement_service = EntitlementService(repo)
     usage_service = UsageService(repo)
@@ -34,7 +35,7 @@ async def get_billing_summary(request: Request, repo: BillingRepository = Depend
     }
 
 @router.post("/checkout")
-async def create_checkout(request: Request, repo: BillingRepository = Depends(get_repo)):
+async def create_checkout(request: Request, repo: BillingRepository = Depends(get_repo), _: str = Depends(require_api_key)):
     tenant_id = request.state.tenant_id
     customer = await repo.get_customer(tenant_id)
     

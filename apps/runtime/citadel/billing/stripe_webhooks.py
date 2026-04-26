@@ -21,9 +21,14 @@ class StripeWebhookHandler:
         actually came from Stripe.
         """
         if not self.webhook_secret:
-            # In development without webhook secret, log warning but allow
             import logging
-            logging.getLogger(__name__).warning(
+            logger = logging.getLogger(__name__)
+            # In production, always require webhook secret
+            from citadel.config import settings
+            if not settings.debug:
+                logger.error("Stripe webhook secret not configured in production — rejecting webhook")
+                return False
+            logger.warning(
                 "Stripe webhook secret not configured — skipping signature verification. "
                 "NEVER do this in production."
             )
