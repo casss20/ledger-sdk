@@ -125,33 +125,36 @@ class ApprovalService:
     ) -> ApprovalResult:
         """
         Resolve a pending approval to approved or rejected.
-        
-        Updates DB and returns the result.
+
+        Uses atomic UPDATE ... WHERE status = 'pending' to prevent
+        race-condition bypass (TOCTOU safe).
         """
-        approval = await self.repo.get_approval(approval_id)
-        if not approval:
-            raise ValueError(f"Approval {approval_id} not found")
-        
-        if approval['status'] != 'pending':
-            raise ValueError(f"Approval already {approval['status']}")
-        
-        # Update in database
+        # Atomic update: only succeeds if still pending
         async with self.repo.pool.acquire() as conn:
-            await conn.execute(
+            result = await conn.fetchrow(
                 """
                 UPDATE approvals
                 SET status = $1,
                     reviewed_by = $2,
                     decided_at = NOW(),
                     decision_reason = $3
-                WHERE approval_id = $4
+                WHERE approval_id = $4 AND status = 'pending'
+                RETURNING approval_id, action_id, status, priority, reason,
+                          requested_by, reviewed_by, decided_at, decision_reason
                 """,
                 decision,
                 reviewed_by,
                 reason or f"Decision: {decision}",
                 approval_id,
             )
-        
+
+        if result is None:
+            # Either approval not found or already resolved (race condition)
+            approval = await self.repo.get_approval(approval_id)
+            if not approval:
+                raise ValueError(f"Approval {approval_id} not found")
+            raise ValueError(f"Approval already {approval['status']}")
+
         return ApprovalResult(
             approval_id=approval_id,
             status=decision,

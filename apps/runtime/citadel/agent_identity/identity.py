@@ -72,7 +72,9 @@ class IdentityManager:
     
     def __init__(self, db_pool):
         self.db = db_pool
-        self._secret_cache: Dict[str, str] = {}  # agent_id -> secret_key (in-memory only)
+        # NOTE: We intentionally do NOT cache secrets in memory.
+        # The _secret_cache was removed in the security hardening pass
+        # to prevent plaintext credential exposure in heap dumps / core files.
     
     def _generate_keypair(self) -> tuple:
         """Generate a keypair. Returns (public_key, secret_key)."""

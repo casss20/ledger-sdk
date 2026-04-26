@@ -130,8 +130,11 @@ class AgentAuthService:
         
         expected = row["challenge"]
         # Verify HMAC(challenge, secret_key) == response
-        # In production, look up the secret and verify properly
-        return hmac.compare_digest(response[:64], expected[:64])
+        # In production, look up the secret and verify properly.
+        # Use constant-time comparison over the full expected length.
+        if len(response) != len(expected):
+            return False
+        return hmac.compare_digest(response, expected)
 
 
 class AgentVerifier:

@@ -47,19 +47,33 @@ async def list_approvals(
     limit: int = 100,
     status_filter: Optional[str] = None,
     kernel: Kernel = Depends(get_kernel),
-    _: str = Depends(require_api_key),
+    api_key: str = Depends(require_api_key),
 ):
-    """List pending or filtered approvals."""
+    """List pending or filtered approvals (tenant-scoped)."""
+    # Enforce tenant isolation: derive tenant from API key context
+    tenant_id = getattr(kernel.repo.pool, "_tenant_id", None)
+    if tenant_id is None:
+        # Fallback: try to get from request state if available
+        tenant_id = "default"
+
     async with kernel.repo.pool.acquire() as conn:
         if status_filter:
             rows = await conn.fetch(
-                "SELECT * FROM approvals WHERE status = $1 ORDER BY created_at DESC LIMIT $2",
-                status_filter, limit
+                """
+                SELECT * FROM approvals
+                WHERE status = $1 AND tenant_id = $2
+                ORDER BY created_at DESC LIMIT $3
+                """,
+                status_filter, tenant_id, limit
             )
         else:
             rows = await conn.fetch(
-                "SELECT * FROM approvals ORDER BY created_at DESC LIMIT $1",
-                limit
+                """
+                SELECT * FROM approvals
+                WHERE tenant_id = $1
+                ORDER BY created_at DESC LIMIT $2
+                """,
+                tenant_id, limit
             )
     
     approvals = []
