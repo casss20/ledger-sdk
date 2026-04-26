@@ -10,10 +10,10 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-001](ADR-001-async-first-client.md) | Async-First Client Design | Accepted | 2026-04-15 |
-| [ADR-002](ADR-002-runtime-governance.md) | Runtime Governance Enforcement | Accepted | 2026-04-10 |
-| [ADR-003](ADR-003-module-boundaries.md) | Module Boundaries and Package Layout | Accepted | 2026-04-05 |
-| [ADR-004](ADR-004-sdk-runtime-split.md) | SDK vs Internal Runtime Split | Accepted | 2026-04-12 |
+| [architecture-decision-record-001](architecture-decision-record-001-async-first-client.md) | Async-First Client Design | Accepted | 2026-04-15 |
+| [architecture-decision-record-002](architecture-decision-record-002-runtime-governance.md) | Runtime Governance Enforcement | Accepted | 2026-04-10 |
+| [architecture-decision-record-003](architecture-decision-record-003-module-boundaries.md) | Module Boundaries and Package Layout | Accepted | 2026-04-05 |
+| [architecture-decision-record-004](architecture-decision-record-004-sdk-runtime-split.md) | SDK vs Internal Runtime Split | Accepted | 2026-04-12 |
 
 ## How to Add a New ADR
 
