@@ -56,8 +56,8 @@ Citadel publishes two distinct Python packages:
 
 | Package | Install | Purpose | License |
 |---|---|---|---|
-| **citadel-governance** | `pip install citadel-governance` | Client SDK for agent integration | Apache 2.0 |
-| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted governance backend | BSL 1.1 |
+| **citadel-governance** | `pip install citadel-governance` | Client SDK for agent integration | **Apache 2.0** |
+| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted governance backend | **BSL 1.1** |
 
 > **Note:** The backend runtime (`citadel-runtime`) is not published to PyPI. It is meant to be deployed as a service (Docker, Fly.io, etc.). The SDK (`citadel-governance`) is the only PyPI package for agent integration.
 

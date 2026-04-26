@@ -7,7 +7,7 @@ name = "citadel-governance"
 version = "0.2.1"
 description = "AI Governance: Constitution + Audit for Agent Builders"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
     {name = "Anthony Cass", email = "casseussergio@gmail.com"}
@@ -16,7 +16,7 @@ keywords = ["ai", "governance", "agent", "audit", "llm", "safety", "approval", "
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
