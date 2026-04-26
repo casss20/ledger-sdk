@@ -1,0 +1,20 @@
+# Bandit security scanner configuration
+# Skips documented false positives only.  All other checks remain active.
+
+skips:
+  # B105 / B106 / B107 — "Bearer", "access", "refresh" are standard JWT / OAuth2
+  # token-type strings (RFC 6750, RFC 8693), not hardcoded passwords.
+  - B105
+  - B106
+  - B107
+
+  # B104 — localhost / 127.0.0.1 / 0.0.0.0 appear in SSRF *blocklists*, not as
+  # server bind addresses.
+  - B104
+
+exclude_dirs:
+  - tests
+  - .venv
+  - venv
+  - node_modules
+  - .git

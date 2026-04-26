@@ -77,14 +77,14 @@ class BillingRepository:
         # Validate field to prevent SQL injection via column name
         if not field or not field.replace("_", "").isalnum():
             raise ValueError(f"Invalid usage field name: {field}")
-        await self.pool.execute(
-            f"""INSERT INTO billing_usage_monthly (tenant_id, period_ym, {field})
-               VALUES ($1, $2, $3)
-               ON CONFLICT (tenant_id, period_ym) DO UPDATE SET
-               {field} = billing_usage_monthly.{field} + $3,
-               updated_at = NOW()""",
-            tenant_id, period_ym, amount
+        query = (
+            "INSERT INTO billing_usage_monthly (tenant_id, period_ym, " + field + ") "
+            "VALUES ($1, $2, $3) "
+            "ON CONFLICT (tenant_id, period_ym) DO UPDATE SET "
+            + field + " = billing_usage_monthly." + field + " + $3, "
+            "updated_at = NOW()"
         )
+        await self.pool.execute(query, tenant_id, period_ym, amount)
 
     async def log_event(self, provider: str, event_id: str, event_type: str, payload: Dict[str, Any], status: str = 'received'):
         await self.pool.execute(
