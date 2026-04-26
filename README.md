@@ -30,7 +30,7 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 
 ## Technical Design Pillars
 
-The Citadel is built on three core architectural philosophies:
+The Citadel is built on four core architectural philosophies:
 
 1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
