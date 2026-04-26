@@ -137,10 +137,28 @@ Citadel is tested against adversarial scenarios:
 
 ## Documentation
 
-- [Architecture Schema](docs/ARCHITECTURE_SCHEMA.md) - Module dependency graph
-- [Kernel Guarantees](docs/KERNEL_GUARANTEES.md) - Invariants and edge cases
-- [API Reference](docs/public/api-reference/rest-api.md) - HTTP endpoints and schemas
-- [Changelog](CHANGELOG.md) - Release notes for runtime governance changes
+- **[Contributing](CONTRIBUTING.md)** — How to get started, coding standards, and PR workflow
+- **[Development Guide](docs/DEVELOPMENT.md)** — Local dev setup, commands, and CI
+- **[Project Structure](docs/PROJECT_STRUCTURE.md)** — Architecture and module map
+- **[Maintainer Guide](docs/MAINTAINER_GUIDE.md)** — Review, release, and quality processes
+- **[Architecture Deep-Dive](docs/ARCHITECTURE.md)** — The three-layer design
+- **[Architecture Schema](docs/ARCHITECTURE_SCHEMA.md)** — Module dependency graph
+- **[Kernel Guarantees](docs/KERNEL_GUARANTEES.md)** — Invariants and edge cases
+- **[API Reference](docs/public/api-reference/rest-api.md)** — HTTP endpoints and schemas
+- **[Changelog](CHANGELOG.md)** — Release notes
+
+## Contributing
+
+We welcome contributions! Whether you're fixing a typo, adding a test, or building a feature, here's how to start:
+
+1. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** — your guide to the codebase
+2. Check **[good first issues](https://github.com/casss20/citadel-sdk/labels/good%20first%20issue)** — safe starting points
+3. Join our **[Discord](https://discord.gg/clawd)** — ask questions, get help
+
+See also:
+- [Development Guide](docs/DEVELOPMENT.md) — day-to-day workflow
+- [Project Structure](docs/PROJECT_STRUCTURE.md) — what each module does
+- [Maintainer Guide](docs/MAINTAINER_GUIDE.md) — how we review and release
 
 ## Licensing
 

@@ -1,0 +1,359 @@
+# Project Structure
+
+> **What this doc covers:** What each directory and module does, how they relate to each other, and where the boundaries are. Read this before touching any code.
+
+Citadel is organized as a **mixed-license monorepo** with clear separation between the open-source SDK, the source-available runtime, and proprietary enterprise modules.
+
+---
+
+## 📁 Top-Level Layout
+
+```
+citadel-sdk/
+├── apps/
+│   ├── runtime/          ← Backend governance engine (BSL 1.1)
+│   ├── dashboard/        ← React management UI (BSL 1.1)
+│   ├── dashboard-demo/   ← Standalone demo dashboard (BSL 1.1)
+│   └── landing/          ← Marketing website (BSL 1.1)
+├── packages/
+│   ├── sdk-python/       ← Python SDK (Apache 2.0)
+│   ├── sdk-typescript/   ← TypeScript SDK (planned, Apache 2.0)
+│   └── open-spec/        ← Governance schemas & token specs (Apache 2.0)
+├── db/
+│   ├── schema.sql        ← Canonical database schema
+│   └── migrations/       ← Alembic / manual SQL migrations
+├── docs/
+│   ├── public/           ← Static docs site (HTML + Markdown)
+│   └── *.md              ← Internal architecture docs
+├── tests/
+│   ├── unit/             ← Fast tests, no DB required
+│   ├── integration/      ← DB-required integration tests
+│   ├── regression/       ← Regression / race condition tests
+│   ├── simulations/      ← Long-running scenario scripts
+│   ├── security/         ← Security hardening tests
+│   ├── tokens/           ← Token system conformance tests
+│   └── dashboard/        ← Dashboard component tests
+├── scripts/              ← Dev utilities and admin scripts
+├── archive/              ← Historical research / experimental code (not maintained)
+└── enterprise/           ← Proprietary modules (not open)
+```
+
+---
+
+## `apps/runtime/` — The Governance Engine
+
+This is the core backend. It is **source-available (BSL 1.1)**, not fully open source. You can read it, modify it, and self-host it. You cannot offer it as a competing hosted service.
+
+### Module Map
+
+```
+apps/runtime/citadel/
+├── __init__.py              # Package exports, version
+├── config.py                # Pydantic Settings, env var validation
+├── core/                    # GOVERNANCE KERNEL — enforcement layer
+│   ├── governor.py          # Escalation levels, strategic oversight
+│   ├── executor.py          # Execution enforcement, mode switching
+│   ├── runtime.py           # Activation cycle, path selection
+│   └── constitution.py      # Behavioral constraints (identity, disclosure, safety)
+├── governance/              # KERNEL + FRAMEWORK + INTELLIGENCE
+│   ├── capability.py        # Token-based capability issuance/consumption
+│   ├── risk.py              # Risk classification (SOFT/HARD approvals)
+│   ├── audit.py             # Hash-chained immutable decision log
+│   ├── killswitch.py        # Emergency stop, fail-closed
+│   ├── rate_limit.py        # Token bucket rate limiting
+│   ├── durable.py           # Async approval queues, human-in-the-loop
+│   ├── alignment.py         # Loyalty protocol, long-term goal checking
+│   ├── critic.py            # Quality review, 5-dimension validation
+│   ├── prune.py             # Context cleanup, noise removal
+│   └── after_action.py      # Learning loop, pattern extraction
+├── ops/                     # INTELLIGENCE — behavioral layer
+│   ├── planner.py           # Structured planning, milestones
+│   ├── failure.py           # Recovery protocol, rollback
+│   ├── adaptation.py        # Behavioral adjustment based on patterns
+│   └── opportunity.py       # Leverage detection, automation candidates
+├── system/                  # INTELLIGENCE — system layer
+│   └── focus.py             # Anti-distraction, scope protection
+├── api/                     # FastAPI application layer
+│   ├── __init__.py          # App factory, router registration
+│   ├── middleware.py        # CORS, rate limit, request size, security headers
+│   └── routes/              # HTTP endpoint handlers
+│       ├── actions.py       # Execute governed actions
+│       ├── approvals.py     # Approval queue management
+│       ├── audit.py         # Audit log queries
+│       ├── governance.py    # Policy CRUD
+│       ├── health.py        # Health checks (live/ready)
+│       ├── metrics.py       # Prometheus metrics
+│       └── dashboard.py     # Dashboard API endpoints
+├── auth/                    # Authentication & authorization
+│   ├── jwt_service.py       # JWT token creation/validation
+│   └── middleware.py        # AuthMiddleware (API key + JWT)
+├── billing/                 # Stripe integration
+│   ├── stripe_client.py     # Stripe API wrapper
+│   ├── stripe_webhooks.py   # Webhook handler with HMAC verification
+│   └── routes.py            # Billing endpoints
+├── security/                # OWASP security controls
+│   └── owasp_middleware.py  # Security headers, input validation, SSRF protection
+├── tokens/                  # Governance Token (GT) system
+│   ├── token_vault.py       # Secure token storage
+│   ├── token_issuer.py      # Token creation (gt_cap_, gt_app_, gt_vlt_)
+│   ├── token_verifier.py    # Token introspection & validation
+│   └── decision_engine.py   # Decision-before-token issuance
+├── dashboard/               # Dashboard-specific backend logic
+├── services/                # Business logic services
+├── utils/                   # Shared utilities
+│   ├── telemetry.py         # OpenTelemetry setup (optional)
+│   └── logging.py           # Structured JSON logging
+└── integrations/            # Third-party connectors
+```
+
+### Public API vs Internal Implementation
+
+**Public API** (stable, documented, versioned):
+- Everything in `packages/sdk-python/citadel_governance/` — the SDK
+- FastAPI routes in `api/routes/` — the HTTP API
+- Database schema in `db/schema.sql`
+
+**Internal Implementation** (may change without notice):
+- Everything in `core/`, `governance/`, `ops/`, `system/` — these are implementation details
+- Internal utilities in `utils/`
+- Test helpers in `tests/conftest.py`
+
+**Rule:** If you're building an integration, use the SDK or the HTTP API. Don't import from `citadel.core` or `citadel.governance` directly.
+
+---
+
+## `apps/dashboard/` — React Management UI
+
+A Vite + React + Tailwind CSS dashboard for operators.
+
+```
+apps/dashboard/
+├── src/
+│   ├── api/
+│   │   └── client.ts         # Axios/fetch wrapper with auth
+│   ├── components/
+│   │   ├── ui/               # Reusable UI primitives (Button, Card, Badge)
+│   │   ├── approval-queue.tsx
+│   │   ├── audit-log.tsx
+│   │   ├── kill-switches.tsx
+│   │   └── stats-grid.tsx
+│   ├── pages/
+│   │   ├── Dashboard.tsx
+│   │   ├── Approvals.tsx
+│   │   ├── Audit.tsx
+│   │   └── Login.tsx
+│   ├── lib/
+│   │   └── utils.ts          # cn() helper for Tailwind
+│   └── App.tsx
+├── package.json
+├── vite.config.ts            # Dev proxy to localhost:8000
+└── tsconfig.json
+```
+
+The dashboard talks to the backend via the same HTTP API that external SDKs use. It is not a special admin interface — it consumes the public API with JWT authentication.
+
+---
+
+## `packages/sdk-python/` — Python SDK
+
+The **public integration surface** for Python agents. Apache 2.0 licensed.
+
+```
+packages/sdk-python/
+├── citadel_governance/       # Main package (import this)
+│   ├── __init__.py           # Public API exports
+│   ├── client.py             # CitadelClient (async + sync)
+│   ├── guard.py              # @guard decorator
+│   ├── exceptions.py         # Custom exception classes
+│   └── __version__.py        # Version string
+├── tests/
+│   ├── test_sdk.py           # 43+ unit tests
+│   └── integration/
+│       └── conftest.py       # Integration test fixtures
+├── pyproject.toml
+└── README.md
+```
+
+**Public API:**
+```python
+import citadel_governance as cg
+
+cg.configure(base_url="...", api_key="...", actor_id="...")
+cg.execute(action="...", resource="...", payload={...})
+cg.guard(action="...", resource="...")  # decorator
+```
+
+**Important:** The SDK is the only supported way to integrate with Citadel from Python. Do not import the backend runtime as a library.
+
+---
+
+## `db/` — Database
+
+```
+db/
+├── schema.sql                # Canonical schema (source of truth)
+├── migrations/               # Ordered SQL migrations
+│   ├── 2026-04-24-initial.sql
+│   └── 2026-04-25-rls-policies.sql
+└── 00-init-test-db.sql       # Local dev helper (not used in CI)
+```
+
+**Rules:**
+- `schema.sql` is the canonical schema. It must always represent the current state.
+- Migrations are additive. Never modify an already-deployed migration.
+- All tables must have RLS policies for tenant isolation.
+- New migrations must be idempotent (`CREATE TABLE IF NOT EXISTS`, etc.).
+
+---
+
+## `tests/` — Test Suite
+
+Organized by speed and dependency requirements:
+
+| Directory | Speed | Needs DB? | Purpose |
+|---|---|---|---|
+| `tests/unit/` | Fast (< 1s each) | No | Isolated logic tests |
+| `tests/tokens/` | Medium (< 5s each) | No | Token system conformance |
+| `tests/security/` | Medium | No | Security hardening verification |
+| `tests/integration/` | Slow | Yes | DB integration, middleware |
+| `tests/regression/` | Slow | Yes | Race conditions, stress tests |
+| `tests/simulations/` | Very slow | Yes | End-to-end scenario scripts |
+| `tests/dashboard/` | Medium | No | Dashboard component tests |
+
+**Key test files:**
+- `tests/security/test_security_hardening.py` — CORS, rate limiting, body size, Stripe HMAC
+- `tests/tokens/test_runtime_introspection.py` — Token revocation, expiry, scope checks
+- `tests/integration/test_rls_enforcement.py` — Row-level security isolation
+- `tests/test_audit_anchoring.py` — Merkle root signing, cryptographic integrity
+
+---
+
+## `docs/` — Documentation
+
+```
+docs/
+├── public/                   # Static docs site (deployed to Vercel)
+│   ├── index.html            # Single-page docs app
+│   ├── api-reference/        # REST API docs
+│   ├── recipes/              # How-to guides
+│   ├── guides/               # Tutorials
+│   ├── getting-started/      # Onboarding docs
+│   └── core-concepts/        # Architecture explainers
+├── ARCHITECTURE.md           # Full architecture deep-dive
+├── ARCHITECTURE_SCHEMA.md    # Module dependency graph
+├── KERNEL_GUARANTEES.md      # Invariants and edge cases
+├── SECURITY.md               # Tenant isolation & RLS
+├── ROADMAP.md                # Future plans
+└── FORGE_ROADMAP.md          # Forge / plugin system plans
+```
+
+The `docs/public/` site is a handcrafted HTML + Markdown site (not generated from a static site builder). It is deployed via Vercel on every push to `master`.
+
+---
+
+## `scripts/` — Development Utilities
+
+```
+scripts/
+├── setup_dev.sh              # One-command dev environment setup
+├── run_tests.sh              # Run all test tiers
+└── db/                       # Database helpers
+    ├── reset_test_db.sh
+    └── migrate.sh
+```
+
+---
+
+## `archive/` — Historical Code
+
+```
+archive/
+├── research/                 # Early experiments and prototypes
+└── experimental/             # Duplicate governance implementations
+```
+
+**Important:** Code in `archive/` is not maintained. It exists for historical reference only. Do not import from it.
+
+---
+
+## `enterprise/` — Proprietary
+
+```
+enterprise/
+└── (proprietary modules)
+```
+
+Not open for contribution. See [LICENSING.md](LICENSING.md).
+
+---
+
+## Dependency Rules
+
+These rules keep the codebase maintainable:
+
+### ✅ Allowed Dependencies
+
+```
+sdk-python ──HTTP──► runtime API
+dashboard ──HTTP──► runtime API
+runtime/api ──imports──► runtime/core, runtime/governance, runtime/services
+runtime/core ──imports──► runtime/governance (for enforcement)
+runtime/governance ──imports──► runtime/core (for primitives)
+runtime/utils ──imports──► nothing internal (leaf utilities)
+```
+
+### ❌ Forbidden Dependencies
+
+```
+sdk-python ──X──► runtime/internal (use HTTP API only)
+dashboard ──X──► runtime/internal (use HTTP API only)
+runtime/api ──X──► enterprise/ (proprietary)
+tests ──X──► archive/ (stale code)
+```
+
+### Circular Dependency Rule
+
+If `A` imports from `B`, `B` must not import from `A`. Use dependency inversion (interfaces, protocols) or move shared code to `utils/`.
+
+---
+
+## Public API Surface
+
+These are the **stable, versioned** interfaces. Changes here require a deprecation period or major version bump:
+
+| Surface | Location | Stability |
+|---|---|---|
+| Python SDK | `packages/sdk-python/citadel_governance/` | Stable (semver) |
+| HTTP REST API | `apps/runtime/citadel/api/routes/` | Stable (documented) |
+| Database Schema | `db/schema.sql` | Stable (migrations) |
+| Governance Token Spec | `packages/open-spec/` | Stable (versioned) |
+
+Everything else is internal implementation detail and may change without notice.
+
+---
+
+## Adding a New Module
+
+If you need to add a new top-level module to `apps/runtime/citadel/`:
+
+1. **Ask first** — Open a discussion or issue explaining the need
+2. **Follow the three-layer model** — Is it Kernel, Framework, or Intelligence?
+3. **Add tests** — Every module needs tests in the appropriate `tests/` directory
+4. **Add docs** — Update `docs/ARCHITECTURE.md` and `docs/public/` if user-facing
+5. **Register in `__init__.py`** — If it exposes a public API
+
+---
+
+## Quick Reference: Where to Find Things
+
+| I want to... | Look in... |
+|---|---|
+| Add a new HTTP endpoint | `apps/runtime/citadel/api/routes/` |
+| Change policy evaluation logic | `apps/runtime/citadel/core/governor.py` |
+| Add a new token type | `apps/runtime/citadel/tokens/` + `packages/open-spec/` |
+| Change the database schema | `db/schema.sql` + `db/migrations/` |
+| Add an SDK method | `packages/sdk-python/citadel_governance/` |
+| Add a dashboard component | `apps/dashboard/src/components/` |
+| Fix a security issue | `apps/runtime/citadel/security/` + `tests/security/` |
+| Add a how-to guide | `docs/public/recipes/` |
+| Add a simulation | `tests/simulations/` |
