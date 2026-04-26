@@ -74,6 +74,9 @@ class BillingRepository:
         )
 
     async def increment_usage(self, tenant_id: str, period_ym: str, field: str, amount: int = 1):
+        # Validate field to prevent SQL injection via column name
+        if not field or not field.replace("_", "").isalnum():
+            raise ValueError(f"Invalid usage field name: {field}")
         await self.pool.execute(
             f"""INSERT INTO billing_usage_monthly (tenant_id, period_ym, {field})
                VALUES ($1, $2, $3)
