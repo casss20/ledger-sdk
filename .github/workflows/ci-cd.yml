@@ -120,7 +120,7 @@ jobs:
           CITADEL_API_KEYS: test-key:admin
           REQUIRE_AUTH: true
           CITADEL_TESTING: true
-        run: pytest tests/integration/ tests/regression/ tests/simulations/ -v --tb=short || true
+        run: pytest tests/integration/ tests/regression/ tests/simulations/ -v --tb=short
 
       - name: Run security scan (Bandit)
         run: |
@@ -132,6 +132,8 @@ jobs:
         run: |
           pip install safety
           safety check --json -o safety-report.json || true
+        # safety can flag transitive deps with no fix — keep || true until
+        # the project pins a clean dependency set.  Revisit quarterly.
 
   # ──────────────────────────────────────────
   # 4. SDK LINT & TYPECHECK
