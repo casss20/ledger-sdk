@@ -14,7 +14,7 @@ import asyncio
 import logging
 import statistics
 
-from .governor import get_governor, ActionState, ActionRecord
+from citadel.core.governor import get_governor, ActionState, ActionRecord
 
 logger = logging.getLogger(__name__)
 

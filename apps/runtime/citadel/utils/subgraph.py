@@ -14,7 +14,7 @@ from collections import defaultdict
 import asyncio
 import logging
 
-from .governor import get_governor, ActionState
+from citadel.core.governor import get_governor, ActionState
 
 logger = logging.getLogger(__name__)
 

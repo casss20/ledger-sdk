@@ -8,7 +8,7 @@ to determine channel, approval requirements, and execution.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from citadel.schema import (
+from citadel.utils.schema import (
     AgentOutput,
     ApprovalLevel,
     OutputType,

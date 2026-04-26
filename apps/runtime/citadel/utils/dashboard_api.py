@@ -16,8 +16,8 @@ try:
 except ImportError:
     HAS_FASTAPI = False
 
-from .governor import get_governor, ActionState
-from .analytics import get_analytics, get_profiler, TimeWindow
+from citadel.core.governor import get_governor, ActionState
+from citadel.services.analytics import get_analytics, get_profiler, TimeWindow
 
 
 class DashboardAPI:
@@ -196,17 +196,23 @@ class DashboardAPI:
 # FastAPI router (if available)
 if HAS_FASTAPI:
     router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-    api = DashboardAPI()
+    _dashboard_api_instance: Optional[DashboardAPI] = None
+    
+    def _api() -> DashboardAPI:
+        global _dashboard_api_instance
+        if _dashboard_api_instance is None:
+            _dashboard_api_instance = DashboardAPI()
+        return _dashboard_api_instance
     
     @router.get("/summary")
     async def dashboard_summary():
         """Executive summary for dashboard."""
-        return await api.get_summary()
+        return await _api().get_summary()
     
     @router.get("/pending")
     async def dashboard_pending(limit: int = Query(100, ge=1, le=1000)):
         """Pending approvals."""
-        return await api.get_pending(limit=limit)
+        return await _api().get_pending(limit=limit)
     
     @router.get("/failed")
     async def dashboard_failed(
@@ -214,22 +220,22 @@ if HAS_FASTAPI:
         limit: int = Query(100, ge=1, le=1000)
     ):
         """Recently failed actions."""
-        return await api.get_failed(hours=hours, limit=limit)
+        return await _api().get_failed(hours=hours, limit=limit)
     
     @router.get("/anomalies")
     async def dashboard_anomalies(hours: int = Query(1, ge=1, le=24)):
         """Detected anomalies."""
-        return await api.get_anomalies(hours=hours)
+        return await _api().get_anomalies(hours=hours)
     
     @router.get("/agent/{agent}/health")
     async def agent_health(agent: str, hours: int = Query(1, ge=1, le=24)):
         """Agent health check."""
-        return await api.get_agent_health(agent, hours=hours)
+        return await _api().get_agent_health(agent, hours=hours)
     
     @router.get("/actions/{action_id}")
     async def action_details(action_id: str):
         """Action details."""
-        result = await api.get_action_details(action_id)
+        result = await _api().get_action_details(action_id)
         if "error" in result:
             raise HTTPException(status_code=404, detail=result["error"])
         return result

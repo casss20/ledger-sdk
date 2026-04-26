@@ -3,7 +3,7 @@ Path selector — determines runtime path from task keywords.
 """
 
 import re
-from citadel.loader import Path_
+from citadel.utils.loader import Path_
 
 HIGH_RISK_KEYWORDS = {
     "send", "publish", "post", "email", "tweet",

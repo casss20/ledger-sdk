@@ -19,6 +19,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# ── Singleton pattern for legacy compatibility ────────────────────────────
+_governor_singleton: Optional["Governor"] = None
+
+
+def get_governor() -> "Governor":
+    if _governor_singleton is None:
+        raise RuntimeError(
+            "Governor not initialized. Call Governor.set_instance(db_pool) first."
+        )
+    return _governor_singleton
+
 
 class ActionState(Enum):
     """Lifecycle states derived from decisions + execution_results."""
@@ -93,6 +104,13 @@ class Governor:
     def __init__(self, pool):
         self._pool = pool
         self._subscribers: List[callable] = []
+
+    @classmethod
+    def set_instance(cls, pool) -> "Governor":
+        """Set the global singleton instance (legacy compatibility)."""
+        global _governor_singleton
+        _governor_singleton = cls(pool)
+        return _governor_singleton
 
     # =====================================================================
     # Record Retrieval (from DB)
