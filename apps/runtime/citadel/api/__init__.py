@@ -293,8 +293,14 @@ def create_app() -> FastAPI:
     # Auth endpoints
     setup_auth_endpoints(app, jwt_service)
 
-    # CORS must be outermost â€” added last so it runs before auth on preflight
+    # CORS must be outermost — added last so it runs before auth on preflight
     setup_cors(app)
+
+    # Rate limiting (after CORS, before auth — so preflight isn't rate-limited
+    # but auth endpoints and API calls are protected)
+    from citadel.middleware.rate_limit import RateLimitMiddleware, AuthRateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)  # General API rate limiting
+    app.add_middleware(AuthRateLimitMiddleware)  # Stricter auth endpoint limits
 
     # Routers
     app.include_router(actions.router, prefix="/v1")

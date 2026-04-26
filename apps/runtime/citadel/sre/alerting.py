@@ -91,8 +91,8 @@ class WebhookChannel(AlertChannel):
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
                 ) as response:
                     return response.status < 400
-        except Exception as e:
-            logging.getLogger("citadel.alerting").error(f"Webhook alert failed: {e}")
+        except (aiohttp.ClientError, ConnectionError, TimeoutError, OSError, ValueError, TypeError) as e:
+            logging.getLogger("citadel.alerting").error(f"Webhook alert failed ({type(e).__name__}): {e}")
             return False
 
 
@@ -142,8 +142,8 @@ class SlackChannel(AlertChannel):
                     timeout=aiohttp.ClientTimeout(total=10),
                 ) as response:
                     return response.status < 400
-        except Exception as e:
-            logging.getLogger("citadel.alerting").error(f"Slack alert failed: {e}")
+        except (aiohttp.ClientError, ConnectionError, TimeoutError, OSError, ValueError, TypeError) as e:
+            logging.getLogger("citadel.alerting").error(f"Slack alert failed ({type(e).__name__}): {e}")
             return False
 
 
@@ -189,8 +189,8 @@ class PagerDutyChannel(AlertChannel):
                     timeout=aiohttp.ClientTimeout(total=10),
                 ) as response:
                     return response.status < 400
-        except Exception as e:
-            logging.getLogger("citadel.alerting").error(f"PagerDuty alert failed: {e}")
+        except (aiohttp.ClientError, ConnectionError, TimeoutError, OSError, ValueError, TypeError) as e:
+            logging.getLogger("citadel.alerting").error(f"PagerDuty alert failed ({type(e).__name__}): {e}")
             return False
 
 

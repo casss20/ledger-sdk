@@ -1,23 +1,23 @@
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 router = APIRouter(tags=["policies"])
 
 
 class PolicyCreate(BaseModel):
-    name: str
-    description: str = ""
-    framework: str = "SOC2"
-    severity: str = "medium"
+    name: str = Field(..., min_length=1, max_length=256)
+    description: str = Field("", max_length=2048)
+    framework: str = Field("SOC2", pattern=r"^(SOC2|ISO27001|NIST|GDPR|HIPAA|PCI_DSS|CUSTOM)$")
+    severity: str = Field("medium", pattern=r"^(low|medium|high|critical)$")
 
 
 class PolicyPatch(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    framework: Optional[str] = None
-    severity: Optional[str] = None
-    status: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=256)
+    description: Optional[str] = Field(None, max_length=2048)
+    framework: Optional[str] = Field(None, pattern=r"^(SOC2|ISO27001|NIST|GDPR|HIPAA|PCI_DSS|CUSTOM)$")
+    severity: Optional[str] = Field(None, pattern=r"^(low|medium|high|critical)$")
+    status: Optional[str] = Field(None, pattern=r"^(active|disabled|draft|toggle)$")
 
 
 @router.get("/policies")

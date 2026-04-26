@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 router = APIRouter(tags=["connectors"])
 
 
 class ConnectBody(BaseModel):
-    api_key: Optional[str] = None
+    api_key: Optional[str] = Field(None, max_length=4096)
 
 
 @router.get("/connectors")

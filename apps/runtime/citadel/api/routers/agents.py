@@ -9,23 +9,24 @@ router = APIRouter(tags=["agents"])
 
 
 class AgentCreate(BaseModel):
-    agent_id: str
-    name: str
-    status: str = "healthy"
-    health_score: int = 100
-    token_spend: int = 0
-    token_budget: int = 100000
-    actions_today: int = 0
-    owner: str = "op-1"
+    agent_id: str = Field(..., min_length=1, max_length=128, pattern=r"^[a-zA-Z0-9_\-\.]+$")
+    name: str = Field(..., min_length=1, max_length=256)
+    status: str = Field("healthy", pattern=r"^(healthy|unhealthy|inactive|quarantined)$")
+    health_score: int = Field(100, ge=0, le=100)
+    token_spend: int = Field(0, ge=0)
+    token_budget: int = Field(100000, ge=1, le=1_000_000_000)
+    actions_today: int = Field(0, ge=0)
+    owner: str = Field("op-1", min_length=1, max_length=128)
     quarantined: bool = False
     compliance: List[str] = []
 
 
 class AgentPatch(BaseModel):
-    health_score: Optional[int] = None
-    status: Optional[str] = None
-    actions_today: Optional[int] = None
-    token_spend: Optional[int] = None
+    health_score: Optional[int] = Field(None, ge=0, le=100)
+    status: Optional[str] = Field(None, pattern=r"^(healthy|unhealthy|inactive|quarantined)$")
+    actions_today: Optional[int] = Field(None, ge=0)
+    token_spend: Optional[int] = Field(None, ge=0)
+    token_budget: Optional[int] = Field(None, ge=1, le=1_000_000_000)
 
 
 class AgentTrustScoreResponse(BaseModel):

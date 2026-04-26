@@ -306,7 +306,7 @@ class PostureScoreService:
                 )
                 if prev_row:
                     metrics["previous_score"] = prev_row["score"]
-            except Exception:
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError):
                 pass
 
             # Kill switch test info
@@ -322,7 +322,7 @@ class PostureScoreService:
                 if ks_row and ks_row["last_test"]:
                     days = (datetime.now(timezone.utc) - ks_row["last_test"]).days
                     metrics["days_since_kill_switch_test"] = days
-            except Exception:
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError):
                 pass
 
         return metrics

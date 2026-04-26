@@ -157,7 +157,7 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, ConnectionError, TimeoutError) as exc:
             duration_ms = (time.time() - start_time) * 1000
             extra = {
                 "request_id": request_id,
@@ -168,6 +168,7 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
                 "duration_ms": duration_ms,
                 "status_code": 500,
                 "risk_level": "high",
+                "error_type": type(exc).__name__,
             }
             self.logger.error(
                 f"✗ {request.method} {request.url.path} - ERROR: {str(exc)} ({duration_ms:.1f}ms)",

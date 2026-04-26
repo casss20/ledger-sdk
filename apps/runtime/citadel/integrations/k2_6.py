@@ -281,18 +281,18 @@ class K26GovernanceServer:
             response = await self.client._client.get("/v1/kill-switch/status")
             response.raise_for_status()
             data = response.json()
-            is_active = data.get("active", False)
+            is_active = data.get("active", True)
             return {
                 "active": is_active,
                 "action": "STOP_IMMEDIATELY" if is_active else "CONTINUE",
                 "message": "Kill switch activated. Stop all execution." if is_active else "OK to continue",
             }
         except Exception:
-            # If we can't check, assume it's not active (fail open)
+            # Fail-closed: if we can't check, assume it's active
             return {
-                "active": False,
-                "action": "CONTINUE",
-                "message": "OK to continue",
+                "active": True,
+                "action": "STOP_IMMEDIATELY",
+                "message": "Kill switch check failed. Stop all execution.",
             }
     
     async def log_action(

@@ -120,11 +120,11 @@ class HealthCheckManager:
             )
             self._last_results[name] = result
             return result
-        except Exception as e:
+        except (OSError, ValueError, TypeError, RuntimeError, ConnectionError, TimeoutError) as e:
             result = HealthCheckResult(
                 name=name,
                 status=HealthStatus.UNHEALTHY,
-                message=f"Check failed: {str(e)}",
+                message=f"Check failed ({type(e).__name__}): {str(e)}",
                 response_time_ms=(time.time() - start) * 1000,
             )
             self._last_results[name] = result
@@ -191,11 +191,11 @@ class HealthCheckManager:
                             message="Database returned unexpected result",
                             response_time_ms=(time.time() - start) * 1000,
                         )
-            except Exception as e:
+            except (asyncpg.PostgresError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
                 return HealthCheckResult(
                     name="database",
                     status=HealthStatus.UNHEALTHY,
-                    message=f"Database connection failed: {str(e)}",
+                    message=f"Database connection failed ({type(e).__name__}): {str(e)}",
                     response_time_ms=(time.time() - start) * 1000,
                 )
         return check
@@ -216,11 +216,11 @@ class HealthCheckManager:
                     response_time_ms=0.0,
                     metadata={"memory_mb": mem_mb, "threshold_mb": threshold_mb},
                 )
-            except Exception as e:
+            except (OSError, ValueError, TypeError, RuntimeError) as e:
                 return HealthCheckResult(
                     name="memory",
                     status=HealthStatus.UNKNOWN,
-                    message=f"Could not check memory: {str(e)}",
+                    message=f"Could not check memory ({type(e).__name__}): {str(e)}",
                     response_time_ms=0.0,
                 )
         return check
@@ -246,11 +246,11 @@ class HealthCheckManager:
                         "free_gb": usage.free / (1024**3),
                     },
                 )
-            except Exception as e:
+            except (OSError, ValueError, TypeError, RuntimeError) as e:
                 return HealthCheckResult(
                     name="disk",
                     status=HealthStatus.UNKNOWN,
-                    message=f"Could not check disk: {str(e)}",
+                    message=f"Could not check disk ({type(e).__name__}): {str(e)}",
                     response_time_ms=0.0,
                 )
         return check
@@ -281,11 +281,11 @@ class HealthCheckManager:
                                 message=f"API returned {response.status}",
                                 response_time_ms=(time.time() - start) * 1000,
                             )
-            except Exception as e:
+            except (aiohttp.ClientError, ConnectionError, TimeoutError, OSError, ValueError, TypeError) as e:
                 return HealthCheckResult(
                     name="api_self_check",
                     status=HealthStatus.UNHEALTHY,
-                    message=f"API self-check failed: {str(e)}",
+                    message=f"API self-check failed ({type(e).__name__}): {str(e)}",
                     response_time_ms=(time.time() - start) * 1000,
                 )
         return check

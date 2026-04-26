@@ -17,7 +17,7 @@ env:
 
 jobs:
   # ──────────────────────────────────────────
-  # 1. BACKEND LINT & TYPECHECK
+  # 1. BACKEND LINT
   # ──────────────────────────────────────────
   lint-backend:
     name: Lint Backend
@@ -30,16 +30,37 @@ jobs:
           cache: 'pip'
       - name: Install lint tools
         run: pip install ruff
-      - name: Ruff critical check
+      - name: Ruff critical check (syntax / undefined)
         run: ruff check apps/runtime/ --select E9,F63,F7,F82
+      - name: Ruff full lint
+        run: ruff check apps/runtime/ || true
 
   # ──────────────────────────────────────────
-  # 2. BACKEND TESTS
+  # 2. BACKEND TYPECHECK
+  # ──────────────────────────────────────────
+  typecheck-backend:
+    name: Typecheck Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -e ".[all]"
+          pip install mypy
+      - name: mypy check
+        run: mypy apps/runtime/citadel --ignore-missing-imports --no-error-summary || true
+
+  # ──────────────────────────────────────────
+  # 3. BACKEND TESTS
   # ──────────────────────────────────────────
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
-    needs: [lint-backend]
+    needs: [lint-backend, typecheck-backend]
     services:
       postgres:
         image: postgres:15-alpine
@@ -74,28 +95,95 @@ jobs:
             echo "Applying $f"
             psql -h localhost -U citadel -d citadel_test -v ON_ERROR_STOP=1 -f "$f"
           done
+      - name: Run security tests (with auth enabled)
+        env:
+          DATABASE_URL: postgresql://citadel:citadel@localhost:5432/citadel_test
+          CITADEL_JWT_SECRET: ci-test-jwt-secret-use-random-in-production
+          CITADEL_API_KEYS: test-key:admin
+          REQUIRE_AUTH: true
+          CITADEL_TESTING: true
+        run: pytest tests/security/ tests/unit/test_jwt_token.py tests/unit/test_bootstrap_operator.py -v --tb=short
+
       - name: Run unit tests (no DB required)
         env:
           DATABASE_URL: postgresql://citadel:citadel@localhost:5432/citadel_test
-          API_KEYS: test-key:admin
-          REQUIRE_AUTH: false
+          CITADEL_JWT_SECRET: ci-test-jwt-secret-use-random-in-production
+          CITADEL_API_KEYS: test-key:admin
+          REQUIRE_AUTH: true
           CITADEL_TESTING: true
-        run: pytest tests/unit/ tests/tokens/ tests/security/ tests/test_api_key_manager.py tests/test_billing.py tests/test_audit_anchoring.py -v --tb=short
+        run: pytest tests/unit/ tests/tokens/ tests/test_api_key_manager.py tests/test_billing.py tests/test_audit_anchoring.py -v --tb=short
 
       - name: Run integration tests (requires DB)
         env:
           DATABASE_URL: postgresql://citadel:citadel@localhost:5432/citadel_test
-          API_KEYS: test-key:admin
-          REQUIRE_AUTH: false
+          CITADEL_JWT_SECRET: ci-test-jwt-secret-use-random-in-production
+          CITADEL_API_KEYS: test-key:admin
+          REQUIRE_AUTH: true
           CITADEL_TESTING: true
         run: pytest tests/integration/ tests/regression/ tests/simulations/ -v --tb=short || true
 
+      - name: Run security scan (Bandit)
+        run: |
+          pip install bandit
+          bandit -r apps/runtime/citadel/ -f json -o bandit-report.json || true
+          bandit -r apps/runtime/citadel/ -ll || true
+
+      - name: Check for known vulnerable dependencies
+        run: |
+          pip install safety
+          safety check --json -o safety-report.json || true
+
   # ──────────────────────────────────────────
-  # 3. SDK TESTS
+  # 4. SDK LINT & TYPECHECK
+  # ──────────────────────────────────────────
+  lint-sdk:
+    name: Lint Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install SDK + lint tools
+        run: |
+          cd packages/sdk-python
+          pip install -e ".[dev]"
+      - name: Ruff critical check
+        run: |
+          cd packages/sdk-python
+          ruff check citadel_governance tests --select E9,F63,F7,F82
+      - name: Ruff full lint
+        run: |
+          cd packages/sdk-python
+          ruff check citadel_governance tests || true
+
+  typecheck-sdk:
+    name: Typecheck Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install SDK + mypy
+        run: |
+          cd packages/sdk-python
+          pip install -e ".[dev]"
+          pip install mypy
+      - name: mypy check
+        run: |
+          cd packages/sdk-python
+          mypy citadel_governance --ignore-missing-imports --no-error-summary || true
+
+  # ──────────────────────────────────────────
+  # 5. SDK TESTS
   # ──────────────────────────────────────────
   test-sdk:
     name: Test Python SDK
     runs-on: ubuntu-latest
+    needs: [lint-sdk, typecheck-sdk]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -116,7 +204,7 @@ jobs:
           python -c "import citadel_governance as cg; print('SDK import OK, version:', cg.__version__)"
 
   # ──────────────────────────────────────────
-  # 4. FRONTEND BUILD
+  # 6. FRONTEND BUILD
   # ──────────────────────────────────────────
   build-frontend:
     name: Build Frontend
@@ -153,7 +241,7 @@ jobs:
           npm run build
 
   # ──────────────────────────────────────────
-  # 5. DEPLOY API (Fly.io)
+  # 7. DEPLOY API (Fly.io)
   # ──────────────────────────────────────────
   deploy-api:
     name: Deploy API
@@ -168,7 +256,8 @@ jobs:
         if: env.FLY_API_TOKEN != ''
       - name: Deploy to Fly.io
         if: env.FLY_API_TOKEN != ''
-        run: flyctl deploy --remote-only --app citadel-sdk --config fly.toml
+        # App name updated from "citadel-sdk" → "citadel-runtime" for naming consistency
+        run: flyctl deploy --remote-only --app citadel-runtime --config fly.toml
       - name: Verify deployment
         if: env.FLY_API_TOKEN != ''
         run: |
@@ -181,7 +270,7 @@ jobs:
           echo "Set it in: GitHub Settings > Secrets and variables > Actions > FLY_API_TOKEN"
 
   # ──────────────────────────────────────────
-  # 6. DEPLOY DASHBOARD (Vercel)
+  # 8. DEPLOY DASHBOARD (Vercel)
   # ──────────────────────────────────────────
   deploy-dashboard:
     name: Deploy Dashboard
@@ -210,7 +299,7 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping dashboard deploy."
 
   # ──────────────────────────────────────────
-  # 7. DEPLOY LANDING (Vercel)
+  # 9. DEPLOY LANDING (Vercel)
   # ──────────────────────────────────────────
   deploy-landing:
     name: Deploy Landing
@@ -239,7 +328,7 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping landing deploy."
 
   # ──────────────────────────────────────────
-  # 8. DEPLOY DOCS (Vercel)
+  # 10. DEPLOY DOCS (Vercel)
   # ──────────────────────────────────────────
   deploy-docs:
     name: Deploy Docs
@@ -263,7 +352,7 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping docs deploy."
 
   # ──────────────────────────────────────────
-  # 9. DEPLOY SDK (PyPI)
+  # 11. DEPLOY SDK (PyPI)
   # ──────────────────────────────────────────
   deploy-sdk:
     name: Deploy SDK to PyPI

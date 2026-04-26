@@ -250,8 +250,8 @@ class AnalyticsEngine:
                     await handler(alert)
                 else:
                     handler(alert)
-            except Exception as e:
-                logger.error(f"[Analytics] Alert handler failed: {e}")
+            except (TypeError, ValueError, RuntimeError, ConnectionError, TimeoutError, OSError) as e:
+                logger.error(f"[Analytics] Alert handler failed ({type(e).__name__}): {e}")
     
     async def check_agent_health(
         self,
