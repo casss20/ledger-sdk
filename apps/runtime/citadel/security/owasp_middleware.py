@@ -177,16 +177,15 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     
     # LLM prompt injection patterns
     PROMPT_INJECTION_PATTERNS = [
-        r"ignore\s+(all\s+)?(previous\s+|earlier\s+)?instructions",
-        r"ignore\s+(the\s+)?(above\s+|previous\s+)?(prompt|system|instruction)",
-        r"(system|developer)\s*:\s*you\s+are\s+now",
-        r"new\s+instruction\s*:\s*",
-        r"(disregard|override)\s+(the\s+)?(system|developer|user)\s+(prompt|instruction)",
-        r"\[\s*system\s*\(\s*developer\s*\)\s*\]",
-        r"<\s*sys\s*>\s*ignore",
-        r"you\s+are\s+in\s+.?debug\s+mode.?",
-        r"DAN\s*\(|Do\s+Anything\s+Now",
-        r"jailbreak| jail.?break",
+        r"ignore\s+(?:all\s+)?(?:previous\s+)?instructions",
+        r"system\s*[\:\-]\s*(?:you\s+are|ignore|override|disregard)",
+        r"developer\s*[\:\-]\s*(?:you\s+are|ignore|override|disregard)",
+        r"DAN\s*[\:\-]\s*(?:mode|prompt|enabled)",
+        r"jailbreak\s*[\:\-]\s*(?:enabled|mode|prompt)",
+        r"\bignore\s+above\s+constraints\b",
+        r"\bdisregard\s+(?:the\s+)?(?:previous|above)\s+(?:instructions|rules|constraints)\b",
+        r"\bnew\s+instruction[s]?\s*[\:\-]\s*",
+        r"\boverride\s+(?:the\s+)?(?:previous|above)\s+(?:instructions|rules|constraints)\b",
     ]
 
     def _check_patterns(self, value: str, patterns: list, attack_type: str) -> Optional[str]:

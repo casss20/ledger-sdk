@@ -90,6 +90,33 @@ This keeps the `master` history clean with one commit per PR. The commit message
 
 ## 🏷️ Release Process
 
+### Pre-Release Quality Gate
+
+Before cutting any release, the maintainer must run the QA gate and verify three critical items. This is non-negotiable — skipping any of these blocks the release.
+
+**1. Review QA gate evidence**
+Read `docs/QA_GATE_EVIDENCE.md` and confirm every checklist item in that document is satisfied. This includes test coverage, lint status, type-check status, and migration readiness. If the QA gate evidence is stale, update it before proceeding.
+
+**2. Verify backward compatibility of the public API**
+The public API surface is `packages/sdk-python/citadel_governance/`. Before any release, run the SDK tests and confirm that existing SDK methods still work:
+```bash
+cd packages/sdk-python
+pytest tests/ -v
+```
+If a release includes a breaking change to the public API, it **must** be a major version bump and must include a migration guide.
+
+**3. Verify security tests pass for sensitive areas**
+For any release that touches authentication, tokens, billing, or the governance kernel, run the full security test suite:
+```bash
+pytest tests/security/ -v
+```
+If any security test fails, the release is blocked until the failure is resolved. This applies to:
+- `apps/runtime/citadel/auth/`
+- `apps/runtime/citadel/tokens/`
+- `apps/runtime/citadel/billing/`
+- `apps/runtime/citadel/core/`
+- `apps/runtime/citadel/execution/kernel.py`
+
 ### When to Release
 
 Release when:
@@ -106,7 +133,12 @@ Release when:
 □ Version bumped in all relevant files
 □ No open critical issues
 □ Migration files are ready (if schema changed)
+□ QA gate evidence reviewed (see docs/QA_GATE_EVIDENCE.md)
+□ Backward compatibility of public API verified (packages/sdk-python/)
+□ Security tests pass: pytest tests/security/ -v
 ```
+
+**Security release rule:** Any release touching `apps/runtime/citadel/auth/`, `citadel/tokens/`, `citadel/billing/`, or the governance kernel (`citadel/core/`, `citadel/execution/kernel.py`) **must** pass `pytest tests/security/` before tagging.
 
 ### Version Bump Locations
 

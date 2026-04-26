@@ -188,8 +188,13 @@ semgrep --config=auto apps/runtime/citadel/
 2. **Assess** — Reproduce and assign severity
 3. **Fix** — Develop patch in private branch
 4. **Validate** — Security tests + regression tests
-5. **Notify** — If external impact, publish security advisory
-6. **Release** — Patch release with CVE if applicable
+5. **Cherry-pick** — Critical security fixes are cherry-picked to release branches within **4 hours** of merge to `master`
+6. **Notify** — If external impact, publish security advisory
+7. **Release** — Patch release with CVE if applicable
+
+### `CITADEL_TESTING` Environment Variable
+
+`CITADEL_TESTING=true` disables startup validation (secret checks, DB readiness) to speed up test runs. **Never set this in production.** If you see a deployment with `CITADEL_TESTING=true` in a non-test environment, treat it as a security incident.
 
 ## Compliance
 

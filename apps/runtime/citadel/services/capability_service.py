@@ -7,7 +7,7 @@ Atomic operations only. All capability state changes go through here.
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from citadel.actions import Action
 from citadel.repository import Repository
@@ -57,7 +57,7 @@ class CapabilityService:
             return CapabilityCheck(valid=False, reason="Capability revoked")
         
         # Check expiry
-        if cap['expires_at'] < datetime.utcnow():
+        if cap['expires_at'] < datetime.now(timezone.utc):
             return CapabilityCheck(valid=False, reason="Capability expired")
         
         # Check uses
@@ -161,7 +161,7 @@ class CapabilityService:
             session_id=None,
             request_id=None,
             idempotency_key=None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         
         return self._matches_scope(cap, mock_action)

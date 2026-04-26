@@ -52,73 +52,122 @@ apps/runtime/citadel/
 ├── config.py                # Pydantic Settings, env var validation
 ├── core/                    # GOVERNANCE KERNEL — enforcement layer
 │   ├── governor.py          # Escalation levels, strategic oversight
-│   ├── executor.py          # Execution enforcement, mode switching
-│   ├── runtime.py           # Activation cycle, path selection
-│   └── constitution.py      # Behavioral constraints (identity, disclosure, safety)
-├── governance/              # KERNEL + FRAMEWORK + INTELLIGENCE
-│   ├── capability.py        # Token-based capability issuance/consumption
-│   ├── risk.py              # Risk classification (SOFT/HARD approvals)
-│   ├── audit.py             # Hash-chained immutable decision log
-│   ├── killswitch.py        # Emergency stop, fail-closed
+│   ├── orchestrator.py        # Orchestration coordination
+│   ├── repository.py          # Data access layer
+│   ├── router.py            # Action routing logic
+│   └── sdk.py               # SDK interface layer
+├── execution/               # Action execution layer
+│   ├── executor.py          # Executes allowed actions (canonical location)
+│   ├── kernel.py            # Execution kernel
+│   └── __init__.py
+├── executor.py              # Backward-compat shim — re-exports from execution/
+├── middleware/              # FastAPI / ASGI middleware
+│   ├── auth_middleware.py   # Authentication middleware
+│   ├── fastapi_middleware.py  # FastAPI-specific middleware
 │   ├── rate_limit.py        # Token bucket rate limiting
-│   ├── durable.py           # Async approval queues, human-in-the-loop
-│   ├── alignment.py         # Loyalty protocol, long-term goal checking
-│   ├── critic.py            # Quality review, 5-dimension validation
-│   ├── prune.py             # Context cleanup, noise removal
-│   └── after_action.py      # Learning loop, pattern extraction
-├── ops/                     # INTELLIGENCE — behavioral layer
-│   ├── planner.py           # Structured planning, milestones
-│   ├── failure.py           # Recovery protocol, rollback
-│   ├── adaptation.py        # Behavioral adjustment based on patterns
-│   └── opportunity.py       # Leverage detection, automation candidates
-├── system/                  # INTELLIGENCE — system layer
-│   └── focus.py             # Anti-distraction, scope protection
+│   ├── tenant_context.py    # Tenant context injection (DB RLS)
+│   └── tenant_context_logger.py # Tenant-aware logging
 ├── api/                     # FastAPI application layer
 │   ├── __init__.py          # App factory, router registration
 │   ├── middleware.py        # CORS, rate limit, request size, security headers
-│   └── routes/              # HTTP endpoint handlers
+│   └── routers/             # HTTP endpoint handlers
 │       ├── actions.py       # Execute governed actions
+│       ├── agents.py        # Agent management
+│       ├── agent_identity.py # Agent identity / challenge-response
 │       ├── approvals.py     # Approval queue management
 │       ├── audit.py         # Audit log queries
+│       ├── audit_rich.py    # Rich audit analytics
+│       ├── connectors.py    # Integration connectors
+│       ├── dashboard.py     # Dashboard API endpoints
 │       ├── governance.py    # Policy CRUD
 │       ├── health.py        # Health checks (live/ready)
 │       ├── metrics.py       # Prometheus metrics
-│       └── dashboard.py     # Dashboard API endpoints
+│       └── policies_crud.py # Policy CRUD (legacy compat)
 ├── auth/                    # Authentication & authorization
-│   ├── jwt_service.py       # JWT token creation/validation
+│   ├── api_key.py           # API key creation/validation
+│   ├── jwt_token.py         # JWT token creation/validation
+│   ├── operator.py          # Operator management
 │   └── middleware.py        # AuthMiddleware (API key + JWT)
 ├── billing/                 # Stripe integration
+│   ├── entitlement_service.py # Entitlement logic
+│   ├── middleware.py        # Billing middleware
+│   ├── models.py            # Billing data models
+│   ├── repository.py        # Billing repository
+│   ├── routes.py            # Billing endpoints
 │   ├── stripe_client.py     # Stripe API wrapper
 │   ├── stripe_webhooks.py   # Webhook handler with HMAC verification
-│   └── routes.py            # Billing endpoints
+│   └── usage_service.py     # Usage tracking
 ├── security/                # OWASP security controls
 │   └── owasp_middleware.py  # Security headers, input validation, SSRF protection
-├── tokens/                  # Governance Token (GT) system
+├── tokens/                  # Governance Token (GT) system + kill switch
 │   ├── token_vault.py       # Secure token storage
 │   ├── token_issuer.py      # Token creation (gt_cap_, gt_app_, gt_vlt_)
 │   ├── token_verifier.py    # Token introspection & validation
-│   └── decision_engine.py   # Decision-before-token issuance
+│   ├── decision_engine.py   # Decision-before-token issuance
+│   ├── governance_decision.py # Decision types and scopes
+│   ├── governance_token.py  # Token data models
+│   ├── kill_switch.py       # Emergency stop, fail-closed
+│   ├── audit_trail.py       # Governance audit trail (hash-chained)
+│   └── execution_middleware.py # Token-aware execution middleware
 ├── dashboard/               # Dashboard-specific backend logic
+│   ├── activity_stream.py
+│   ├── approval_queue.py
+│   ├── audit_explorer.py
+│   ├── coverage_heatmap.py
+│   ├── kill_switch_panel.py
+│   ├── posture_score.py
+│   └── __init__.py
 ├── services/                # Business logic services
+│   ├── analytics.py         # Analytics aggregation
+│   ├── approval_service.py  # Approval queue logic
+│   ├── audit_service.py     # Audit event logging
+│   ├── capability_service.py # Capability token logic
+│   └── policy_resolver.py   # Policy resolution engine
 ├── utils/                   # Shared utilities
 │   ├── telemetry.py         # OpenTelemetry setup (optional)
-│   └── logging.py           # Structured JSON logging
-└── integrations/            # Third-party connectors
+│   ├── error_handling.py    # Error handling utilities
+│   ├── validation.py        # Input validation helpers
+│   ├── schema.py            # Schema utilities
+│   └── (other utilities)
+├── integrations/            # Third-party connectors
+│   ├── claude_code.py       # Anthropic Claude integration
+│   ├── codex.py             # OpenAI Codex integration
+│   ├── k2_6.py              # K2-6 integration
+│   └── langgraph.py         # LangGraph integration
+├── agent_identity/          # Agent identity / trust-score layer
+│   ├── auth.py
+│   ├── identity.py
+│   ├── trust_score.py
+│   └── verification.py
+├── policy_resolver.py       # Top-level policy resolution (backward-compat)
+├── capability_service.py    # Backward-compat shim → services/capability_service
+├── approval_service.py      # Backward-compat shim → services/approval_service
+├── audit_service.py         # Backward-compat shim → services/audit_service
+├── audit_anchoring.py       # Merkle root / cryptographic anchoring
+├── repository.py            # Backward-compat shim → core/repository
+├── precedence.py            # Precedence rules
+├── status.py                # Status management
+└── sre/                     # Site reliability / observability
+    ├── alerting.py
+    ├── health_checks.py
+    ├── prometheus_metrics.py
+    ├── slos.py
+    └── structured_logging.py
 ```
 
 ### Public API vs Internal Implementation
 
 **Public API** (stable, documented, versioned):
 - Everything in `packages/sdk-python/citadel_governance/` — the SDK
-- FastAPI routes in `api/routes/` — the HTTP API
+- FastAPI routes in `api/routers/` — the HTTP API
 - Database schema in `db/schema.sql`
 
 **Internal Implementation** (may change without notice):
-- Everything in `core/`, `governance/`, `ops/`, `system/` — these are implementation details
+- Everything in `core/`, `tokens/`, `services/` — these are implementation details
 - Internal utilities in `utils/`
 - Test helpers in `tests/conftest.py`
 
-**Rule:** If you're building an integration, use the SDK or the HTTP API. Don't import from `citadel.core` or `citadel.governance` directly.
+**Rule:** If you're building an integration, use the SDK or the HTTP API. Don't import from `citadel.core` or `citadel.tokens` directly.
 
 ---
 
@@ -222,6 +271,7 @@ Organized by speed and dependency requirements:
 
 **Key test files:**
 - `tests/security/test_security_hardening.py` — CORS, rate limiting, body size, Stripe HMAC
+- `tests/security/test_abuse_cases.py` — Prompt injection blocking, kill-switch bypass, TOCTOU
 - `tests/tokens/test_runtime_introspection.py` — Token revocation, expiry, scope checks
 - `tests/integration/test_rls_enforcement.py` — Row-level security isolation
 - `tests/test_audit_anchoring.py` — Merkle root signing, cryptographic integrity
@@ -296,9 +346,9 @@ These rules keep the codebase maintainable:
 ```
 sdk-python ──HTTP──► runtime API
 dashboard ──HTTP──► runtime API
-runtime/api ──imports──► runtime/core, runtime/governance, runtime/services
-runtime/core ──imports──► runtime/governance (for enforcement)
-runtime/governance ──imports──► runtime/core (for primitives)
+runtime/api ──imports──► runtime/core, runtime/services, runtime/tokens
+runtime/core ──imports──► runtime/services (for enforcement)
+runtime/services ──imports──► runtime/core (for primitives)
 runtime/utils ──imports──► nothing internal (leaf utilities)
 ```
 
@@ -324,7 +374,7 @@ These are the **stable, versioned** interfaces. Changes here require a deprecati
 | Surface | Location | Stability |
 |---|---|---|
 | Python SDK | `packages/sdk-python/citadel_governance/` | Stable (semver) |
-| HTTP REST API | `apps/runtime/citadel/api/routes/` | Stable (documented) |
+| HTTP REST API | `apps/runtime/citadel/api/routers/` | Stable (documented) |
 | Database Schema | `db/schema.sql` | Stable (migrations) |
 | Governance Token Spec | `packages/open-spec/` | Stable (versioned) |
 
@@ -337,7 +387,7 @@ Everything else is internal implementation detail and may change without notice.
 If you need to add a new top-level module to `apps/runtime/citadel/`:
 
 1. **Ask first** — Open a discussion or issue explaining the need
-2. **Follow the three-layer model** — Is it Kernel, Framework, or Intelligence?
+2. **Follow the three-layer model** — Is it Kernel (`core/`), Service (`services/`), or Token (`tokens/`)?
 3. **Add tests** — Every module needs tests in the appropriate `tests/` directory
 4. **Add docs** — Update `docs/ARCHITECTURE.md` and `docs/public/` if user-facing
 5. **Register in `__init__.py`** — If it exposes a public API
@@ -348,8 +398,9 @@ If you need to add a new top-level module to `apps/runtime/citadel/`:
 
 | I want to... | Look in... |
 |---|---|
-| Add a new HTTP endpoint | `apps/runtime/citadel/api/routes/` |
+| Add a new HTTP endpoint | `apps/runtime/citadel/api/routers/` |
 | Change policy evaluation logic | `apps/runtime/citadel/core/governor.py` |
+| Change action execution | `apps/runtime/citadel/execution/executor.py` |
 | Add a new token type | `apps/runtime/citadel/tokens/` + `packages/open-spec/` |
 | Change the database schema | `db/schema.sql` + `db/migrations/` |
 | Add an SDK method | `packages/sdk-python/citadel_governance/` |

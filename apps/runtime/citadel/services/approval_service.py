@@ -9,7 +9,7 @@ Handles:
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
@@ -103,7 +103,7 @@ class ApprovalService:
         check: ApprovalCheck,
     ) -> uuid.UUID:
         """Create pending approval entry."""
-        expires_at = datetime.utcnow() + timedelta(hours=check.expires_hours)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=check.expires_hours)
         
         approval_id = await self.repo.create_approval(
             action_id=action.action_id,
@@ -169,24 +169,8 @@ class ApprovalService:
         reason: Optional[str] = None,
     ) -> ApprovalResult:
         """Approve a pending approval."""
-        approval = await self.repo.get_approval(approval_id)
-        if not approval:
-            raise ValueError(f"Approval {approval_id} not found")
-        
-        if approval['status'] != 'pending':
-            raise ValueError(f"Approval already {approval['status']}")
-        
-        # Update approval status
-        # Note: In real implementation, this would be a DB update
-        # For now, returning the intended result
-        
-        return ApprovalResult(
-            approval_id=approval_id,
-            status='approved',
-            reviewed_by=reviewed_by,
-            reason=reason or "Approved"
-        )
-    
+        return await self.resolve_approval(approval_id, reviewed_by, "approved", reason)
+
     async def reject(
         self,
         approval_id: uuid.UUID,
@@ -194,19 +178,7 @@ class ApprovalService:
         reason: str,
     ) -> ApprovalResult:
         """Reject a pending approval."""
-        approval = await self.repo.get_approval(approval_id)
-        if not approval:
-            raise ValueError(f"Approval {approval_id} not found")
-        
-        if approval['status'] != 'pending':
-            raise ValueError(f"Approval already {approval['status']}")
-        
-        return ApprovalResult(
-            approval_id=approval_id,
-            status='rejected',
-            reviewed_by=reviewed_by,
-            reason=reason
-        )
+        return await self.resolve_approval(approval_id, reviewed_by, "rejected", reason)
     
     async def check_expired(self, approval_id: uuid.UUID) -> bool:
         """Check if approval has expired."""
@@ -217,24 +189,34 @@ class ApprovalService:
         if approval['status'] != 'pending':
             return False
         
-        if approval['expires_at'] < datetime.utcnow():
+        if approval['expires_at'] < datetime.now(timezone.utc):
             return True
         
         return False
     
     async def process_expirations(self) -> int:
-        """
-        Process all expired approvals.
+        """Process all expired approvals.
+        
+        Updates approval status to 'expired' for pending approvals past their expiry.
+        Note: Corresponding decision updates to EXPIRED_APPROVAL are handled by a
+        background reconciliation job.
         
         Returns count of approvals expired.
         """
-        # In real implementation, this would:
-        # 1. Find all pending approvals where expires_at < NOW()
-        # 2. Update status to 'expired'
-        # 3. Update corresponding decisions to EXPIRED_APPROVAL
-        
-        # Placeholder
-        return 0
+        async with self.repo.pool.acquire() as conn:
+            result = await conn.execute(
+                """
+                UPDATE approvals
+                SET status = 'expired'
+                WHERE status = 'pending' AND expires_at < NOW()
+                """
+            )
+        # asyncpg execute() returns a string like "UPDATE 3"
+        count_str = result.split()[-1] if result else "0"
+        try:
+            return int(count_str)
+        except ValueError:
+            return 0
     
     async def get_pending_queue(
         self,

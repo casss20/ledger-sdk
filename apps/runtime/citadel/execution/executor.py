@@ -7,6 +7,11 @@ No governance logic here - that's all done before we get here.
 
 from typing import Any, Callable, Awaitable, Optional
 
+import asyncpg
+
+import logging
+logger = logging.getLogger(__name__)
+
 from citadel.actions import Action
 
 
@@ -21,6 +26,20 @@ class Executor:
     - Result wrapping
     """
     
+    async def execute(
+        self,
+        action: Action,
+        func: Optional[Callable[..., Awaitable[Any]]] = None,
+        *args,
+        **kwargs
+    ) -> Any:
+        """
+        Alias for `run()` — preserves backward compatibility.
+        
+        Delegates to `self.run(action, func, *args, **kwargs)`.
+        """
+        return await self.run(action, func, *args, **kwargs)
+
     async def run(
         self,
         action: Action,

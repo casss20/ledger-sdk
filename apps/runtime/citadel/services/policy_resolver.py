@@ -5,6 +5,7 @@ Single job: Resolve which policy applies and return an immutable snapshot.
 No decision logic here - just policy lookup and snapshot creation.
 """
 
+import logging
 import uuid
 import hashlib
 import json
@@ -13,6 +14,8 @@ from dataclasses import dataclass
 
 from citadel.actions import Action
 from citadel.repository import Repository
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -234,12 +237,20 @@ class PolicyEvaluator:
 
         # Risk score conditions
         if 'risk_score >' in condition:
-            threshold = int(condition.split('>')[1].strip())
-            return context.get('risk_score', 0) > threshold
+            try:
+                threshold = int(condition.split('>')[1].strip())
+                return context.get('risk_score', 0) > threshold
+            except (ValueError, IndexError):
+                logger.warning(f"Malformed risk_score condition: {condition!r}")
+                return False
 
         if 'risk_score <' in condition:
-            threshold = int(condition.split('<')[1].strip())
-            return context.get('risk_score', 0) < threshold
+            try:
+                threshold = int(condition.split('<')[1].strip())
+                return context.get('risk_score', 0) < threshold
+            except (ValueError, IndexError):
+                logger.warning(f"Malformed risk_score condition: {condition!r}")
+                return False
 
         # Action name patterns
         if condition.startswith('action_name =='):

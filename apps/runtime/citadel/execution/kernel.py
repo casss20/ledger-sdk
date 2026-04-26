@@ -13,11 +13,15 @@ Rule: No decision logic leaks across modules. Each module has one job.
 """
 
 import asyncio
+import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from citadel.actions import Action, Decision, KernelStatus, KernelResult
+from citadel.security.prompt_injection import PromptInjectionDetector
+
+logger = logging.getLogger(__name__)
 
 
 class Kernel:
@@ -112,12 +116,25 @@ class Kernel:
 
         await self.audit.action_received(action)
 
+        # 2.5. Scan payload for prompt injection attempts
+        detector = PromptInjectionDetector()
+        is_clean, matched = detector.scan(action.payload)
+        if not is_clean:
+            logger.warning(f"Prompt injection detected in action {action.action_id}: {matched}")
+            decision = await self._terminal_decision(
+                action, KernelStatus.BLOCKED_SCHEMA, "prompt_injection_detected",
+                f"Prompt injection patterns detected: {len(matched)} match(es)"
+            )
+            await self.audit.action_failed(action, f"Prompt injection blocked: {matched}")
+            return KernelResult(action=action, decision=decision, executed=False, result=None, error="Prompt injection detected")
+
         # 3. Resolve policy snapshot
         try:
             snapshot = await self.policy.resolve(action)
             await self.audit.policy_evaluated(action, snapshot)
-        except (ValueError, TypeError, KeyError, RuntimeError, ConnectionError, TimeoutError) as policy_err:
+        except (ValueError, TypeError, KeyError, ConnectionError, TimeoutError) as policy_err:
             logger.error(f"Policy resolution failed ({type(policy_err).__name__}): {policy_err}", exc_info=True)
+            await self.audit.action_failed(action, f"Policy resolution failed: {policy_err}")
             decision = await self._terminal_decision(
                 action, KernelStatus.BLOCKED_SCHEMA, "policy_resolution_failed", str(policy_err)
             )
@@ -237,7 +254,7 @@ class Kernel:
             risk_level=risk_level,
             risk_score=risk_score,
             path_taken=path_taken,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             tenant_id=action.tenant_id,
         )
         await self.repo.save_decision(decision)

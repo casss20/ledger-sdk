@@ -12,9 +12,8 @@ It does NOT maintain its own state. All state is in PostgreSQL.
 
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,8 +50,8 @@ class ActionRecord:
     action: str
     resource: str
     state: ActionState
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Context
     agent: str = "default"
@@ -103,7 +102,6 @@ class Governor:
 
     def __init__(self, pool):
         self._pool = pool
-        self._subscribers: List[callable] = []
 
     @classmethod
     def set_instance(cls, pool) -> "Governor":
@@ -195,6 +193,9 @@ class Governor:
     ) -> List[ActionRecord]:
         """List actions in a given derived state."""
         # Map ActionState to SQL conditions
+        # NOTE: The conditions dict is hardcoded and maps only valid ActionState
+        # enum members to safe SQL fragments. The f-string below is safe because
+        # `state` is asserted to be a valid enum member before use.
         conditions = {
             ActionState.PENDING: "d.decision_id IS NULL",
             ActionState.PENDING_APPROVAL: "d.status = 'PENDING_APPROVAL'",
@@ -206,7 +207,8 @@ class Governor:
             ActionState.DENIED: "d.status IN ('BLOCKED_SCHEMA','BLOCKED_EMERGENCY','BLOCKED_CAPABILITY','BLOCKED_POLICY','RATE_LIMITED','REJECTED_APPROVAL')",
             ActionState.TIMEOUT: "d.status IN ('EXPIRED_APPROVAL','TIMEOUT')",
         }
-        where_clause = conditions.get(state, "TRUE")
+        assert state in conditions, f"Invalid ActionState: {state}"
+        where_clause = conditions[state]
         tenant_clause = "AND a.tenant_id = $2" if tenant_id else ""
 
         sql = f"""
@@ -349,11 +351,61 @@ class Governor:
     # =====================================================================
 
     async def get_stats(self, tenant_id: Optional[str] = None) -> Dict[str, int]:
-        """Get counts by derived state."""
+        """Get counts by derived state using aggregated SQL queries.
+
+        Uses O(1) queries instead of O(n) to avoid reading massive row sets
+        into memory (DoS / performance vector).
+        """
         stats = {s.value: 0 for s in ActionState}
-        for state in ActionState:
-            records = await self.list_by_state(state, limit=10000, tenant_id=tenant_id)
-            stats[state.value] = len(records)
+
+        async with self._pool.acquire() as conn:
+            # 1. Count pending actions (no decision yet)
+            pending_row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS cnt FROM actions a
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM decisions d WHERE d.action_id = a.action_id
+                )
+                AND ($1::text IS NULL OR a.tenant_id = $1)
+                """,
+                tenant_id,
+            )
+            stats[ActionState.PENDING.value] = pending_row['cnt'] if pending_row else 0
+
+            # 2. Aggregate decisions by status
+            decision_rows = await conn.fetch(
+                """
+                SELECT d.status, COUNT(*) AS cnt
+                FROM decisions d
+                WHERE ($1::text IS NULL OR d.tenant_id = $1)
+                GROUP BY d.status
+                """,
+                tenant_id,
+            )
+
+        # Map raw decision statuses to ActionState counts
+        for row in decision_rows:
+            status = row['status']
+            cnt = row['cnt']
+            if status == 'PENDING_APPROVAL':
+                stats[ActionState.PENDING_APPROVAL.value] += cnt
+            elif status == 'DEFERRED':
+                stats[ActionState.DEFERRED.value] += cnt
+            elif status == 'ALLOWED':
+                # ALLOWED means still executing (no execution_result yet)
+                stats[ActionState.EXECUTING.value] += cnt
+            elif status == 'EXECUTED':
+                # EXECUTED maps to success/failure, but we don't have
+                # execution_results here; keep in executing for now.
+                stats[ActionState.EXECUTING.value] += cnt
+            elif status == 'FAILED_EXECUTION':
+                stats[ActionState.FAILED.value] += cnt
+            elif status in ('BLOCKED_SCHEMA', 'BLOCKED_EMERGENCY', 'BLOCKED_CAPABILITY',
+                            'BLOCKED_POLICY', 'RATE_LIMITED', 'REJECTED_APPROVAL'):
+                stats[ActionState.DENIED.value] += cnt
+            elif status in ('EXPIRED_APPROVAL', 'TIMEOUT'):
+                stats[ActionState.TIMEOUT.value] += cnt
+
         return stats
 
     async def get_summary(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
@@ -381,30 +433,7 @@ class Governor:
             "latest_failed": [r.to_dict() for r in failed],
         }
 
-    # =====================================================================
-    # Subscriptions
-    # =====================================================================
 
-    def subscribe(self, callback: callable):
-        """Subscribe to state changes (notified on explicit transitions)."""
-        self._subscribers.append(callback)
-
-    async def _notify(self, record: ActionRecord):
-        """Notify all subscribers of a state change."""
-        for callback in self._subscribers:
-            try:
-                if asyncio.iscoroutinefunction(callback):
-                    await callback(record)
-                else:
-                    callback(record)
-            except (TypeError, ValueError, RuntimeError) as e:
-                logger.error(f"[GOVERNOR] Subscriber callback error ({type(e).__name__}): {e}")
-            except Exception as unexpected_e:
-                logger.error(f"[GOVERNOR] Unexpected subscriber error ({type(unexpected_e).__name__}): {unexpected_e}")
-
-    # =====================================================================
-    # Row Mapping
-    # =====================================================================
 
     def _row_to_record(self, row) -> ActionRecord:
         """Convert a DB row to an ActionRecord."""
@@ -433,7 +462,7 @@ class Governor:
             resource=row['resource'],
             state=state,
             created_at=row['created_at'],
-            updated_at=updated_at or datetime.utcnow(),
+            updated_at=updated_at or datetime.now(timezone.utc),
             agent=row.get('agent', 'default'),
             risk=row.get('risk_level', 'LOW') or 'LOW',
             approval_level='NONE',  # Could be enriched from approvals table

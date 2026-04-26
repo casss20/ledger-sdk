@@ -351,6 +351,49 @@ test(runtime): add race condition test for kill switch
 - [ ] Security tests pass (`pytest tests/security/`)
 - [ ] Bandit scan passes (`bandit -r apps/runtime/citadel/`)
 
+### Before You Submit — Final Checklist
+
+Run this before opening every PR (it catches 90% of review rejects):
+
+```bash
+# 1. Syntax check on modified Python files
+python3 -m py_compile <your_modified_file.py>
+
+# 2. Run the specific test file you modified
+CITADEL_TESTING=true pytest tests/path/to/test_file.py -v
+
+# 3. Run lint on critical errors
+ruff check apps/runtime/ --select E9,F63,F7,F82
+
+# 4. Run security tests (if you touched auth, tokens, kernel, or security)
+pytest tests/security/ -v
+
+# 5. Run SDK tests (if you touched packages/sdk-python/)
+cd packages/sdk-python && pytest tests/ -v
+```
+
+**Code review self-check:**
+- [ ] `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` anywhere it compares to DB timestamps
+- [ ] `logger` and `asyncpg` imported in any file that references them
+- [ ] `execute()` method calls match the actual class (use `run()` if no `execute()` exists, or check the shim)
+- [ ] All new SQL uses parameterized queries (`$1`, `$2`) — no f-strings for values
+- [ ] No `print()` or `logging.info()` of passwords, tokens, API keys
+- [ ] Broad `except Exception` blocks log with `logger.exception()` and re-raise or return controlled errors
+- [ ] Monorepo changes: `apps/runtime/` edits need tests in `tests/`; `packages/sdk-python/` edits need SDK tests
+
+### Monorepo Notes
+
+Citadel is a mixed-license monorepo. Keep your changes in the right place:
+
+| Directory | License | Test Location |
+|---|---|---|
+| `apps/runtime/` | BSL 1.1 | `tests/` |
+| `packages/sdk-python/` | Apache 2.0 | `packages/sdk-python/tests/` |
+| `db/` | BSL 1.1 | `tests/integration/` |
+| `docs/` | BSL 1.1 | n/a (manual review) |
+
+**Rule:** If you change a runtime module, update or add a test in `tests/`. If you change the SDK, update or add a test in `packages/sdk-python/tests/`.
+
 ### Pull Request Checklist
 
 Before opening a PR, verify:
@@ -501,6 +544,55 @@ Mockups, use cases, or references.
 3. **Wait for assignment** (prevents duplicate work)
 4. **Fork, branch, implement, test**
 5. **Open PR** referencing the issue: `Fixes #123`
+
+---
+
+## ✅ Before You Submit
+
+Run through this checklist before opening a pull request. It catches the most common issues that slow down review.
+
+### Quick Checklist
+
+```bash
+# 1. Compile-check every Python file you modified
+python3 -m py_compile apps/runtime/citadel/your_module.py
+
+# 2. Run the specific test file you modified
+CITADEL_TESTING=true pytest tests/unit/test_your_file.py -v
+
+# 3. Check for deprecated datetime.utcnow() in your changes
+# (Use datetime.now(timezone.utc) instead — datetime.utcnow() is deprecated)
+grep -n "utcnow()" apps/runtime/citadel/your_module.py
+
+# 4. Check for missing imports (especially logger, asyncpg)
+python3 -c "import apps.runtime.citadel.your_module"
+
+# 5. Check that execute() method calls match the actual class methods
+# (Signature drift is common after refactors)
+```
+
+### Common Gotchas
+
+| Check | Why It Matters | How to Fix |
+|---|---|---|
+| `datetime.utcnow()` | Deprecated in Python 3.12+; behaves differently in newer runtimes | Replace with `datetime.now(timezone.utc)` |
+| Missing `logger` import | Runtime crashes on first log line | `from citadel.utils.telemetry import logger` |
+| Missing `asyncpg` import | Database queries fail silently in tests | Add `import asyncpg` at the top |
+| `execute()` signature mismatch | Refactors change method names; callers break | Run `mypy` or grep for the method |
+| No test update for runtime change | Regression risk | See Monorepo note below |
+
+### Monorepo Test Coordination
+
+Citadel is a monorepo. Changes in one app or package often need corresponding test updates in another:
+
+| If you changed... | You must also update... |
+|---|---|
+| `apps/runtime/citadel/` (backend logic) | `tests/` — add or update tests for the modified module |
+| `packages/sdk-python/citadel_governance/` (SDK) | `packages/sdk-python/tests/` — SDK tests must pass |
+| `db/schema.sql` or `db/migrations/` | `tests/integration/` — DB integration tests must pass |
+| `apps/runtime/citadel/api/routers/` (API routes) | `tests/security/` + `tests/integration/` — security and integration |
+
+**Rule:** If CI fails because of a missing test update in another package, the PR is blocked regardless of how small the change is.
 
 ---
 

@@ -91,6 +91,8 @@ CITADEL_TESTING=true pytest tests/simulations/ -v
 # SDK tests
 cd packages/sdk-python && pytest tests/ -v
 
+> **Note on AI security testing:** A `PromptInjectionDetector` is being added in a parallel workstream to provide dedicated detection of LLM prompt-injection attempts in action payloads. Once merged, add `pytest tests/security/test_prompt_injection.py -v` to your security validation routine. For now, prompt-injection patterns are already checked by `InputValidationMiddleware` in `apps/runtime/citadel/security/owasp_middleware.py`.
+
 # Full test suite (what CI runs)
 CITADEL_TESTING=true pytest tests/ -v --tb=short
 ```
@@ -410,7 +412,7 @@ createuser -P citadel  # password: citadel
 psql -c "GRANT ALL PRIVILEGES ON DATABASE citadel_test TO citadel;"
 ```
 
-### `RuntimeError: CORS_ORIGINS must be configured`
+### `RuntimeError: CORS_ORIGINS must be configured in production`
 
 You need to set CORS origins in `.env`:
 ```bash
@@ -418,6 +420,12 @@ echo "CORS_ORIGINS=http://localhost:5173,http://localhost:3000" >> .env
 ```
 
 Or set `CITADEL_TESTING=true` for tests.
+
+The actual error messages are:
+- In production (`debug=False`): `RuntimeError: CORS_ORIGINS must be configured in production. Refusing to start without explicit origins.`
+- With wildcard + credentials: `RuntimeError: CORS_ORIGINS / settings.allowed_cors_origins must be configured (comma-separated list). Refusing to start with wildcard + credentials.`
+
+If you see the wildcard variant, ensure `CORS_ORIGINS` is not `*` when credentials (cookies / auth headers) are enabled.
 
 ### `npm run build` fails with TypeScript errors
 
