@@ -101,6 +101,9 @@ Documentation = "https://github.com/casss20/citadel-sdk/tree/master/docs"
 Repository = "https://github.com/casss20/citadel-sdk.git"
 Issues = "https://github.com/casss20/citadel-sdk/issues"
 
+[tool.hatch.build.targets.wheel]
+packages = ["apps/runtime/citadel"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310", "py311", "py312"]

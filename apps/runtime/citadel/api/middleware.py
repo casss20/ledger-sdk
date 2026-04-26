@@ -10,6 +10,7 @@ Citadel API Middleware
 
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Callable, Optional
@@ -222,6 +223,9 @@ def setup_cors(app: FastAPI) -> None:
     """Add CORS as the outermost middleware so it handles preflight before auth."""
     origins = settings.allowed_cors_origins
     if not origins:
+        # Allow empty origins in testing mode (tests don't need CORS)
+        if os.environ.get("CITADEL_TESTING") == "true":
+            return
         raise RuntimeError(
             "CORS_ORIGINS / settings.allowed_cors_origins must be configured "
             "(comma-separated list). Refusing to start with wildcard + credentials."

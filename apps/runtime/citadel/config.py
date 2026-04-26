@@ -25,12 +25,8 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # CORS Origins (comma-separated)
-    cors_origins: str = (
-        "https://citadelsdk.com,"
-        "https://www.citadelsdk.com,"
-        "https://dashboard.citadelsdk.com,"
-        "https://*.vercel.app"
-    )
+    # Must be set explicitly in production. Empty = no CORS origins allowed.
+    cors_origins: str = ""
     
     @property
     def allowed_cors_origins(self) -> List[str]:
