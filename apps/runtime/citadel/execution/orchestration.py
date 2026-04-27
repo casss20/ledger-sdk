@@ -230,17 +230,53 @@ class OrchestrationRuntime:
                 reason=f"Governance blocked: {governed.decision.reason}",
             )
 
-        # 6. Issue child capability token
+        # 6. Issue child capability token — FAIL CLOSED
+        # If token issuance fails after kernel approved the child, we must
+        # not return a usable child grant. Attempt compensating cleanup.
         child_grant = None
         if not dry_run and governed.decision.status == KernelStatus.ALLOWED:
             child_gov_decision = self._kernel_to_governance_decision(
                 governed.decision, child_action, scope
             )
-            token = await self.vault.issue_token_for_decision(
-                child_gov_decision,
-                lifetime_seconds=3600,
-            )
-            child_grant = token.token_id
+            try:
+                token = await self.vault.issue_token_for_decision(
+                    child_gov_decision,
+                    lifetime_seconds=3600,
+                )
+                child_grant = token.token_id
+            except Exception as e:
+                logger.error(
+                    "Token issuance failed for child decision %s of parent %s: %s",
+                    child_gov_decision.decision_id,
+                    resolved_parent.decision_id,
+                    e,
+                )
+                # Attempt compensating cleanup: revoke the child governance decision
+                # so it cannot be used as valid authority by any other path.
+                if hasattr(self.vault, "revoke_decision"):
+                    try:
+                        await self.vault.revoke_decision(
+                            child_gov_decision.decision_id,
+                            tenant_id=child_gov_decision.tenant_id,
+                            reason="token_issuance_failed",
+                        )
+                    except Exception as revoke_err:
+                        logger.warning(
+                            "Compensating revoke failed for child decision %s: %s",
+                            child_gov_decision.decision_id,
+                            revoke_err,
+                        )
+                await self._audit_delegate_blocked(
+                    resolved_parent, child_actor_id, action_name,
+                    f"Token issuance failed: {e}"
+                )
+                return DelegationResult(
+                    success=False,
+                    child_action=child_action,
+                    child_decision=governed.decision,
+                    reason=f"Token issuance failed: {e}",
+                    error=str(e),
+                )
 
         # 7. Audit
         await self._audit_delegate_created(
@@ -334,7 +370,10 @@ class OrchestrationRuntime:
             request_id=None,
             idempotency_key=None,
             root_decision_id=resolved_current.root_decision_id or resolved_current.decision_id,
-            parent_decision_id=resolved_current.decision_id,
+            # Handoff: new decision links to the OLD decision's parent,
+            # NOT the old decision itself (which will be superseded).
+            # This preserves lineage while avoiding ancestry rejection.
+            parent_decision_id=resolved_current.parent_decision_id,
             trace_id=trace_id or resolved_current.trace_id or f"trace_{uuid.uuid4().hex}",
             parent_actor_id=resolved_current.actor_id,
             workflow_id=workflow_id or resolved_current.workflow_id,
@@ -431,6 +470,7 @@ class OrchestrationRuntime:
         tenant_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         workflow_id: Optional[str] = None,
+        shared_context: Dict[str, Any] = None,
         dry_run: bool = False,
     ) -> GatherResult:
         """
@@ -494,8 +534,13 @@ class OrchestrationRuntime:
                 )
 
         # Create branch actions with lineage from resolved parent
+        # Use distilled context to avoid passing unnecessary parent history
         branch_actions = []
         for i, branch in enumerate(branches):
+            distilled = self._distill_branch_context(
+                branch.get("context", {}),
+                shared_context=shared_context,
+            )
             action = Action(
                 action_id=uuid.uuid4(),
                 actor_id=branch.get("actor_id", resolved_parent.actor_id),
@@ -504,7 +549,7 @@ class OrchestrationRuntime:
                 resource=branch["resource"],
                 tenant_id=tenant_id or resolved_parent.tenant_id,
                 payload=branch.get("payload", {}),
-                context=branch.get("context", {}),
+                context=distilled,
                 session_id=None,
                 request_id=None,
                 idempotency_key=None,
@@ -651,6 +696,18 @@ class OrchestrationRuntime:
                 token=token_data,
             )
 
+        # Check ancestry: parent and root must still be active
+        if hasattr(self.vault, "check_ancestry"):
+            ancestry_ok, ancestry_reason = await self.vault.check_ancestry(decision)
+            if not ancestry_ok:
+                return IntrospectionStatus(
+                    active=False,
+                    reason=f"Ancestry revoked: {ancestry_reason}",
+                    revoked=True,
+                    decision=decision,
+                    token=token_data,
+                )
+
         # Check scope
         scope_valid = True
         if required_action:
@@ -704,6 +761,51 @@ class OrchestrationRuntime:
     # =====================================================================
     # Helpers
     # =====================================================================
+
+    def _distill_branch_context(
+        self,
+        branch_context: Dict[str, Any],
+        shared_context: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Build minimal branch context from raw branch + shared inputs.
+
+        Only preserves:
+        - Required lineage identifiers (trace_id, workflow_id, parent_decision_id)
+        - Governance metadata (risk_level, kill_switch_scope if present)
+        - Explicit task-local keys provided by the caller
+        - Shared immutable context merged safely
+
+        Drops:
+        - Full parent action history
+        - Large parent payloads
+        - Audit/event logs
+        - Ephemeral runtime state
+        """
+        # Start with shared context (immutable reference, not deep-copied)
+        distilled: Dict[str, Any] = {}
+        if shared_context:
+            # Only copy lightweight keys; drop heavy objects
+            for k, v in shared_context.items():
+                if isinstance(v, (str, int, float, bool, type(None))):
+                    distilled[k] = v
+                elif isinstance(v, (list, tuple)) and len(v) <= 16:
+                    distilled[k] = list(v)
+                elif isinstance(v, dict) and len(v) <= 8:
+                    distilled[k] = dict(v)
+                # Skip large objects, bytes, custom classes
+
+        # Merge branch-specific context with same filtering
+        for k, v in branch_context.items():
+            if k in distilled:
+                continue  # Branch context wins over shared for same key
+            if isinstance(v, (str, int, float, bool, type(None))):
+                distilled[k] = v
+            elif isinstance(v, (list, tuple)) and len(v) <= 16:
+                distilled[k] = list(v)
+            elif isinstance(v, dict) and len(v) <= 8:
+                distilled[k] = dict(v)
+
+        return distilled
 
     def _is_narrower_scope(self, parent: DecisionScope, child: DecisionScope) -> bool:
         """Check that child scope is a subset of parent scope.

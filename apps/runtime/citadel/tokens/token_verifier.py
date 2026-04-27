@@ -171,6 +171,13 @@ class TokenVerifier:
                 decision=decision,
             )
 
+        # 4b. Ancestry check: ensure parent and root are still active
+        if hasattr(self.vault, "check_ancestry"):
+            ancestry_ok, ancestry_reason = await self.vault.check_ancestry(decision)
+            if not ancestry_ok:
+                await self._audit_token_verification(token_id, False, ancestry_reason, context, decision)
+                return VerificationResult(valid=False, reason=ancestry_reason, decision=decision)
+
         # 5. Check scope
         if not decision.scope.covers(action, resource):
             await self._audit_token_verification(token_id, False, "scope_mismatch", context, decision)
@@ -269,6 +276,13 @@ class TokenVerifier:
             if ks_check.active:
                 await self._audit_decision_verification(decision, False, "kill_switch", context)
                 return VerificationResult(valid=False, reason="kill_switch", decision=decision)
+
+        # 4b. Ancestry check: ensure parent and root are still active
+        if hasattr(self.vault, "check_ancestry"):
+            ancestry_ok, ancestry_reason = await self.vault.check_ancestry(decision)
+            if not ancestry_ok:
+                await self._audit_decision_verification(decision, False, ancestry_reason, context)
+                return VerificationResult(valid=False, reason=ancestry_reason, decision=decision)
 
         await self._audit_decision_verification(decision, True, "verified", context)
         return VerificationResult(valid=True, decision=decision)

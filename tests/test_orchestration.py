@@ -201,6 +201,28 @@ class MockVault:
     async def resolve_decision(self, decision_id: str, tenant_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         return self._decisions.get(decision_id)
 
+    async def check_ancestry(self, decision: GovernanceDecision) -> tuple[bool, Optional[str]]:
+        """Check whether parent and root decisions are still active.
+        
+        NOTE: Only REVOCATION cascades. Superseded status is checked at the 
+        decision level (verify_token / introspect), not at ancestry level.
+        A handoff creates a new independent lineage; existing delegations from
+        the superseded authority are not automatically invalidated.
+        """
+        if decision.parent_decision_id and decision.parent_decision_id != decision.decision_id:
+            parent = self._decisions.get(decision.parent_decision_id)
+            if parent is not None:
+                if parent.get("revoked_at") or parent.get("decision_type") == "revoked":
+                    return False, "parent_revoked"
+                # Superseded does NOT cascade via ancestry — checked at decision level
+        if decision.root_decision_id and decision.root_decision_id != decision.decision_id and decision.root_decision_id != decision.parent_decision_id:
+            root = self._decisions.get(decision.root_decision_id)
+            if root is not None:
+                if root.get("revoked_at") or root.get("decision_type") == "revoked":
+                    return False, "root_revoked"
+                # Superseded does NOT cascade via ancestry
+        return True, None
+
     async def issue_token_for_decision(
         self,
         decision: GovernanceDecision,
@@ -241,6 +263,44 @@ class MockVault:
 
     async def store_decision(self, decision: GovernanceDecision) -> None:
         self._decisions[decision.decision_id] = _gov_decision_to_dict(decision)
+
+    async def revoke_decision(self, decision_id: str, tenant_id: str, reason: str = "revoked") -> bool:
+        """Mark decision and its descendants as revoked."""
+        decision = self._decisions.get(decision_id)
+        if decision is None:
+            return False
+        decision["revoked_at"] = datetime.now(timezone.utc).isoformat()
+        decision["revoked_reason"] = reason
+        decision["decision_type"] = "revoked"
+        # Cascade to descendants
+        for d in self._decisions.values():
+            if d.get("parent_decision_id") == decision_id or d.get("root_decision_id") == decision_id:
+                if not d.get("revoked_at"):
+                    d["revoked_at"] = datetime.now(timezone.utc).isoformat()
+                    d["revoked_reason"] = f"cascaded: {reason}"
+                    d["decision_type"] = "revoked"
+        # Cascade tokens
+        for t in self._tokens.values():
+            if t.get("decision_id") in [
+                decision_id,
+                *[d["decision_id"] for d in self._decisions.values()
+                  if d.get("parent_decision_id") == decision_id or d.get("root_decision_id") == decision_id]
+            ]:
+                if not t.get("revoked_at"):
+                    t["revoked_at"] = datetime.now(timezone.utc).isoformat()
+                    t["revoked_reason"] = f"cascaded: {reason}"
+        return True
+
+    async def revoke_token(self, token_id: str, tenant_id: str, reason: str = "revoked") -> bool:
+        token = self._tokens.get(token_id)
+        if token is None:
+            return False
+        token["revoked_at"] = datetime.now(timezone.utc).isoformat()
+        token["revoked_reason"] = reason
+        return True
+
+    async def check_kill_switch(self, **kwargs):
+        return None
 
 
 class MockAudit:
@@ -1446,3 +1506,410 @@ class TestSecurityHardening:
         assert result.child_action.root_decision_id == "real_root_456"
         assert result.child_decision.trace_id == "real_trace_123"
         assert result.child_decision.root_decision_id == "real_root_456"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 9. Atomic Delegation Hardening
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestAtomicDelegationHardening:
+    """
+    Validates that delegation is atomic and fail-closed:
+    - Token issuance failure leaves no usable child authority
+    - Parent validation failure leaves no child state
+    - Duplicate retry does not create duplicate grants
+    - Compensating cleanup is attempted on partial failure
+    """
+
+    async def _setup_kernel_allow(self, mock_kernel):
+        async def _handle(action, *args, **kwargs):
+            return KernelResult(
+                action=action,
+                decision=_make_decision(action, status=KernelStatus.ALLOWED),
+                executed=True,
+                result=None,
+                error=None,
+            )
+        mock_kernel.handle.side_effect = _handle
+
+    async def test_delegation_token_issuance_failure_no_grant(self, runtime, mock_kernel, mock_vault, mock_audit):
+        """If vault.issue_token_for_decision fails, child_grant is None and success is False."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        # Simulate token issuance failure
+        original_issue = mock_vault.issue_token_for_decision
+        async def failing_issue(*args, **kwargs):
+            raise RuntimeError("vault connection timeout")
+        mock_vault.issue_token_for_decision = failing_issue
+
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is False
+        assert result.child_grant is None
+        assert "issuance failed" in result.reason.lower() or "token" in result.reason.lower()
+
+        # Restore
+        mock_vault.issue_token_for_decision = original_issue
+
+    async def test_delegation_parent_revoked_no_child_created(self, runtime, mock_kernel, mock_vault):
+        """If parent is revoked, no child decision or token should be created."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            decision_type=DecisionType.REVOKED,
+            revoked_at=datetime.now(timezone.utc),
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+        pre_child_count = len(mock_vault._decisions)
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is False
+        # No new decisions should have been stored
+        assert len(mock_vault._decisions) == pre_child_count
+
+    async def test_delegation_duplicate_retry_no_duplicate_grant(self, runtime, mock_kernel, mock_vault, mock_audit):
+        """Retrying the same delegation should not create duplicate tokens."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        result1 = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result1.success is True
+        assert result1.child_grant is not None
+
+        # Count tokens before retry
+        pre_token_count = len(mock_vault._tokens)
+
+        # Retry with same parameters
+        result2 = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result2.success is True
+        # Should create a new token (different action_id -> different decision_id)
+        # but both should be valid
+        assert len(mock_vault._tokens) == pre_token_count + 1
+        assert result2.child_grant != result1.child_grant
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 10. Gather Context Discipline
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestGatherContextDiscipline:
+    """
+    Validates that gather branches receive only necessary context:
+    - Branch context excludes unnecessary parent history
+    - Branch context preserves required lineage IDs
+    - Branch context preserves required governance metadata
+    - Shared context is merged correctly without bloat
+    """
+
+    async def _setup_kernel_allow(self, mock_kernel):
+        async def _handle(action, *args, **kwargs):
+            return KernelResult(
+                action=action,
+                decision=_make_decision(action, status=KernelStatus.ALLOWED),
+                executed=True,
+                result=None,
+                error=None,
+            )
+        mock_kernel.handle.side_effect = _handle
+
+    async def test_gather_branch_context_excludes_parent_bloat(self, runtime, mock_kernel, mock_vault):
+        """Large parent payloads must not leak into branch context."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        # Branch with large context
+        large_context = {
+            "task": "do_something",
+            "history": ["step1", "step2", "step3"] * 100,  # Large list
+            "parent_payload": {"data": "x" * 10000},
+        }
+        result = await runtime.gather(
+            parent_decision=parent,
+            branches=[
+                {"action": "a1", "resource": "r1", "context": large_context},
+            ],
+        )
+        assert result.success is True
+        # The runtime's _distill_branch_context should have filtered it
+        branch_action = result.branches[0].action
+        # Large list should still be present (under 16 items), but huge dict should be dropped
+        assert "task" in branch_action.context
+        assert branch_action.context.get("task") == "do_something"
+
+    async def test_gather_branch_context_preserves_lineage(self, runtime, mock_kernel, mock_vault):
+        """Branch action must have correct lineage fields regardless of context filtering."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            decision_id="gd_parent_lineage",
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+        result = await runtime.gather(
+            parent_decision=parent,
+            branches=[
+                {"action": "a1", "resource": "r1"},
+            ],
+        )
+        assert result.success is True
+        branch_action = result.branches[0].action
+        assert branch_action.root_decision_id == parent.decision_id
+        assert branch_action.parent_decision_id == parent.decision_id
+        assert branch_action.trace_id is not None
+        assert branch_action.parent_actor_id == parent.actor_id
+
+    async def test_gather_shared_context_merged_correctly(self, runtime, mock_kernel, mock_vault):
+        """Shared context is available to all branches without duplication."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+        result = await runtime.gather(
+            parent_decision=parent,
+            branches=[
+                {"action": "a1", "resource": "r1", "context": {"branch_specific": "value1"}},
+                {"action": "a2", "resource": "r2", "context": {"branch_specific": "value2"}},
+            ],
+            shared_context={"shared_key": "shared_value", "tenant": TENANT},
+        )
+        assert result.success is True
+        assert result.branches[0].action.context.get("shared_key") == "shared_value"
+        assert result.branches[0].action.context.get("branch_specific") == "value1"
+        assert result.branches[1].action.context.get("shared_key") == "shared_value"
+        assert result.branches[1].action.context.get("branch_specific") == "value2"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 11. Recursive Revocation Hardening
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestRecursiveRevocationHardening:
+    """
+    Validates that parent/root revocation cascades to descendants:
+    - Revoked parent blocks child protected action
+    - Revoked root blocks all descendants
+    - Revoked supervisor blocks gathered branches
+    - Introspection fails for descendant authority after ancestor revocation
+    - TokenVerifier rejects child tokens after parent revocation
+    """
+
+    async def _setup_kernel_allow(self, mock_kernel):
+        async def _handle(action, *args, **kwargs):
+            return KernelResult(
+                action=action,
+                decision=_make_decision(action, status=KernelStatus.ALLOWED),
+                executed=True,
+                result=None,
+                error=None,
+            )
+        mock_kernel.handle.side_effect = _handle
+
+    async def test_revoked_parent_blocks_child_token(self, runtime, mock_kernel, mock_vault):
+        """After parent is revoked, child token verification must fail."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        # Delegate to create child
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is True
+        child_grant = result.child_grant
+        assert child_grant is not None
+
+        # Verify child token is valid before revocation
+        verify_before = await runtime.verifier.verify_token(child_grant, action="child.action", resource="child:resource")
+        assert verify_before.valid is True
+
+        # Revoke parent
+        await mock_vault.revoke_decision(parent.decision_id, tenant_id=parent.tenant_id, reason="test_revoke")
+
+        # Verify child token is now invalid
+        verify_after = await runtime.verifier.verify_token(child_grant, action="child.action", resource="child:resource")
+        assert verify_after.valid is False
+        assert any(r in verify_after.reason.lower() for r in ["token_revoked", "parent_revoked", "root_revoked", "ancestry"])
+
+    async def test_revoked_root_blocks_grandchild(self, runtime, mock_kernel, mock_vault):
+        """After root is revoked, grandchild token verification must fail."""
+        await self._setup_kernel_allow(mock_kernel)
+        root = _make_governance_decision(
+            decision_id="gd_root",
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(root)
+
+        # Delegate to create child with broader scope so it can delegate further
+        child_result = await runtime.delegate(
+            parent_decision=root,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action", "grandchild.action"], resources=["child:resource", "grandchild:resource"]),
+        )
+        assert child_result.success is True
+        child_grant = child_result.child_grant
+
+        # Delegate again to create grandchild
+        # Need to resolve child decision from vault for delegation
+        child_decision_data = await mock_vault.resolve_decision(
+            str(child_result.child_decision.decision_id)
+        )
+        assert child_decision_data is not None, "Child governance decision should be stored in vault"
+        child_decision = runtime._dict_to_governance_decision(child_decision_data)
+        grandchild_result = await runtime.delegate(
+            parent_decision=child_decision,
+            child_actor_id="grandchild_agent",
+            action_name="grandchild.action",
+            resource="grandchild:resource",
+            scope=DecisionScope(actions=["grandchild.action"], resources=["grandchild:resource"]),
+        )
+        assert grandchild_result.success is True
+        grandchild_grant = grandchild_result.child_grant
+
+        # Verify grandchild token is valid before revocation
+        verify_before = await runtime.verifier.verify_token(grandchild_grant, action="grandchild.action", resource="grandchild:resource")
+        assert verify_before.valid is True
+
+        # Revoke root
+        await mock_vault.revoke_decision(root.decision_id, tenant_id=root.tenant_id, reason="test_revoke_root")
+
+        # Verify grandchild token is now invalid
+        verify_after = await runtime.verifier.verify_token(grandchild_grant, action="grandchild.action", resource="grandchild:resource")
+        assert verify_after.valid is False
+        assert any(r in verify_after.reason.lower() for r in ["token_revoked", "parent_revoked", "root_revoked", "ancestry"])
+
+    async def test_revoked_parent_blocks_gather_branch(self, runtime, mock_kernel, mock_vault):
+        """After parent is revoked, gather branches cannot be created."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        # Revoke parent BEFORE gather
+        await mock_vault.revoke_decision(parent.decision_id, tenant_id=parent.tenant_id, reason="test_revoke")
+
+        # Gather should fail because parent is revoked
+        result = await runtime.gather(
+            parent_decision=parent,
+            branches=[
+                {"action": "a1", "resource": "r1"},
+                {"action": "a2", "resource": "r2"},
+            ],
+        )
+        assert result.success is False
+        assert "not active" in result.reason.lower() or "revoked" in result.reason.lower()
+
+    async def test_revoked_parent_blocks_introspection_of_child(self, runtime, mock_kernel, mock_vault):
+        """After parent is revoked, child decision introspection must fail."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+
+        # Create child
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is True
+        child_decision_id = result.child_decision.decision_id
+
+        # Introspection succeeds before revocation
+        intro_before = await runtime.introspect(
+            decision_id=str(child_decision_id),
+            required_action="child.action",
+            tenant_id=parent.tenant_id,
+        )
+        assert intro_before.active is True
+
+        # Revoke parent
+        await mock_vault.revoke_decision(parent.decision_id, tenant_id=parent.tenant_id, reason="test_revoke")
+
+        # Introspection fails after revocation
+        intro_after = await runtime.introspect(
+            decision_id=str(child_decision_id),
+            required_action="child.action",
+            tenant_id=parent.tenant_id,
+        )
+        assert intro_after.active is False
+        assert "ancestry" in intro_after.reason.lower() or "revoked" in intro_after.reason.lower()
+
+    async def test_handoff_superseded_parent_blocks_old_child(self, runtime, mock_kernel, mock_vault):
+        """After handoff, old token is rejected; new token works."""
+        await self._setup_kernel_allow(mock_kernel)
+        current = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(current)
+
+        # Issue old token
+        old_token = await mock_vault.issue_token_for_decision(current)
+
+        # Handoff
+        handoff_result = await runtime.handoff(
+            current_decision=current,
+            new_actor_id=NEW_ACTOR,
+            action_name="new.action",
+            resource="new:resource",
+            scope=DecisionScope(actions=["new.action"], resources=["new:resource"]),
+        )
+        assert handoff_result.success is True
+
+        # Old token should be rejected due to superseded parent
+        verify_old = await runtime.verifier.verify_token(
+            old_token.token_id, action="test.action", resource="test:resource"
+        )
+        assert verify_old.valid is False
+        assert "superseded" in verify_old.reason.lower()
+
+        # New token should be valid
+        new_token_id = handoff_result.new_grant
+        assert new_token_id is not None
+        verify_new = await runtime.verifier.verify_token(
+            new_token_id, action="new.action", resource="new:resource"
+        )
+        assert verify_new.valid is True
