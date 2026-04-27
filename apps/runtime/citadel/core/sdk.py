@@ -129,12 +129,12 @@ class CitadelClient:
         actor_type: str = None,
     ) -> CitadelResult:
         """
-        Get a decision without executing the action.
+        Get a governance decision for an action.
 
-        Note: This is a convenience alias that calls execute() with the same
-        semantics. It does not perform a true dry-run (policies are still
-        fully evaluated and decisions are persisted). For actual dry-run
-        evaluation, pass dry_run=True to delegate(), handoff(), or gather().
+        **WARNING**: This is NOT a dry-run. It creates a real Action, runs it
+        through the kernel, persists the Decision, and returns the result.
+        If you need a true dry-run evaluation without side effects, use
+        `dry_run=True` on `delegate()`, `handoff()`, or `gather()` instead.
         """
         return await self.execute(
             action=action,

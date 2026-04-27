@@ -162,6 +162,8 @@ def _gov_decision_to_dict(decision: GovernanceDecision) -> Dict[str, Any]:
         "action": decision.action,
         "scope_actions": decision.scope.actions,
         "scope_resources": decision.scope.resources,
+        "scope_max_spend": decision.scope.max_spend,
+        "scope_rate_limit": decision.scope.rate_limit,
         "expiry": decision.expiry.isoformat() if decision.expiry else None,
         "kill_switch_scope": decision.kill_switch_scope.value,
         "trace_id": decision.trace_id,
@@ -222,6 +224,8 @@ class MockVault:
             "actor_id": token.actor_id,
             "scope_actions": token.scope_actions,
             "scope_resources": token.scope_resources,
+            "scope_max_spend": None,
+            "scope_rate_limit": None,
             "expiry": token.expiry.isoformat() if token.expiry else None,
             "not_before": token.not_before.isoformat() if token.not_before else None,
             "revoked_at": None,
@@ -1253,3 +1257,192 @@ class TestBackwardCompatibility:
         br = result.branches[0]
         assert br.action.root_decision_id == parent.decision_id
         assert br.action.trace_id is not None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 8. Security Hardening — Post-Fix Validation
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestSecurityHardening:
+    """
+    Validates critical security fixes:
+    - Superseded tokens are rejected by TokenVerifier
+    - REQUEST-scoped kill switches are caught by orchestration
+    - max_spend / rate_limit scope narrowing survives vault round-trip
+    - Workspace boundary is enforced in introspection
+    - DecisionType.DENY is rejected by TokenVerifier
+    - Caller-supplied forged lineage is ignored after vault resolution
+    """
+
+    async def _setup_kernel_allow(self, mock_kernel):
+        async def _handle(action, *args, **kwargs):
+            return KernelResult(
+                action=action,
+                decision=_make_decision(action, status=KernelStatus.ALLOWED),
+                executed=True,
+                result=None,
+                error=None,
+            )
+        mock_kernel.handle.side_effect = _handle
+
+    async def test_superseded_token_rejected_by_verifier(self, runtime, mock_vault, mock_kernel):
+        """Old token is invalid after handoff superseded the parent decision."""
+        await self._setup_kernel_allow(mock_kernel)
+        current = _make_governance_decision(
+            actor_id=PARENT_ACTOR,
+            tenant_id=TENANT,
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(current)
+        # Issue a token for the current decision BEFORE handoff
+        old_token = await mock_vault.issue_token_for_decision(current)
+        result = await runtime.handoff(
+            current_decision=current,
+            new_actor_id=NEW_ACTOR,
+            action_name="new.action",
+            resource="new:resource",
+            scope=DecisionScope(actions=["new.action"], resources=["new:resource"]),
+        )
+        assert result.success is True
+        # Old decision is now superseded
+        old_token_id = old_token.token_id
+        verifier = runtime.verifier
+        valid, reason, _ = await verifier.verify_token(old_token_id, action="test.action", resource="test:resource")
+        assert valid is False
+        assert "superseded" in reason.lower()
+
+    async def test_request_scoped_kill_switch_caught(self, runtime, mock_kernel, mock_kill_switch, mock_vault):
+        """REQUEST-scoped kill switch (targeting a specific decision) blocks delegation."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            actor_id=PARENT_ACTOR,
+            tenant_id=TENANT,
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+        await mock_kill_switch.trigger(
+            scope=KillSwitchScope.REQUEST,
+            target_id=parent.decision_id,
+            triggered_by="test",
+            triggered_by_type="system",
+            reason="stop this request",
+        )
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is False
+        assert "kill switch" in result.reason.lower()
+
+    async def test_max_spend_scope_narrowing_survives_vault(self, runtime, mock_kernel, mock_vault):
+        """Parent with max_spend=100 loaded from vault enforces child max_spend<=100."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"], max_spend=100.0),
+        )
+        await mock_vault.store_decision(parent)
+        # Child requesting max_spend=200 should be blocked
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"], max_spend=200.0),
+        )
+        assert result.success is False
+        assert "scope" in result.reason.lower()
+
+    async def test_rate_limit_scope_narrowing_survives_vault(self, runtime, mock_kernel, mock_vault):
+        """Parent with rate_limit=10 loaded from vault enforces child rate_limit<=10."""
+        await self._setup_kernel_allow(mock_kernel)
+        parent = _make_governance_decision(
+            scope=DecisionScope(actions=["*"], resources=["*"], rate_limit=10),
+        )
+        await mock_vault.store_decision(parent)
+        result = await runtime.delegate(
+            parent_decision=parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"], rate_limit=20),
+        )
+        assert result.success is False
+        assert "scope" in result.reason.lower()
+
+    async def test_workspace_mismatch_introspect(self, runtime, mock_vault):
+        """Introspection with wrong workspace_id returns actor_boundary_valid=False."""
+        decision = _make_governance_decision()
+        # Set workspace_id after creation (dataclass allows this)
+        decision.workspace_id = "ws_alpha"
+        await mock_vault.store_decision(decision)
+        result = await runtime.introspect(
+            decision_id=decision.decision_id,
+            required_action=decision.action,
+            tenant_id=decision.tenant_id,
+            workspace_id="ws_beta",
+        )
+        assert result.active is False
+        assert result.actor_boundary_valid is False
+        assert "workspace" in result.reason.lower()
+
+    async def test_deny_decision_type_rejected_by_verifier(self, runtime, mock_vault):
+        """Token linked to a DENY decision is rejected by TokenVerifier."""
+        parent = _make_governance_decision(
+            decision_type=DecisionType.DENY,
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(parent)
+        # Manually inject a token dict (simulating a bug where token exists for DENY)
+        fake_token_id = "gt_fake_deny_token_123"
+        mock_vault._tokens[fake_token_id] = {
+            "token_id": fake_token_id,
+            "decision_id": parent.decision_id,
+            "tenant_id": parent.tenant_id,
+            "actor_id": parent.actor_id,
+            "scope_actions": ["*"],
+            "scope_resources": ["*"],
+            "expiry": None,
+            "trace_id": parent.trace_id,
+            "workspace_id": parent.tenant_id,
+            "parent_decision_id": None,
+            "parent_actor_id": None,
+            "workflow_id": None,
+        }
+        verifier = runtime.verifier
+        valid, reason, _ = await verifier.verify_token(fake_token_id, action="test.action", resource="test:resource")
+        assert valid is False
+        assert "not allowed" in reason.lower()
+
+    async def test_forged_lineage_ignored_after_vault_resolution(self, runtime, mock_kernel, mock_vault):
+        """Caller supplies forged root_decision_id and trace_id; vault-resolved values are used."""
+        await self._setup_kernel_allow(mock_kernel)
+        # Store the real parent in the vault
+        real_parent = _make_governance_decision(
+            trace_id="real_trace_123",
+            root_decision_id="real_root_456",
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(real_parent)
+        # Attacker creates a forged parent object with same decision_id but fake lineage
+        forged_parent = _make_governance_decision(
+            decision_id=real_parent.decision_id,
+            trace_id="FORGED_TRACE_999",
+            root_decision_id="FORGED_ROOT_999",
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        result = await runtime.delegate(
+            parent_decision=forged_parent,
+            child_actor_id=CHILD_ACTOR,
+            action_name="child.action",
+            resource="child:resource",
+            scope=DecisionScope(actions=["child.action"], resources=["child:resource"]),
+        )
+        assert result.success is True
+        # Child must inherit REAL lineage from vault, not forged values
+        assert result.child_action.trace_id == "real_trace_123"
+        assert result.child_action.root_decision_id == "real_root_456"
+        assert result.child_decision.trace_id == "real_trace_123"
+        assert result.child_decision.root_decision_id == "real_root_456"

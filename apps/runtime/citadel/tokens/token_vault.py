@@ -59,6 +59,7 @@ class TokenVault:
                         approved_by, approved_at, issued_token_id,
                         expires_at, revoked_at, revoked_reason,
                         scope_actions, scope_resources,
+                        scope_max_spend, scope_rate_limit,
                         constraints, expiry, kill_switch_scope,
                         created_at, reason,
                         root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
@@ -67,9 +68,8 @@ class TokenVault:
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15,
                         $16, $17, $18, $19, $20, $21, $22,
-                        $23, $24, $25, $26, $27, $28,
-                        $29, $30, $31, $32,
-                        $33, $34
+                        $23, $24, $25, $26, $27, $28, $29, $30, $31,
+                        $32, $33, $34, $35, $36, $37
                     )
                     ON CONFLICT (decision_id) DO UPDATE SET
                         decision_type = EXCLUDED.decision_type,
@@ -78,6 +78,10 @@ class TokenVault:
                         revoked_reason = EXCLUDED.revoked_reason,
                         superseded_at = EXCLUDED.superseded_at,
                         superseded_reason = EXCLUDED.superseded_reason,
+                        scope_actions = EXCLUDED.scope_actions,
+                        scope_resources = EXCLUDED.scope_resources,
+                        scope_max_spend = EXCLUDED.scope_max_spend,
+                        scope_rate_limit = EXCLUDED.scope_rate_limit,
                         reason = EXCLUDED.reason
                     """,
                     decision.decision_id,
@@ -103,6 +107,8 @@ class TokenVault:
                     decision.revoked_reason,
                     decision.scope.actions,
                     decision.scope.resources,
+                    decision.scope.max_spend,
+                    decision.scope.rate_limit,
                     json.dumps(decision.constraints),
                     decision.expiry,
                     decision.kill_switch_scope.value,
@@ -210,6 +216,7 @@ class TokenVault:
                            approved_by, approved_at, issued_token_id,
                            expires_at, revoked_at, revoked_reason,
                            scope_actions, scope_resources,
+                           scope_max_spend, scope_rate_limit,
                            constraints, expiry, kill_switch_scope,
                            created_at, reason,
                            root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
@@ -293,6 +300,7 @@ class TokenVault:
         action: str,
         resource: str = None,
         tool: str = None,
+        decision_id: str = None,
     ) -> Optional[dict]:
         """Check central kill_switches state for introspection enforcement."""
         async with self.db.acquire() as conn:
@@ -311,16 +319,18 @@ class TokenVault:
                         scope_type = 'global'
                         OR (scope_type = 'tenant' AND scope_value = $1)
                         OR (scope_type = 'actor' AND scope_value = $2)
+                        OR (scope_type = 'request' AND scope_value = $6)
                         OR (scope_type = 'action' AND scope_value IN ($3, COALESCE($5, $3)))
                         OR ($4::text IS NOT NULL AND scope_type = 'resource' AND scope_value = $4)
                       )
                     ORDER BY
                       CASE scope_type
-                        WHEN 'resource' THEN 1
-                        WHEN 'action' THEN 2
-                        WHEN 'actor' THEN 3
-                        WHEN 'tenant' THEN 4
-                        ELSE 5
+                        WHEN 'request' THEN 1
+                        WHEN 'resource' THEN 2
+                        WHEN 'action' THEN 3
+                        WHEN 'actor' THEN 4
+                        WHEN 'tenant' THEN 5
+                        ELSE 6
                       END,
                       created_at DESC
                     LIMIT 1
@@ -330,5 +340,6 @@ class TokenVault:
                     action,
                     resource,
                     tool,
+                    decision_id,
                 )
                 return dict(row) if row else None

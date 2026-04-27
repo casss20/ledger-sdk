@@ -149,7 +149,7 @@ class OrchestrationRuntime:
         - Child capability token
         - Audit linkage
         """
-        # 1. Introspect parent
+        # 1. Introspect parent — resolve ground truth from vault
         parent_status = await self.introspect_decision(
             parent_decision,
             parent_decision.action,
@@ -165,12 +165,17 @@ class OrchestrationRuntime:
                 reason=f"Parent authority not active: {parent_status.reason}",
             )
 
+        # Use vault-resolved parent for all security-critical fields
+        resolved_parent = parent_status.decision if (parent_status.decision and parent_status.decision.decision_id == parent_decision.decision_id) else parent_decision
+
         # 2. Check kill switch on parent
         if self.kill_switch:
-            ks = await self.kill_switch.check(parent_decision.actor_id, parent_decision.tenant_id)
+            ks = await self.kill_switch.check(
+                resolved_parent.actor_id, resolved_parent.tenant_id, request_id=resolved_parent.decision_id
+            )
             if ks.active:
                 await self._audit_delegate_blocked(
-                    parent_decision, child_actor_id, action_name,
+                    resolved_parent, child_actor_id, action_name,
                     f"Kill switch active: {ks.reason}"
                 )
                 return DelegationResult(
@@ -178,10 +183,10 @@ class OrchestrationRuntime:
                     reason=f"Kill switch active: {ks.reason}",
                 )
 
-        # 3. Validate scope narrowing
-        if not self._is_narrower_scope(parent_decision.scope, scope):
+        # 3. Validate scope narrowing against resolved parent scope
+        if not self._is_narrower_scope(resolved_parent.scope, scope):
             await self._audit_delegate_blocked(
-                parent_decision, child_actor_id, action_name,
+                resolved_parent, child_actor_id, action_name,
                 "Child scope wider than parent scope"
             )
             return DelegationResult(
@@ -189,24 +194,24 @@ class OrchestrationRuntime:
                 reason="Child scope exceeds parent authority",
             )
 
-        # 4. Build child action with lineage
+        # 4. Build child action with lineage from resolved parent
         child_action = Action(
             action_id=uuid.uuid4(),
             actor_id=child_actor_id,
             actor_type="agent",
             action_name=action_name,
             resource=resource,
-            tenant_id=tenant_id or parent_decision.tenant_id,
+            tenant_id=tenant_id or resolved_parent.tenant_id,
             payload=payload or {},
             context=context or {},
             session_id=None,
             request_id=None,
             idempotency_key=None,
-            root_decision_id=parent_decision.root_decision_id or parent_decision.decision_id,
-            parent_decision_id=parent_decision.decision_id,
-            trace_id=trace_id or parent_decision.trace_id or f"trace_{uuid.uuid4().hex}",
-            parent_actor_id=parent_decision.actor_id,
-            workflow_id=workflow_id or parent_decision.workflow_id,
+            root_decision_id=resolved_parent.root_decision_id or resolved_parent.decision_id,
+            parent_decision_id=resolved_parent.decision_id,
+            trace_id=trace_id or resolved_parent.trace_id or f"trace_{uuid.uuid4().hex}",
+            parent_actor_id=resolved_parent.actor_id,
+            workflow_id=workflow_id or resolved_parent.workflow_id,
             created_at=datetime.now(timezone.utc),
         )
 
@@ -280,7 +285,7 @@ class OrchestrationRuntime:
         6. Issue new scoped grant
         7. Audit
         """
-        # 1. Introspect current
+        # 1. Introspect current — resolve ground truth from vault
         current_status = await self.introspect_decision(
             current_decision,
             current_decision.action,
@@ -296,14 +301,17 @@ class OrchestrationRuntime:
                 reason=f"Current authority not active: {current_status.reason}",
             )
 
+        # Use vault-resolved current decision for all security-critical fields
+        resolved_current = current_status.decision if (current_status.decision and current_status.decision.decision_id == current_decision.decision_id) else current_decision
+
         # 2. (Deferred) Supersede current authority — moved to AFTER kernel validation.
         #    If we superseded before kernel approval and the kernel blocked,
         #    the old authority would be permanently lost with no recovery path.
 
         # 3. Validate scope narrowing — handoff must not widen authority.
-        if not self._is_narrower_scope(current_decision.scope, scope):
+        if not self._is_narrower_scope(resolved_current.scope, scope):
             await self._audit_handoff_blocked(
-                current_decision, new_actor_id,
+                resolved_current, new_actor_id,
                 "Handoff scope wider than current authority"
             )
             return HandoffResult(
@@ -312,24 +320,24 @@ class OrchestrationRuntime:
                 reason="Handoff scope exceeds current authority",
             )
 
-        # 4. Build new action
+        # 4. Build new action with lineage from resolved current decision
         new_action = Action(
             action_id=uuid.uuid4(),
             actor_id=new_actor_id,
             actor_type="agent",
             action_name=action_name,
             resource=resource,
-            tenant_id=tenant_id or current_decision.tenant_id,
+            tenant_id=tenant_id or resolved_current.tenant_id,
             payload=payload or {},
             context=context or {},
             session_id=None,
             request_id=None,
             idempotency_key=None,
-            root_decision_id=current_decision.root_decision_id or current_decision.decision_id,
-            parent_decision_id=current_decision.decision_id,
-            trace_id=trace_id or current_decision.trace_id or f"trace_{uuid.uuid4().hex}",
-            parent_actor_id=current_decision.actor_id,
-            workflow_id=workflow_id or current_decision.workflow_id,
+            root_decision_id=resolved_current.root_decision_id or resolved_current.decision_id,
+            parent_decision_id=resolved_current.decision_id,
+            trace_id=trace_id or resolved_current.trace_id or f"trace_{uuid.uuid4().hex}",
+            parent_actor_id=resolved_current.actor_id,
+            workflow_id=workflow_id or resolved_current.workflow_id,
             created_at=datetime.now(timezone.utc),
         )
 
@@ -338,7 +346,7 @@ class OrchestrationRuntime:
 
         if governed.decision.status not in (KernelStatus.ALLOWED, KernelStatus.EXECUTED):
             await self._audit_handoff_blocked(
-                current_decision, new_actor_id,
+                resolved_current, new_actor_id,
                 f"Kernel blocked: {governed.decision.reason}"
             )
             return HandoffResult(
@@ -348,9 +356,44 @@ class OrchestrationRuntime:
             )
 
         # 2. (Actual) Supersede current authority now that kernel has approved the new action.
-        current_decision.superseded_at = datetime.now(timezone.utc)
-        current_decision.superseded_reason = reason or f"Handoff to {new_actor_id}"
-        await self.vault.store_decision(current_decision)
+        # Create a new decision object to avoid mutating the caller's reference
+        superseded_decision = GovernanceDecision(
+            decision_id=resolved_current.decision_id,
+            decision_type=resolved_current.decision_type,
+            tenant_id=resolved_current.tenant_id,
+            actor_id=resolved_current.actor_id,
+            action=resolved_current.action,
+            scope=resolved_current.scope,
+            request_id=resolved_current.request_id,
+            trace_id=resolved_current.trace_id,
+            workspace_id=resolved_current.workspace_id,
+            agent_id=resolved_current.agent_id,
+            subject_type=resolved_current.subject_type,
+            subject_id=resolved_current.subject_id,
+            resource=resolved_current.resource,
+            risk_level=resolved_current.risk_level,
+            policy_version=resolved_current.policy_version,
+            approval_state=resolved_current.approval_state,
+            approved_by=resolved_current.approved_by,
+            approved_at=resolved_current.approved_at,
+            constraints=resolved_current.constraints,
+            expiry=resolved_current.expiry,
+            kill_switch_scope=resolved_current.kill_switch_scope,
+            created_at=resolved_current.created_at,
+            gt_token=resolved_current.gt_token,
+            issued_token_id=resolved_current.issued_token_id,
+            revoked_at=resolved_current.revoked_at,
+            revoked_reason=resolved_current.revoked_reason,
+            audit_entry_ids=resolved_current.audit_entry_ids,
+            reason=resolved_current.reason,
+            root_decision_id=resolved_current.root_decision_id,
+            parent_decision_id=resolved_current.parent_decision_id,
+            parent_actor_id=resolved_current.parent_actor_id,
+            workflow_id=resolved_current.workflow_id,
+            superseded_at=datetime.now(timezone.utc),
+            superseded_reason=reason or f"Handoff to {new_actor_id}",
+        )
+        await self.vault.store_decision(superseded_decision)
 
         # 5. Issue new grant
         new_grant = None
@@ -397,7 +440,7 @@ class OrchestrationRuntime:
         All branches share root_decision_id and trace_id.
         Kill switch checked on each branch.
         """
-        # Validate parent
+        # Validate parent — resolve ground truth from vault
         parent_status = await self.introspect_decision(
             parent_decision,
             parent_decision.action,
@@ -413,12 +456,17 @@ class OrchestrationRuntime:
                 reason=f"Parent authority not active: {parent_status.reason}",
             )
 
+        # Use vault-resolved parent for all security-critical fields
+        resolved_parent = parent_status.decision if (parent_status.decision and parent_status.decision.decision_id == parent_decision.decision_id) else parent_decision
+
         # Check kill switch
         if self.kill_switch:
-            ks = await self.kill_switch.check(parent_decision.actor_id, parent_decision.tenant_id)
+            ks = await self.kill_switch.check(
+                resolved_parent.actor_id, resolved_parent.tenant_id, request_id=resolved_parent.decision_id
+            )
             if ks.active:
                 await self._audit_gather_blocked(
-                    parent_decision,
+                    resolved_parent,
                     f"Kill switch active: {ks.reason}"
                 )
                 return GatherResult(
@@ -426,18 +474,18 @@ class OrchestrationRuntime:
                     reason=f"Kill switch active: {ks.reason}",
                 )
 
-        root_id = parent_decision.root_decision_id or parent_decision.decision_id
-        tid = trace_id or parent_decision.trace_id or f"trace_{uuid.uuid4().hex}"
+        root_id = resolved_parent.root_decision_id or resolved_parent.decision_id
+        tid = trace_id or resolved_parent.trace_id or f"trace_{uuid.uuid4().hex}"
 
-        # Validate each branch scope is narrower than parent scope
+        # Validate each branch scope is narrower than resolved parent scope
         for i, branch in enumerate(branches):
             branch_scope = DecisionScope(
                 actions=[branch["action"]],
                 resources=[branch["resource"]],
             )
-            if not self._is_narrower_scope(parent_decision.scope, branch_scope):
+            if not self._is_narrower_scope(resolved_parent.scope, branch_scope):
                 await self._audit_gather_blocked(
-                    parent_decision,
+                    resolved_parent,
                     f"Branch {i} scope wider than parent scope"
                 )
                 return GatherResult(
@@ -445,26 +493,26 @@ class OrchestrationRuntime:
                     reason=f"Branch {i} scope exceeds parent authority",
                 )
 
-        # Create branch actions
+        # Create branch actions with lineage from resolved parent
         branch_actions = []
         for i, branch in enumerate(branches):
             action = Action(
                 action_id=uuid.uuid4(),
-                actor_id=branch.get("actor_id", parent_decision.actor_id),
+                actor_id=branch.get("actor_id", resolved_parent.actor_id),
                 actor_type=branch.get("actor_type", "agent"),
                 action_name=branch["action"],
                 resource=branch["resource"],
-                tenant_id=tenant_id or parent_decision.tenant_id,
+                tenant_id=tenant_id or resolved_parent.tenant_id,
                 payload=branch.get("payload", {}),
                 context=branch.get("context", {}),
                 session_id=None,
                 request_id=None,
                 idempotency_key=None,
                 root_decision_id=root_id,
-                parent_decision_id=parent_decision.decision_id,
+                parent_decision_id=resolved_parent.decision_id,
                 trace_id=tid,
-                parent_actor_id=parent_decision.actor_id,
-                workflow_id=workflow_id or parent_decision.workflow_id,
+                parent_actor_id=resolved_parent.actor_id,
+                workflow_id=workflow_id or resolved_parent.workflow_id,
                 created_at=datetime.now(timezone.utc),
             )
             branch_actions.append(action)
@@ -559,6 +607,16 @@ class OrchestrationRuntime:
             if decision_data:
                 decision = self._dict_to_governance_decision(decision_data)
 
+        # Workspace boundary check
+        if workspace_id and decision and decision.workspace_id and decision.workspace_id != workspace_id:
+            return IntrospectionStatus(
+                active=False,
+                reason="Workspace mismatch",
+                actor_boundary_valid=False,
+                decision=decision,
+                token=token_data,
+            )
+
         if decision is None:
             return IntrospectionStatus(
                 active=False,
@@ -610,7 +668,9 @@ class OrchestrationRuntime:
 
         # Check kill switch
         if self.kill_switch:
-            ks = await self.kill_switch.check(decision.actor_id, decision.tenant_id)
+            ks = await self.kill_switch.check(
+                decision.actor_id, decision.tenant_id, request_id=decision.decision_id
+            )
             if ks.active:
                 return IntrospectionStatus(
                     active=False,
@@ -728,6 +788,8 @@ class OrchestrationRuntime:
             scope=DecisionScope(
                 actions=data.get("scope_actions", []),
                 resources=data.get("scope_resources", []),
+                max_spend=data.get("scope_max_spend"),
+                rate_limit=data.get("scope_rate_limit"),
             ),
             request_id=data.get("request_id"),
             trace_id=data.get("trace_id"),

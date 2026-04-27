@@ -149,6 +149,7 @@ class Precedence:
             check = await self.gov_kill_switch.check(
                 actor_id=action.actor_id,
                 tenant_id=action.tenant_id,
+                request_id=getattr(action, 'request_id', None) or getattr(action, 'idempotency_key', None),
             )
             if check.active:
                 return KillSwitchStatus(active=True, reason=check.reason)

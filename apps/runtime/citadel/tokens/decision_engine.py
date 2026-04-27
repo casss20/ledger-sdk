@@ -76,7 +76,9 @@ class DecisionEngine:
         5. Return decision
         """
         # 1. Check kill switches
-        ks_check = await self.kill_switch.check(actor_id, tenant_id)
+        ks_check = await self.kill_switch.check(
+            actor_id, tenant_id, request_id=decision_id
+        )
         if ks_check.active:
             decision = GovernanceDecision(
                 decision_id=self._gen_id(),

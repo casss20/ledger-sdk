@@ -38,7 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_decisions_trace_id ON decisions (trace_id);
 CREATE INDEX IF NOT EXISTS idx_decisions_lineage_composite ON decisions (root_decision_id, parent_decision_id, trace_id);
 
 -- ============================================================================
--- GOVERNANCE_DECISIONS: Add orchestration lineage fields
+-- GOVERNANCE_DECISIONS: Add orchestration lineage fields + scope spending limits
 -- ============================================================================
 
 ALTER TABLE governance_decisions
@@ -47,12 +47,26 @@ ALTER TABLE governance_decisions
     ADD COLUMN IF NOT EXISTS parent_actor_id TEXT,
     ADD COLUMN IF NOT EXISTS workflow_id TEXT,
     ADD COLUMN IF NOT EXISTS superseded_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS superseded_reason TEXT;
+    ADD COLUMN IF NOT EXISTS superseded_reason TEXT,
+    ADD COLUMN IF NOT EXISTS scope_max_spend NUMERIC,
+    ADD COLUMN IF NOT EXISTS scope_rate_limit INTEGER;
+
+-- Foreign key constraints for lineage integrity
+ALTER TABLE governance_decisions
+    ADD CONSTRAINT fk_gd_parent_decision
+    FOREIGN KEY (parent_decision_id) REFERENCES governance_decisions(decision_id)
+    ON DELETE SET NULL;
+
+ALTER TABLE governance_decisions
+    ADD CONSTRAINT fk_gd_root_decision
+    FOREIGN KEY (root_decision_id) REFERENCES governance_decisions(decision_id)
+    ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_gov_decisions_root ON governance_decisions (root_decision_id);
 CREATE INDEX IF NOT EXISTS idx_gov_decisions_parent ON governance_decisions (parent_decision_id);
 CREATE INDEX IF NOT EXISTS idx_gov_decisions_trace ON governance_decisions (trace_id);
 CREATE INDEX IF NOT EXISTS idx_gov_decisions_lineage ON governance_decisions (root_decision_id, parent_decision_id, trace_id);
+CREATE INDEX IF NOT EXISTS idx_gov_decisions_superseded ON governance_decisions (superseded_at) WHERE superseded_at IS NOT NULL;
 
 -- ============================================================================
 -- GOVERNANCE_TOKENS: Add parent linkage for scoped child grants

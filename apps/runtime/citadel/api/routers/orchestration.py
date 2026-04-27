@@ -159,6 +159,11 @@ async def _resolve_parent_decision(runtime: OrchestrationRuntime, decision_id: s
     if not data:
         raise HTTPException(status_code=404, detail=f"Decision {decision_id} not found")
 
+    if data.get("superseded_at"):
+        raise HTTPException(status_code=409, detail=f"Decision {decision_id} has been superseded — authority transferred")
+    if data.get("revoked_at"):
+        raise HTTPException(status_code=409, detail=f"Decision {decision_id} has been revoked")
+
     # Reconstruct GovernanceDecision (lightweight; full logic is in verifier)
     from datetime import timezone
     expiry = data.get("expiry") or data.get("expires_at")
@@ -175,6 +180,8 @@ async def _resolve_parent_decision(runtime: OrchestrationRuntime, decision_id: s
         scope=DecisionScope(
             actions=data.get("scope_actions", []),
             resources=data.get("scope_resources", []),
+            max_spend=data.get("scope_max_spend"),
+            rate_limit=data.get("scope_rate_limit"),
         ),
         request_id=data.get("request_id"),
         trace_id=data.get("trace_id"),

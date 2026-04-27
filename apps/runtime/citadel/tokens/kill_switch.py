@@ -137,16 +137,26 @@ class KillSwitch:
         )
         return True
 
-    async def check(self, actor_id: str, tenant_id: str) -> KillSwitchCheck:
+    async def check(self, actor_id: str, tenant_id: str, request_id: str = None) -> KillSwitchCheck:
         """
         Check if any kill switch is active for the given context.
 
         Checks in order of specificity (most specific wins):
-        1. REQUEST (specific request ID)
+        1. REQUEST (specific request/decision ID)
         2. AGENT (actor_id)
         3. TENANT (tenant_id)
         4. GLOBAL ("*")
         """
+        # Check request scope first (most specific)
+        if request_id:
+            request_key = self._key(KillSwitchScope.REQUEST, request_id)
+            if request_key in self._active:
+                return KillSwitchCheck(
+                    active=True,
+                    reason=f"Request kill switch active",
+                    record=self._active[request_key],
+                )
+
         # Check agent scope
         agent_key = self._key(KillSwitchScope.AGENT, actor_id)
         if agent_key in self._active:
@@ -175,6 +185,10 @@ class KillSwitch:
             )
 
         return KillSwitchCheck(active=False)
+
+    async def check_decision(self, decision_id: str, actor_id: str, tenant_id: str) -> KillSwitchCheck:
+        """Check kill switch for a specific decision (REQUEST scope)."""
+        return await self.check(actor_id, tenant_id, request_id=decision_id)
 
     def _key(self, scope: KillSwitchScope, target_id: str) -> str:
         return f"{scope.value}:{target_id}"

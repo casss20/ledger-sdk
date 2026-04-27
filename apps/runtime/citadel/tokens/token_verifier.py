@@ -152,6 +152,14 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "decision_revoked", context, decision)
             return VerificationResult(valid=False, reason="decision_revoked", decision=decision)
 
+# 4b. Check superseded — handoff must invalidate old tokens
+        if decision.superseded_at is not None:
+            return False, f"Decision superseded at {decision.superseded_at} — authority transferred", token_data
+
+        # 4c. Check decision type — only ALLOW decisions are valid
+        if decision.decision_type != DecisionType.ALLOW:
+            return False, f"Decision type is {decision.decision_type.value} — not allowed", token_data
+
         # 5. Check scope
         if not decision.scope.covers(action, resource):
             await self._audit_token_verification(token_id, False, "scope_mismatch", context, decision)
@@ -159,7 +167,9 @@ class TokenVerifier:
 
         # 6. Check kill switch
         if self.kill_switch is not None:
-            ks_check = await self.kill_switch.check(decision.actor_id, decision.tenant_id)
+            ks_check = await self.kill_switch.check(
+                decision.actor_id, decision.tenant_id, request_id=decision.decision_id
+            )
             if ks_check.active:
                 await self._audit_token_verification(token_id, False, "kill_switch_active", context, decision)
                 return VerificationResult(valid=False, reason="kill_switch_active", decision=decision)
@@ -171,6 +181,7 @@ class TokenVerifier:
                 action=action,
                 resource=resource,
                 tool=context.get("tool") or token_data.get("tool"),
+                decision_id=decision.decision_id,
             )
             if switch:
                 await self._audit_token_verification(token_id, False, "kill_switch_active", context, decision)
@@ -241,7 +252,9 @@ class TokenVerifier:
 
         # 4. Check kill switch
         if self.kill_switch is not None:
-            ks_check = await self.kill_switch.check(decision.actor_id, decision.tenant_id)
+            ks_check = await self.kill_switch.check(
+                decision.actor_id, decision.tenant_id, request_id=decision.decision_id
+            )
             if ks_check.active:
                 await self._audit_decision_verification(decision, False, "kill_switch", context)
                 return VerificationResult(valid=False, reason="kill_switch", decision=decision)
