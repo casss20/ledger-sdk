@@ -219,12 +219,19 @@ async def _resolve_parent_decision(runtime: OrchestrationRuntime, decision_id: s
 async def delegate(
     req: DelegateRequest,
     runtime: OrchestrationRuntime = Depends(get_orchestration_runtime),
-    _: str = Depends(require_api_key),
+    authenticated_actor_id: str = Depends(require_api_key),
 ):
     """
     Delegate authority from a parent decision to a child agent.
     """
     parent = await _resolve_parent_decision(runtime, req.parent_decision_id, req.tenant_id)
+    
+    # SECURITY: Verify the caller owns the parent decision
+    if parent.actor_id != authenticated_actor_id and authenticated_actor_id != "anonymous":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delegate from this decision",
+        )
     result: DelegationResult = await runtime.delegate(
         parent_decision=parent,
         child_actor_id=req.child_actor_id,
@@ -252,12 +259,19 @@ async def delegate(
 async def handoff(
     req: HandoffRequest,
     runtime: OrchestrationRuntime = Depends(get_orchestration_runtime),
-    _: str = Depends(require_api_key),
+    authenticated_actor_id: str = Depends(require_api_key),
 ):
     """
     Transfer active authority from one agent to another.
     """
     current = await _resolve_parent_decision(runtime, req.current_decision_id, req.tenant_id)
+    
+    # SECURITY: Verify the caller owns the current decision
+    if current.actor_id != authenticated_actor_id and authenticated_actor_id != "anonymous":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to handoff this decision",
+        )
     result: HandoffResult = await runtime.handoff(
         current_decision=current,
         new_actor_id=req.new_actor_id,
@@ -286,12 +300,19 @@ async def handoff(
 async def gather(
     req: GatherRequest,
     runtime: OrchestrationRuntime = Depends(get_orchestration_runtime),
-    _: str = Depends(require_api_key),
+    authenticated_actor_id: str = Depends(require_api_key),
 ):
     """
     Run parallel child branches under one parent orchestration scope.
     """
     parent = await _resolve_parent_decision(runtime, req.parent_decision_id, req.tenant_id)
+    
+    # SECURITY: Verify the caller owns the parent decision
+    if parent.actor_id != authenticated_actor_id and authenticated_actor_id != "anonymous":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to gather from this decision",
+        )
     branches = [
         {
             "actor_id": b.actor_id,
@@ -334,7 +355,7 @@ async def gather(
 async def introspect(
     req: IntrospectRequest,
     runtime: OrchestrationRuntime = Depends(get_orchestration_runtime),
-    _: str = Depends(require_api_key),
+    authenticated_actor_id: str = Depends(require_api_key),
 ):
     """
     Runtime safety check for any grant or decision.

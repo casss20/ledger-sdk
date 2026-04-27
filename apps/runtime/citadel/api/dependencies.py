@@ -65,7 +65,7 @@ async def require_api_key(
             detail="Invalid or expired API key",
         )
     
-    return key
+    return validated.actor_id or validated.key_id
 
 
 async def get_kernel(request: Request) -> Kernel:

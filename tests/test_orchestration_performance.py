@@ -232,6 +232,18 @@ class FastMockVault:
         await _simulate_db_latency()
         return None
 
+    async def check_ancestry(self, decision):
+        await _simulate_db_latency()
+        return (True, None)
+
+    async def revoke_decision(self, decision_id, tenant_id=None, reason=None):
+        await _simulate_db_latency()
+        d = self._decisions.get(decision_id)
+        if d:
+            d["revoked_at"] = datetime.now(timezone.utc).isoformat()
+            d["revoked_reason"] = reason
+        return True
+
 
 def _gov_decision_to_dict(gd: GovernanceDecision) -> Dict:
     return {

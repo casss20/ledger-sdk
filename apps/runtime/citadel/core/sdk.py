@@ -171,8 +171,8 @@ class CitadelClient:
                 # Try to format resource with kwargs
                 try:
                     resolved_resource = resolved_resource.format(**kwargs)
-                except (KeyError, IndexError):
-                    pass
+                except (KeyError, IndexError) as e:
+                    raise ValueError(f"Resource template missing key: {e}") from e
                 
                 result = await self.execute(
                     action=resolved_action,

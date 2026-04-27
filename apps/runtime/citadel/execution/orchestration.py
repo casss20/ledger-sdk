@@ -106,9 +106,11 @@ class OrchestrationRuntime:
         token_vault: TokenVault,
         token_verifier: TokenVerifier,
         repository: Repository,
-        audit_service=None,
+        audit_service,
         kill_switch: Optional[KillSwitch] = None,
     ):
+        if audit_service is None:
+            raise ValueError("audit_service is required for OrchestrationRuntime")
         self.kernel = kernel
         self.vault = token_vault
         self.verifier = token_verifier
@@ -251,21 +253,28 @@ class OrchestrationRuntime:
                     resolved_parent.decision_id,
                     e,
                 )
-                # Attempt compensating cleanup: revoke the child governance decision
-                # so it cannot be used as valid authority by any other path.
-                if hasattr(self.vault, "revoke_decision"):
-                    try:
-                        await self.vault.revoke_decision(
-                            child_gov_decision.decision_id,
-                            tenant_id=child_gov_decision.tenant_id,
-                            reason="token_issuance_failed",
-                        )
-                    except Exception as revoke_err:
-                        logger.warning(
-                            "Compensating revoke failed for child decision %s: %s",
-                            child_gov_decision.decision_id,
-                            revoke_err,
-                        )
+                # CRITICAL: If token issuance fails after kernel approval, we MUST
+                # revoke the child governance decision so it cannot be used as valid
+                # authority by any other path. If revoke also fails, we raise to
+                # prevent a partial authority state.
+                try:
+                    await self.vault.revoke_decision(
+                        child_gov_decision.decision_id,
+                        tenant_id=child_gov_decision.tenant_id,
+                        reason="token_issuance_failed",
+                    )
+                except Exception as revoke_err:
+                    logger.error(
+                        "CRITICAL: Compensating revoke failed for child decision %s: %s. "
+                        "An active child decision without a token may remain.",
+                        child_gov_decision.decision_id,
+                        revoke_err,
+                    )
+                    raise RuntimeError(
+                        f"Token issuance failed and compensating revoke failed for "
+                        f"decision {child_gov_decision.decision_id}. "
+                        f"Original error: {e}; Revoke error: {revoke_err}"
+                    ) from revoke_err
                 await self._audit_delegate_blocked(
                     resolved_parent, child_actor_id, action_name,
                     f"Token issuance failed: {e}"
@@ -697,16 +706,15 @@ class OrchestrationRuntime:
             )
 
         # Check ancestry: parent and root must still be active
-        if hasattr(self.vault, "check_ancestry"):
-            ancestry_ok, ancestry_reason = await self.vault.check_ancestry(decision)
-            if not ancestry_ok:
-                return IntrospectionStatus(
-                    active=False,
-                    reason=f"Ancestry revoked: {ancestry_reason}",
-                    revoked=True,
-                    decision=decision,
-                    token=token_data,
-                )
+        ancestry_ok, ancestry_reason = await self.vault.check_ancestry(decision)
+        if not ancestry_ok:
+            return IntrospectionStatus(
+                active=False,
+                reason=f"Ancestry revoked: {ancestry_reason}",
+                revoked=True,
+                decision=decision,
+                token=token_data,
+            )
 
         # Check scope
         scope_valid = True
@@ -937,8 +945,6 @@ class OrchestrationRuntime:
         child_decision: Decision,
         child_grant: Optional[str],
     ):
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "child_decision_id": str(child_decision.decision_id),
@@ -970,8 +976,6 @@ class OrchestrationRuntime:
         action_name: str,
         reason: str,
     ):
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "child_actor_id": child_actor_id,
@@ -997,8 +1001,6 @@ class OrchestrationRuntime:
         new_grant: Optional[str],
         reason: str,
     ):
-        if self.audit is None:
-            return
         payload = {
             "old_decision_id": old.decision_id,
             "old_actor_id": old.actor_id,
@@ -1030,8 +1032,6 @@ class OrchestrationRuntime:
         new_actor_id: str,
         reason: str,
     ):
-        if self.audit is None:
-            return
         payload = {
             "old_decision_id": old.decision_id,
             "new_actor_id": new_actor_id,
@@ -1050,8 +1050,6 @@ class OrchestrationRuntime:
         parent: GovernanceDecision,
         branch_results: List[BranchResult],
     ):
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "branch_count": len(branch_results),
@@ -1084,8 +1082,6 @@ class OrchestrationRuntime:
         parent: GovernanceDecision,
         reason: str,
     ):
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "reason": reason,
@@ -1108,8 +1104,6 @@ class OrchestrationRuntime:
         Reduces DB round-trips from N individual writes to 1 summary write.
         Each branch still gets its own entry in the payload for traceability.
         """
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "branches": [
@@ -1153,8 +1147,6 @@ class OrchestrationRuntime:
         parent: GovernanceDecision,
         branch: BranchResult,
     ):
-        if self.audit is None:
-            return
         payload = {
             "parent_decision_id": parent.decision_id,
             "branch_index": branch.branch_index,
