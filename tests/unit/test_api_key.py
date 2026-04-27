@@ -5,14 +5,14 @@ class MockCache:
     def __init__(self):
         self.store = {}
     
-    def set(self, key, value, ttl=None):
+    async def set(self, key, value, ttl=None):
         self.store[key] = value
         
-    def delete(self, key):
+    async def delete(self, key):
         if key in self.store:
             del self.store[key]
             
-    def get(self, key):
+    async def get(self, key):
         return self.store.get(key)
 
 @pytest.fixture

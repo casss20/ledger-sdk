@@ -465,7 +465,7 @@ class Repository:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO api_keys (key_hash, tenant_id, name, scopes, expires_at)
-                VALUES ($1, $2, $3, $4, $5)
+                VALUES ($1, $2, COALESCE($3, 'API key'), $4::jsonb, $5)
                 RETURNING key_id, tenant_id, name, scopes, expires_at, revoked, created_at
             """, key_hash, tenant_id, name, json.dumps(scopes or []), expires_at)
             return dict(row)
@@ -490,7 +490,7 @@ class Repository:
             """, tenant_id)
             return [dict(r) for r in rows]
     
-    async def revoke_api_key(self, key_id: uuid.UUID) -> bool:
+    async def revoke_api_key(self, key_id: str) -> bool:
         """Revoke an API key. Returns True if key was found and revoked."""
         async with self.pool.acquire() as conn:
             result = await conn.execute("""

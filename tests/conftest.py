@@ -38,26 +38,26 @@ async def clean_database(postgres_dsn):
         return
     await conn.execute("SET app.admin_bypass = 'true'")
     await conn.execute("SET LOCAL lock_timeout = '3s'")
-    try:
-        # Delete from tables that support it
-        await conn.execute("""
-            DELETE FROM policy_snapshots WHERE EXISTS (SELECT 1 FROM policies p WHERE p.policy_id = policy_snapshots.policy_id AND p.tenant_id LIKE 'test_%');
-            DELETE FROM capabilities WHERE token_id LIKE 'test_%' OR token_id LIKE 'cap_%' OR token_id LIKE 'gt_%';
-            DELETE FROM kill_switches WHERE tenant_id LIKE 'test_%';
-            DELETE FROM approvals WHERE tenant_id LIKE 'test_%';
-            DELETE FROM decisions WHERE tenant_id LIKE 'test_%';
-            DELETE FROM audit_events WHERE tenant_id LIKE 'test_%';
-            DELETE FROM execution_results;
-            DELETE FROM api_keys;
-            DELETE FROM governance_tokens;
-            DELETE FROM governance_decisions;
-            DELETE FROM actions WHERE tenant_id LIKE 'test_%';
-            DELETE FROM policies WHERE tenant_id LIKE 'test_%';
-            DELETE FROM actors WHERE tenant_id LIKE 'test_%';
-            DELETE FROM governance_decisions WHERE tenant_id LIKE 'test_%';
-        """)
-    except Exception as e:
-        print(f"Warning: clean_database table deletes failed: {e}")
+    
+    # Truncate tables individually so one failure doesn't roll back others
+    for stmt in (
+        "DELETE FROM policy_snapshots WHERE EXISTS (SELECT 1 FROM policies p WHERE p.policy_id = policy_snapshots.policy_id AND p.tenant_id LIKE 'test_%');",
+        "DELETE FROM capabilities WHERE token_id LIKE 'test_%' OR token_id LIKE 'cap_%' OR token_id LIKE 'gt_%';",
+        "DELETE FROM kill_switches WHERE tenant_id LIKE 'test_%';",
+        "DELETE FROM approvals WHERE tenant_id LIKE 'test_%';",
+        "DELETE FROM decisions WHERE tenant_id LIKE 'test_%';",
+        "DELETE FROM execution_results;",
+        "DELETE FROM api_keys;",
+        "DELETE FROM governance_tokens;",
+        "DELETE FROM governance_decisions;",
+        "DELETE FROM actions WHERE tenant_id LIKE 'test_%';",
+        "DELETE FROM policies WHERE tenant_id LIKE 'test_%';",
+        "DELETE FROM actors WHERE tenant_id LIKE 'test_%';",
+    ):
+        try:
+            await conn.execute(stmt)
+        except Exception as e:
+            print(f"Warning: clean_database delete failed for {stmt.split()[2]}: {e}")
     await conn.close()
     yield
 

@@ -280,18 +280,20 @@ class APIKeyService:
         key_secret = secrets.token_urlsafe(32)
         secret_hash = hashlib.sha256(key_secret.encode()).hexdigest()
         
+        import json
         async with self.db_pool.acquire() as conn:
+            await conn.execute("SELECT set_tenant_context($1)", tenant_id)
             await conn.execute(
                 """
                 INSERT INTO api_keys (key_id, key_hash, tenant_id, description, environment, scopes, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
                 """,
                 key_id,
                 secret_hash,
                 tenant_id,
                 description,
                 environment,
-                list(scopes or {"read"}),
+                json.dumps(list(scopes or {"read"})),
             )
         
         # Cache the new key
@@ -317,9 +319,12 @@ class APIKeyService:
         secret_hash = hashlib.sha256(key_secret.encode()).hexdigest()
         
         async with self.db_pool.acquire() as conn:
+            # Admin bypass for key lookup by hash (key_hash is unique but
+            # tenant context may not be available during validation)
+            await conn.execute("SET app.admin_bypass = 'true'")
             row = await conn.fetchrow(
                 """
-                SELECT key_id, tenant_id, scopes, environment, revoked_at, expires_at
+                SELECT key_id, tenant_id, scopes, environment, revoked, status, expires_at
                 FROM api_keys
                 WHERE key_hash = $1
                 """,
@@ -329,13 +334,14 @@ class APIKeyService:
             if row is None:
                 return None
             
-            if row["revoked_at"]:
+            if row["revoked"] or row["status"] == "revoked":
                 return None
             
             if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
                 return None
             
-            # Update last used
+            # Update last used with tenant context
+            await conn.execute("SELECT set_tenant_context($1)", row["tenant_id"])
             await conn.execute(
                 "UPDATE api_keys SET last_used_at = NOW() WHERE key_id = $1",
                 row["key_id"],
@@ -351,8 +357,16 @@ class APIKeyService:
     async def revoke(self, key_id: str) -> bool:
         """Revoke an API key."""
         async with self.db_pool.acquire() as conn:
+            # Need tenant context — fetch it first with bypass, then update
+            await conn.execute("SET app.admin_bypass = 'true'")
+            row = await conn.fetchrow(
+                "SELECT tenant_id FROM api_keys WHERE key_id = $1", key_id
+            )
+            if row is None:
+                return False
+            await conn.execute("SELECT set_tenant_context($1)", row["tenant_id"])
             result = await conn.execute(
-                "UPDATE api_keys SET revoked_at = NOW() WHERE key_id = $1",
+                "UPDATE api_keys SET status = 'revoked', revoked = TRUE WHERE key_id = $1",
                 key_id,
             )
             # asyncpg returns "UPDATE N" string
@@ -366,6 +380,7 @@ class APIKeyService:
     async def rotate(self, key_id: str) -> "CreatedKey":
         """Rotate an API key — revoke old, create new with same settings."""
         async with self.db_pool.acquire() as conn:
+            await conn.execute("SET app.admin_bypass = 'true'")
             row = await conn.fetchrow(
                 "SELECT tenant_id, description, environment, scopes FROM api_keys WHERE key_id = $1",
                 key_id,
@@ -375,8 +390,9 @@ class APIKeyService:
                 raise APIKeyError(f"Key {key_id} not found")
             
             # Revoke old
+            await conn.execute("SELECT set_tenant_context($1)", row["tenant_id"])
             await conn.execute(
-                "UPDATE api_keys SET revoked_at = NOW() WHERE key_id = $1",
+                "UPDATE api_keys SET status = 'revoked', revoked = TRUE WHERE key_id = $1",
                 key_id,
             )
         

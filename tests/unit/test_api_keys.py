@@ -192,7 +192,7 @@ async def test_api_key_name_optional(repo, tenant_id):
     )
 
     assert key['key_id'] is not None
-    assert key['name'] is None
+    assert key['name'] == 'API key'  # schema default when NULL passed
     assert key['tenant_id'] == tenant_id
 
 
