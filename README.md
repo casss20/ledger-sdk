@@ -27,6 +27,7 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 
 ### 3. Governance Lifecycle
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
+- **No-Code Approval Thresholds**: Dashboard operators can configure a safe tenant-level risk threshold that generates a normal immutable runtime policy requiring human approval for actions above the selected score.
 - **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
 - **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
 - **Decision-First Runtime Governance**: Sensitive actions persist a durable governance decision before any execution proof is issued. Short-lived `gt_cap_` tokens then reference that `decision_id`, so runtime outcomes can be traced back to policy version, approval state, operator context, and audit evidence.

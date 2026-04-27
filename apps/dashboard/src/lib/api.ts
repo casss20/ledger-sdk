@@ -28,6 +28,35 @@ export interface Approval {
   reason?: string;
 }
 
+export interface ApprovalThresholdPayload {
+  risk_score_threshold: number;
+  approval_priority: 'low' | 'medium' | 'high' | 'critical';
+  approval_expiry_hours: number;
+  reason?: string;
+}
+
+export interface NoCodePolicy {
+  policy_id?: string;
+  name: string;
+  version: string;
+  scope_type: string;
+  scope_value: string;
+  status: string;
+  description: string;
+  rules_json: {
+    rules: Array<{
+      name: string;
+      effect: string;
+      condition: string;
+      approval_priority?: string;
+      approval_expiry_hours?: number;
+      reason?: string;
+    }>;
+    generated_by?: string;
+    control?: Record<string, unknown>;
+  };
+}
+
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth_token');
   const headers = new Headers(init.headers);
@@ -102,6 +131,39 @@ export const api = {
         reason: reason || 'Rejected from dashboard',
       }),
     });
+  },
+
+  async getApprovalThresholdPolicy(): Promise<NoCodePolicy | null> {
+    const data = await apiFetch<{ policy: NoCodePolicy | null }>(
+      '/api/policies/no-code/approval-threshold',
+    );
+    return data.policy;
+  },
+
+  async previewApprovalThresholdPolicy(
+    payload: ApprovalThresholdPayload,
+  ): Promise<NoCodePolicy> {
+    const data = await apiFetch<{ policy: NoCodePolicy }>(
+      '/api/policies/no-code/approval-threshold/preview',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+    return data.policy;
+  },
+
+  async applyApprovalThresholdPolicy(
+    payload: ApprovalThresholdPayload,
+  ): Promise<NoCodePolicy> {
+    const data = await apiFetch<{ policy: NoCodePolicy }>(
+      '/api/policies/no-code/approval-threshold',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+    return data.policy;
   },
 
   killSwitch(

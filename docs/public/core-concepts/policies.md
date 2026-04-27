@@ -209,6 +209,27 @@ print(result.outcomes)  # [allow, require_approval]
 
 ---
 
+## No-Code Approval Threshold
+
+Citadel's first no-code policy control is a constrained approval threshold:
+
+```text
+Require approval when risk_score > 70
+```
+
+The dashboard control generates a normal runtime policy with:
+
+- `scope_type: tenant`
+- `effect: PENDING_APPROVAL`
+- `condition: risk_score > <threshold>`
+- approval priority and expiry fields
+
+Activating the control creates a new immutable policy version and retires the
+previous active no-code threshold policy for that tenant. It does not change
+trust-band thresholds and it does not create allow-bypass rules.
+
+---
+
 ## Policy Versioning
 
 Policies are versioned automatically:
