@@ -19,10 +19,11 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 - **JWT Dashboard Auth**: Role-based access for operators and tenant admins.
 
 ### 2. Commercial Entitlements & Billing
-- **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal.
+- **Provider-Agnostic Architecture**: Core commercial logic is decoupled from any specific billing provider. Stripe is the first adapter; future providers plug in without touching core code.
+- **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal via the Stripe adapter.
 - **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
 - **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
-- **Atomic Usage Tracking**: High-concurrency Postgres counters for precise billing.
+- **Atomic Usage Tracking**: High-concurrency Postgres counters for precise quota tracking.
 
 ### 3. Governance Lifecycle
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).

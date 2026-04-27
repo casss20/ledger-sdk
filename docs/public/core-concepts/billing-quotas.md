@@ -5,13 +5,34 @@ CITADEL provides a commercial-grade entitlement layer that connects your governa
 ## Overview
 
 The commercial layer ensures that tenants operate within their subscription limits. It handles three core responsibilities:
-1. **Plan Management**: Mapping tenants to Stripe-backed subscriptions.
+1. **Plan Management**: Mapping tenants to subscription-backed plans.
 2. **Quota Enforcement**: Hard-blocking requests that exceed plan limits (e.g., 10,000 actions/mo).
 3. **Payment Recovery**: Handling `past_due` states gracefully without immediate lockout.
 
-## The Billing Middleware
+## Provider-Agnostic Architecture
 
-Every request to the CITADEL API passes through a Billing Middleware. This middleware performs an atomic lookup of the tenant's current usage and subscription status.
+Citadel's commercial layer is **provider-agnostic**. Stripe is the first concrete adapter, but the core logic knows nothing about Stripe.
+
+```
+┌─────────────────────────────────────────────┐
+│  Core Runtime (governance, identity)      │
+│  → reads TenantEntitlements, UsageSnapshot  │
+├─────────────────────────────────────────────┤
+│  Commercial Layer (entitlement_service,    │
+│  usage_service, events)                     │
+│  → depends on CommercialRepository port     │
+├─────────────────────────────────────────────┤
+│  Stripe Adapter (adapters/stripe/)           │
+│  → translates Stripe events to             │
+│    provider-agnostic CommercialEvents        │
+└─────────────────────────────────────────────┘
+```
+
+**Key rule:** Core identity and governance code never imports from the Stripe adapter. It only sees the `CommercialRepository` port and provider-agnostic models (`TenantEntitlements`, `UsageSnapshot`, `BillingStatus`).
+
+## The Commercial Middleware
+
+Every request to the CITADEL API passes through the `CommercialMiddleware`. This middleware performs an atomic lookup of the tenant's current usage and subscription status.
 
 ### Status Codes
 
@@ -21,12 +42,24 @@ Every request to the CITADEL API passes through a Billing Middleware. This middl
 | **402 Payment Required** | Subscription is `past_due` or `canceled`. | Tenant must update payment method in the Billing Portal. |
 | **429 Too Many Requests** | Monthly usage quota has been exceeded. | Tenant must upgrade their plan or wait for the reset date. |
 
+The middleware is **provider-agnostic**. It uses the `CommercialRepository` port to resolve entitlements. The concrete Stripe adapter satisfies this port at runtime, but the middleware itself knows nothing about Stripe.
+
 ## Grace Periods
 
-CITADEL implements a **7-day grace period** for `past_due` accounts. 
+CITADEL implements a **7-day grace period** for `past_due` accounts.
 - If a card fails, the subscription enters `past_due`.
-- CITADEL continues to allow API execution but flags the response with a warning header.
-- After 7 days, the status shifts to `locked` (402), and all governed actions are blocked until payment is resolved.
+- CITADEL continues to allow API execution during the grace period.
+- After 7 days, the status shifts to hard-blocked (402), and all governed actions are blocked until payment is resolved.
+- When payment succeeds, the grace period is cleared and status returns to `active`.
+
+## Unified Commercial Identity
+
+Citadel treats the commercial identity (plan, status, limits) as **first-class metadata** attached to every tenant. This metadata is:
+
+- **Queryable**: `request.state.entitlements.plan_code`
+- **Enforced**: Middleware blocks requests before they reach the policy engine
+- **Auditable**: Every entitlement change is logged in the commercial event log
+- **Graceful**: `past_due` tenants get a 7-day grace period before hard lockout
 
 ## Atomic Quotas
 
@@ -34,8 +67,8 @@ Usage tracking is enforced at the database layer using atomic increments. This p
 
 ```sql
 -- Conceptual logic inside the CITADEL Kernel
-UPDATE billing_usage 
-SET count = count + 1 
+UPDATE billing_usage
+SET count = count + 1
 WHERE tenant_id = $1 AND plan_id = $2 AND count < limit;
 ```
 
@@ -59,6 +92,18 @@ Tenants can manage their own billing via the **CITADEL Dashboard**:
 - **Usage Metrics**: Real-time view of API consumption.
 - **Plan Selection**: Upgrade/Downgrade between Free, Pro, and Enterprise tiers.
 - **Stripe Portal**: Direct link to manage invoices and payment methods securely.
+
+## Adding Future Providers
+
+To add a new billing provider (e.g., Paddle, Chargebee):
+
+1. Create `citadel/commercial/adapters/<provider>/`
+2. Implement `CommercialRepository` port in `<provider>_repository.py`
+3. Implement event translator in `translator.py` (maps provider events → `CommercialEvent`)
+4. Register the new adapter in `apps/runtime/citadel/api/__init__.py`
+5. Add provider-specific routes if needed
+
+Core commercial logic, middleware, and policy evaluation require **zero changes**.
 
 ---
 

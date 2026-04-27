@@ -24,8 +24,8 @@ from citadel.api.middleware import setup_middleware, setup_cors
 from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard, agents, policies_crud, connectors as connectors_router, agent_identity
 from citadel.api.routers.audit_rich import router as audit_rich_router
 from citadel.api.routers.orchestration import router as orchestration_router
-from citadel.billing.routes import router as billing_router
-from citadel.billing.middleware import BillingMiddleware
+from citadel.commercial.routes import router as billing_router
+from citadel.commercial.middleware import CommercialMiddleware
 from citadel.utils.telemetry import setup_telemetry
 
 logger = logging.getLogger(__name__)
@@ -285,7 +285,7 @@ def create_app() -> FastAPI:
     # Order: Outermost (runs first) to Innermost (runs last)
     
     # 3. Billing enforcement (depends on Auth)
-    app.add_middleware(BillingMiddleware)
+    app.add_middleware(CommercialMiddleware)
     
     # 2. Tenant context (sets up scoped context)
     setup_tenant_middleware(app)

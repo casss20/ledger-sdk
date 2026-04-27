@@ -88,15 +88,21 @@ apps/runtime/citadel/
 │   ├── jwt_token.py         # JWT token creation/validation
 │   ├── operator.py          # Operator management
 │   └── middleware.py        # AuthMiddleware (API key + JWT)
-├── billing/                 # Stripe integration
+├── commercial/              # Provider-agnostic commercial entitlement layer
+│   ├── models.py            # Billing data models (provider-agnostic)
+│   ├── interface.py         # CommercialRepository port (protocol)
 │   ├── entitlement_service.py # Entitlement logic
-│   ├── middleware.py        # Billing middleware
-│   ├── models.py            # Billing data models
-│   ├── repository.py        # Billing repository
-│   ├── routes.py            # Billing endpoints
-│   ├── stripe_client.py     # Stripe API wrapper
-│   ├── stripe_webhooks.py   # Webhook handler with HMAC verification
-│   └── usage_service.py     # Usage tracking
+│   ├── usage_service.py     # Usage tracking
+│   ├── events.py            # Commercial event processing
+│   ├── middleware.py        # Quota & access enforcement
+│   ├── routes.py            # Billing API endpoints
+│   └── adapters/
+│       └── stripe/          # Stripe adapter (first provider)
+│           ├── client.py    # Stripe SDK wrapper
+│           ├── repository.py # StripeCommercialRepository
+│           ├── translator.py # Stripe events → CommercialEvent
+│           └── webhooks.py  # Webhook handler with HMAC verification
+├── billing/                 # Backward-compat shim → re-exports from commercial/
 ├── security/                # OWASP security controls
 │   └── owasp_middleware.py  # Security headers, input validation, SSRF protection
 ├── tokens/                  # Governance Token (GT) system + kill switch
@@ -168,6 +174,40 @@ apps/runtime/citadel/
 - Test helpers in `tests/conftest.py`
 
 **Rule:** If you're building an integration, use the SDK or the HTTP API. Don't import from `citadel.core` or `citadel.tokens` directly.
+
+### Commercial (Billing) Layer
+
+Citadel's commercial layer is **provider-agnostic** with Stripe as the first concrete adapter.
+
+```
+citadel/commercial/
+├── models.py            # Provider-agnostic data models
+├── interface.py         # CommercialRepository port (Protocol)
+├── entitlement_service.py  # Resolves tenant entitlements
+├── usage_service.py     # Tracks and enforces usage quotas
+├── events.py            # Provider-agnostic event processing
+├── middleware.py        # Quota & access enforcement
+├── routes.py            # Billing API endpoints
+└── adapters/
+    └── stripe/
+        ├── client.py    # Stripe SDK wrapper
+        ├── repository.py # StripeCommercialRepository (adapter)
+        ├── translator.py # Stripe events → CommercialEvent
+        └── webhooks.py  # Stripe webhook handler
+```
+
+**Core commercial logic** (`models`, `interface`, `entitlement_service`, `usage_service`, `events`) is 100% provider-agnostic. It depends only on the `CommercialRepository` port, never on Stripe SDK types.
+
+**Stripe adapter** (`adapters/stripe/`) is the only place Stripe-specific code lives. It translates Stripe webhook events into provider-agnostic `CommercialEvent` objects before core processing.
+
+**Backward compatibility:** `citadel/billing/` is a thin shim that re-exports from `citadel/commercial/`. Existing imports continue to work. New code should import from `citadel.commercial`.
+
+**Why this structure:**
+- Core identity/governance code depends only on `CommercialRepository` (the port), never on Stripe.
+- Future providers (Paddle, Chargebee, custom billing) add a new `adapters/<provider>/` package that implements the same port.
+- Tests for core commercial logic run against a `FakeCommercialRepository` — no Stripe SDK needed.
+- Tests for Stripe adapter verify event translation and signature verification independently.
+- Policy code sees only provider-agnostic commercial facts (`TenantEntitlements`, `UsageSnapshot`).
 
 ---
 
