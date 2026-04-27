@@ -115,16 +115,18 @@ All SLOs are measured over a **30-day rolling window** unless specified otherwis
 
 ---
 
-### 7. Trust Score Freshness
+### 7. Trust Snapshot Freshness
 
 | Field | Value |
 |-------|-------|
-| **SLO** | Trust scores are recalculated within 1 hour of behavior change |
+| **SLO** | Trust snapshots are current within 1 hour of behavior change |
 | **Target** | 95% |
-| **Error Budget** | 5% of agents may have stale scores > 1 hour |
-| **Measurement** | `citadel_trust_score_age_seconds` histogram |
+| **Error Budget** | 5% of agents may have stale snapshots > 1 hour |
+| **Measurement** | `citadel_trust_snapshot_age_seconds` histogram |
 | **Alert** | `CitadelLowTrustScore` (indirect) |
 | **Tier** | Standard |
+
+**Rationale:** Trust decisions are only as good as the data they're based on. Stale trust snapshots can lead to incorrect band assignments.
 
 ---
 

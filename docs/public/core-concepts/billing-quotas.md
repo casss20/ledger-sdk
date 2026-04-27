@@ -39,6 +39,20 @@ SET count = count + 1
 WHERE tenant_id = $1 AND plan_id = $2 AND count < limit;
 ```
 
+## Trust-Aware Quotas
+
+Trust bands modify effective quota limits. A HIGHLY_TRUSTED agent gets up to 5× the base rate limit. A PROBATION agent is capped at 50% of the base rate.
+
+| Trust Band | Spend Multiplier | Rate Limit Multiplier |
+|-----------|-----------------|----------------------|
+| **REVOKED** | 0% | 0% |
+| **PROBATION** | 50% | 50% |
+| **STANDARD** | 100% | 100% |
+| **TRUSTED** | 150% | 200% |
+| **HIGHLY_TRUSTED** | 200% | 500% |
+
+Trust multipliers are applied after billing middleware evaluation. Trust can only reduce, never increase, above the billing plan limit. The final effective quota is `min(plan_limit, trust_multiplier * base_quota)`.
+
 ## Self-Service Dashboard
 
 Tenants can manage their own billing via the **CITADEL Dashboard**:

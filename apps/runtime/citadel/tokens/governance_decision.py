@@ -109,6 +109,8 @@ class GovernanceDecision:
     parent_decision_id: Optional[str] = None
     parent_actor_id: Optional[str] = None
     workflow_id: Optional[str] = None
+    # Trust reproducibility: references the trust snapshot active at decision time
+    trust_snapshot_id: Optional[str] = None
     # Authority boundary tracking for handoff
     superseded_at: Optional[datetime] = None
     superseded_reason: Optional[str] = None

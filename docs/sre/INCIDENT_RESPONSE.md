@@ -1,8 +1,8 @@
 # Incident Response Runbooks
 
-**Document ID:** SRE-IR-001  
-**Version:** 1.0  
-**Date:** 2026-04-26  
+**Document ID:** SRE-IR-001
+**Version:** 1.0
+**Date:** 2026-04-26
 
 ---
 
@@ -10,11 +10,11 @@
 
 Step-by-step runbooks for common Citadel incidents. Each runbook includes:
 
-- **Detection** — How the alert fires
-- **Impact** — What breaks
-- **Response** — What to do now
-- **Recovery** — How to restore service
-- **Post-Incident** — What to document
+- **Detection** - How the alert fires
+- **Impact** - What breaks
+- **Response** - What to do now
+- **Recovery** - How to restore service
+- **Post-Incident** - What to document
 
 ---
 
@@ -24,15 +24,15 @@ Step-by-step runbooks for common Citadel incidents. Each runbook includes:
 |-------|------|--------------|----------|
 | SEV1 | Critical | 15 min | Kill switch triggered, API down, data breach |
 | SEV2 | High | 30 min | High error rate, DB pool exhausted, mass agent revocation |
-| SEV3 | Medium | 2 hr | Elevated latency, trust score degradation, queue backlog |
+| SEV3 | Medium | 2 hr | Elevated latency, trust band degradation, queue backlog |
 | SEV4 | Low | Next business day | Deprecation warnings, non-critical CVE |
 
 ---
 
 ## RB-001: Kill Switch Activated
 
-**Alert:** `CitadelKillSwitchActive`  
-**Severity:** SEV1  
+**Alert:** `CitadelKillSwitchActive`
+**Severity:** SEV1
 
 ### Detection
 - Prometheus alert fires: `citadel_kill_switch_active > 0`
@@ -90,7 +90,7 @@ curl -X POST https://api.citadelsdk.com/api/v1/governance/kill-switch/clear \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "agent-123",
-    "reason": "False positive — pattern was expected traffic",
+    "reason": "False positive - pattern was expected traffic",
     "operator_id": "op-789"
   }'
 
@@ -109,8 +109,8 @@ curl -X POST https://api.citadelsdk.com/api/v1/agents/{agent_id}/unquarantine \
 
 ## RB-002: High Error Rate
 
-**Alert:** `CitadelHighErrorRate`  
-**Severity:** SEV2  
+**Alert:** `CitadelHighErrorRate`
+**Severity:** SEV2
 
 ### Detection
 - Error rate > 0.1% for > 2 minutes
@@ -162,8 +162,8 @@ docker compose -f docker-compose.yml up -d --scale api=4
 
 ## RB-003: Agent Identity Compromised
 
-**Alert:** `CitadelAgentRevoked` or manual detection  
-**Severity:** SEV2 (if 1 agent), SEV1 (if multiple)  
+**Alert:** `CitadelAgentRevoked` or manual detection
+**Severity:** SEV2 (if 1 agent), SEV1 (if multiple)
 
 ### Detection
 - Operator reports suspicious agent behavior
@@ -177,7 +177,7 @@ docker compose -f docker-compose.yml up -d --scale api=4
 curl -X POST https://api.citadelsdk.com/api/agent-identities/{agent_id}/revoke \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"reason": "Credential leak detected — rotating all keys"}'
+  -d '{"reason": "Credential leak detected - rotating all keys"}'
 
 # 2. Check what the agent did recently
 curl -s "https://api.citadelsdk.com/api/v1/audit?agent_id={agent_id}&since=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \
@@ -206,8 +206,8 @@ curl -X POST https://api.citadelsdk.com/api/agent-identities/trust/evaluate-all 
 
 ## RB-004: Database Pool Exhausted
 
-**Alert:** `CitadelDatabaseUnhealthy`  
-**Severity:** SEV2  
+**Alert:** `CitadelDatabaseUnhealthy`
+**Severity:** SEV2
 
 ### Response
 
@@ -258,8 +258,8 @@ git log --oneline -5
 
 ## RB-005: Approval Queue Backlog
 
-**Alert:** `CitadelApprovalQueueBacklog`  
-**Severity:** SEV3 (can escalate to SEV2 if queue > 200)  
+**Alert:** `CitadelApprovalQueueBacklog`
+**Severity:** SEV3 (can escalate to SEV2 if queue > 200)
 
 ### Response
 
@@ -284,20 +284,20 @@ curl -X POST https://api.citadelsdk.com/api/v1/approvals/bulk-approve \
 
 ---
 
-## RB-006: Low Trust Score Mass Event
+## RB-006: Trust Score Mass Event
 
 **Alert:** `CitadelLowTrustScore`  
-**Severity:** SEV3  
+**Severity:** SEV3
 
 ### Response
 
 ```bash
-# 1. Identify which agents dropped
-curl -s https://api.citadelsdk.com/api/v1/agents?trust_score_lt=0.5 \
-  -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.agents[] | {agent_id, trust_score}'
+# 1. Identify which agents dropped to PROBATION or REVOKED
+curl -s "https://api.citadelsdk.com/api/v1/agents?trust_band=REVOKED,PROBATION" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.agents[] | {agent_id, trust_band, trust_score}'
 
 # 2. Check for common pattern (same tenant? same action type?)
-curl -s "https://api.citadelsdk.com/api/v1/audit?event_type=trust_score_updated&since=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \
+curl -s "https://api.citadelsdk.com/api/v1/audit?event_type=TRUST_BAND_CHANGED&since=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.events[] | {agent_id, details}'
 
 # 3. Force recalculation
@@ -307,11 +307,13 @@ curl -X POST https://api.citadelsdk.com/api/agent-identities/trust/evaluate-all 
 
 ### If scores are correct (agents actually misbehaving):
 - Quarantine affected agents
+- Set trust band to REVOKED via operator override if kill switch not yet active
 - Investigate root cause (bad code? external attack?)
 
 ### If scores are wrong (calculation bug):
-- Rollback trust scorer if recent deploy
+- Rollback trust engine if recent deploy
 - Open P1 ticket for trust algorithm team
+- Temporarily disable circuit breaker until fix deployed
 
 ---
 
@@ -406,5 +408,5 @@ What fixed it.
 
 ---
 
-**Document Owner:** SRE Team  
+**Document Owner:** SRE Team
 **Review Cycle:** After every SEV1 incident + Quarterly

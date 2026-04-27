@@ -233,6 +233,167 @@ This includes:
 
 ---
 
+## Trust-Aware Decision Flow
+
+Citadel's decision flow integrates trust scores and trust bands before policy evaluation:
+
+```
+Agent requests action
+    ↓
+Kill Switch Check (first gate — always)
+    ↓
+Trust Evaluation:
+    - Compute or retrieve trust snapshot
+    - Determine trust band (REVOKED / PROBATION / STANDARD / TRUSTED / HIGHLY_TRUSTED)
+    - Determine constraints (approval, spend, rate limit, blocked actions)
+    - Check probation status (overrides band if active)
+    - Check circuit breaker (stages REVOKED if score < 0.15)
+    ↓
+Policy Evaluation (receives trust context)
+    - Policy rules evaluated with trust band in context
+    - Trust can ADD approval requirements
+    - Trust can reduce spend/rate limits
+    - Trust CANNOT remove a policy DENY
+    ↓
+Decision Recorded (with trust_snapshot_id for replay)
+    ↓
+Token Issued (gt_cap_) or Action Executed
+```
+
+### Trust band approval matrix
+
+| Action | REVOKED | PROBATION | STANDARD | TRUSTED | HIGHLY_TRUSTED |
+|--------|---------|-----------|----------|---------|----------------|
+| **execute** | blocked | allowed + introspection | allowed | allowed | allowed |
+| **delegate** | blocked | blocked | allowed | allowed | allowed |
+| **handoff** | blocked | blocked | approval | allowed | allowed |
+| **gather** | blocked | blocked | approval | allowed | allowed |
+| **destroy** | blocked | blocked | approval | approval | approval |
+| **revoke** | blocked | blocked | approval | approval | allowed |
+
+**Key rules:**
+1. Kill switch is checked first — trust never bypasses emergency stop
+2. Trust can only ADD constraints (approval, lower limits) — never remove
+3. Even HIGHLY_TRUSTED requires approval for `destroy` — no band bypasses destructive action controls
+4. Every decision stores `trust_snapshot_id` for deterministic replay
+
+### Trust score computation
+
+Trust scores are deterministic 0.00-1.00 values computed from 9 weighted factors:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Identity verification | 0.25 | Cryptographic identity verification status |
+| Health score | 0.20 | Agent operational health (0-100) |
+| Identity age | 0.15 max | Days since creation (0.5% per day, capped at 30d) |
+| Compliance record | 0.15 | Policy violations in last 7 days |
+| Quarantine status | 0.10 | Major penalty (-0.30) if quarantined |
+| Action rate | 0.10 | Daily action volume (suspicious if >1000) |
+| Budget adherence | 0.05 | Token spend vs budget ratio |
+| Challenge reliability | 0.05 | Pass rate on cryptographic challenges |
+| Score trend | 0.03 | Rapid score change bonus/penalty |
+
+**Score boundaries:**
+- REVOKED: 0.00–0.19
+- PROBATION: 0.20–0.39
+- STANDARD: 0.40–0.59
+- TRUSTED: 0.60–0.79
+- HIGHLY_TRUSTED: 0.80–1.00
+
+---
+
+## Trust Architecture
+
+Citadel's trust model adds deterministic behavioral signals to the governance kernel without replacing policy authority.
+
+### Five Trust Bands
+
+| Band | Score Range | Meaning |
+|------|-------------|---------|
+| **REVOKED** | 0.00 – 0.19 | Identity disabled. Emergency state. |
+| **PROBATION** | 0.20 – 0.39 | Strict monitoring. New or low-trust agents. |
+| **STANDARD** | 0.40 – 0.59 | Normal operation. Default for established agents. |
+| **TRUSTED** | 0.60 – 0.79 | Elevated privileges. Demonstrated reliability. |
+| **HIGHLY_TRUSTED** | 0.80 – 1.00 | Full privileges. Long history of reliability. |
+
+### Trust-Aware Decision Flow
+
+```
+Agent requests action
+    ↓
+Kill Switch Check (first gate — trust never bypasses)
+    ↓
+Trust Evaluation → Band, Score, Constraints
+    ↓
+Policy Evaluation → ALLOW / DENY / REQUIRE_APPROVAL
+    ↓
+Merge Trust Constraints → May add approval, reduce quota
+    ↓
+Decision Recorded (with trust_snapshot_id for replay)
+    ↓
+Token Issued / Action Executed
+```
+
+### Key Principles
+
+1. **Kill switch is always first** — trust never bypasses emergency stop
+2. **Trust can only ADD constraints** — it cannot remove a policy denial
+3. **Every decision stores `trust_snapshot_id`** — deterministic replay for audit
+4. **Probation overrides band** — `probation_until` > now means PROBATION regardless of score
+5. **Even HIGHLY_TRUSTED needs approval for `destroy`** — no band bypasses destructive action controls
+
+### Trust Score Components
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Identity verification | 0.25 | Cryptographic identity verification |
+| Health score | 0.20 | Agent operational health |
+| Identity age | 0.15 | Days since creation (capped at 30d) |
+| Compliance record | 0.15 | Policy violations in last 7 days |
+| Quarantine status | 0.10 | Major penalty if quarantined |
+| Action rate | 0.10 | Daily action volume |
+| Budget adherence | 0.05 | Token spend vs budget ratio |
+| Challenge reliability | 0.05 | Pass rate on cryptographic challenges |
+| Score trend | 0.03 | Rapid score change bonus/penalty |
+
+### Trust Policy Integration
+
+Trust bands influence policy enforcement through the `TrustPolicyEngine`:
+
+```python
+from citadel import TrustPolicyEngine, TrustBand
+
+engine = TrustPolicyEngine()
+result = engine.evaluate(
+    action="database.write",
+    trust_snapshot=snapshot
+)
+# result.decision: allow | require_approval | deny
+# result.constraints: { max_spend, rate_limit, approval_required_for }
+```
+
+### Trust Audit Events
+
+Every trust change is recorded:
+
+| Event Type | When |
+|---|---|
+| `TRUST_BAND_CHANGED` | Band changes |
+| `TRUST_SCORE_COMPUTED` | Every computation |
+| `TRUST_PROBATION_STARTED` | Probation begins |
+| `TRUST_PROBATION_ENDED` | Probation expires |
+| `TRUST_OVERRIDE` | Operator sets band |
+| `TRUST_CIRCUIT_BREAKER` | Emergency drop |
+| `TRUST_KILL_SWITCH_DROP` | Kill switch → REVOKED |
+
+### Resources
+
+- [Trust Architecture Guide](docs/public/guides/trust-architecture.md) — Deep-dive documentation
+- [Trust Scoring](docs/public/core-concepts/trust-scoring.md) — Core concepts
+- [Trust Scoring API](docs/public/core-concepts/trust-scoring.md) — Score computation and factors
+
+---
+
 ## Technical Spine: Runtime as Kernel
 
 ### Why Runtime is Non-Negotiable
@@ -394,12 +555,14 @@ Advantage: 36 MD files = governance rules written
 - [x] Risk (classification)
 - [x] Audit (hash-chained logs)
 - [x] KillSwitch (emergency stop)
+- [x] **Trust Model** (score, bands, probation, circuit breaker)
 
 **Framework:**
 - [x] Identity (registry, lifecycle)
 - [x] Alignment (loyalty, challenges)
 - [x] Durable Approvals (async queues)
 - [x] Rate Limiting (token bucket)
+- [x] **Trust Policy Engine** (deterministic band-based constraints)
 
 **Intelligence:**
 - [x] Planner (structured planning)
@@ -410,6 +573,16 @@ Advantage: 36 MD files = governance rules written
 - [x] Prune (context cleanup)
 - [x] Opportunity (leverage detection)
 - [x] Failure (recovery protocol)
+
+**Trust Architecture:**
+- [x] 5-band trust model (REVOKED, PROBATION, STANDARD, TRUSTED, HIGHLY_TRUSTED)
+- [x] Deterministic score computation (9 weighted factors)
+- [x] Append-only trust snapshots with full audit replay
+- [x] Policy integration (trust-aware constraints)
+- [x] Circuit breaker with staging
+- [x] Probation with automatic escalation
+- [x] Operator override with dual approval
+- [x] Kill switch → trust interaction (automatic REVOKED on score collapse)
 
 ### ⏳ Pending (Defined in MD files)
 

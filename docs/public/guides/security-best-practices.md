@@ -53,6 +53,10 @@ Monitor these events:
 - `policy.modified`
 - `agent_identity.revoked`
 - `approver.delegated`
+- `trust_band.changed` (REVOKED, PROBATION transitions)
+- `trust_override` (operator manually set band)
+- `trust_circuit_breaker` (emergency REVOKED staging)
+- `trust_probation.extended`
 
 Forward to SIEM:
 ```bash
@@ -61,7 +65,14 @@ curl -X POST https://api.citadelsdk.com/api/v1/webhooks \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://siem.company.com/citadel",
-    "events": ["kill_switch.activated", "policy.modified", "agent_identity.revoked"]
+    "events": [
+      "kill_switch.activated",
+      "policy.modified",
+      "agent_identity.revoked",
+      "trust_band.changed",
+      "trust_override",
+      "trust_circuit_breaker"
+    ]
   }'
 ```
 
@@ -75,6 +86,48 @@ curl -X POST https://api.citadelsdk.com/api/v1/governance/kill-switch/test \
   -H "Authorization: Bearer $ADMIN_JWT" \
   -H "Content-Type: application/json" \
   -d '{"scope": "staging", "dry_run": true}'
+```
+
+---
+
+## Trust Kill Switch Testing
+
+Test the trust-based circuit breaker in staging:
+
+```bash
+# 1. Create a test agent with low score
+curl -X POST https://api.citadelsdk.com/api/v1/trust/operator-override \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "test-agent",
+    "target_band": "REVOKED",
+    "reason": "Kill switch + trust integration test"
+  }'
+
+# 2. Verify kill switch is active
+curl -X GET https://api.citadelsdk.com/api/v1/trust/snapshot/test-agent \
+  -H "Authorization: Bearer $ADMIN_JWT"
+
+# 3. Attempt action (should fail with LEDGER_005)
+curl -X POST https://api.citadelsdk.com/api/v1/govern \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "test-agent",
+    "action": "email.send",
+    "params": {"to": "test@example.com"}
+  }'
+
+# 4. Restore agent to probation
+curl -X POST https://api.citadelsdk.com/api/v1/trust/operator-override \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "test-agent",
+    "target_band": "PROBATION",
+    "reason": "Test complete — restored to probation"
+  }'
 ```
 
 ---

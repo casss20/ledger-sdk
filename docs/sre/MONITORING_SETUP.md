@@ -308,6 +308,16 @@ groups:
         annotations:
           summary: "Average trust score below 0.5"
 
+      # Low trust band (PROBATION or REVOKED agents)
+      - alert: CitadelLowTrustBand
+        expr: citadel_trust_band_standard_count < 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Average trust band below STANDARD"
+
       # Database connection issues
       - alert: CitadelDatabaseUnhealthy
         expr: citadel_db_pool_connections_available < 1

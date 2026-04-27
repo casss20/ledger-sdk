@@ -6,7 +6,14 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 
 ## Core Capabilities
 
-### 1. Multi-Tenancy & Auth (Cloud Ready)
+### 1. Trust-Aware Governance
+- **Five Trust Bands**: Deterministic scoring (0.00-1.00) maps to REVOKED, PROBATION, STANDARD, TRUSTED, HIGHLY_TRUSTED. Trust influences policy without replacing it.
+- **Deterministic Score Computation**: 9 weighted behavioral factors (verification, health, compliance, action rate, etc.) computed at decision time.
+- **Probation & Circuit Breakers**: New agents start in PROBATION. Circuit breaker stages REVOKED when scores drop below 0.15.
+- **Operator Override**: Manual band adjustment with dual approval, auditable reason, and time-bounded expiration.
+- **Trust-Aware Decisions**: Every governance decision stores `trust_snapshot_id` for deterministic replay and audit.
+
+### 2. Multi-Tenancy & Auth (Cloud Ready)
 - **Strict Tenant Isolation**: Enforced via PostgreSQL Row-Level Security (RLS) and application-level filtering.
 - **API Key Management**: Secure SHA-256 hashed keys with scoped permissions and automatic `last_used` tracking.
 - **JWT Dashboard Auth**: Role-based access for operators and tenant admins.
@@ -30,12 +37,13 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 
 ## Technical Design Pillars
 
-The Citadel is built on four core architectural philosophies:
+The Citadel is built on five core architectural philosophies:
 
 1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
 2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
 3. **Decision-First Execution Rights**: Runtime authorization starts with an auditable decision record, then issues a narrowly scoped, short-lived `gt_cap_` token as execution proof.
 4. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, centralized introspection, and Global Kill Switches for emergency intervention.
+5. **Trust-Aware Enforcement**: Deterministic trust scoring (9 weighted factors, 5 bands) enriches policy context without replacing policy authority. Trust adds constraints (approval, quotas, action blocks) but never removes them.
 
 ## 📁 Repository Structure
 

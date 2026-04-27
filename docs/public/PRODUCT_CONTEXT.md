@@ -81,10 +81,15 @@ spec:
 - `alert_only` — Log and notify, don't block
 
 ### Trust Scoring
-- Each agent has a real-time trust score (0-1000)
-- Factors: action history, anomaly detection, policy compliance rate, human override frequency
-- Score below threshold triggers elevated monitoring or automatic kill switch
-- Analogous to credit score for agents
+- Each agent has a deterministic trust score (0.00-1.00) computed from 9 weighted behavioral factors.
+- Score maps to one of five trust bands: REVOKED (0.00-0.19), PROBATION (0.20-0.39), STANDARD (0.40-0.59), TRUSTED (0.60-0.79), HIGHLY_TRUSTED (0.80-1.00).
+- Trust bands influence policy enforcement: add approval requirements, reduce spend/rate limits, block specific actions.
+- Trust never bypasses kill switch, lineage, or entitlement checks. Trust can only ADD constraints — never remove them.
+- Probation: New agents start in PROBATION with 7-day default duration. Blocks delegation and handoff.
+- Circuit breaker: Score below 0.15 triggers staged REVOKED transition.
+- Operator override: Manual band adjustment with dual approval, auditable reason, and time-bounded expiration.
+- Every governance decision stores `trust_snapshot_id` for deterministic replay.
+- Analogous to credit score for agents, but policy remains the sole authority.
 
 ## SDK APIs
 
@@ -186,7 +191,7 @@ result, err := governed.Execute()
 - `LEDGER_004` — Agent not authenticated (401)
 - `LEDGER_005` — Kill switch activated
 - `LEDGER_006` — Audit trail unavailable
-- `LEDGER_007` — Trust score below threshold
+- `LEDGER_007` — Trust band below minimum (REVOKED or PROBATION)
 - `LEDGER_008` — Invalid governance token
 - `LEDGER_009` — Subscription Payment Required (402)
 - `LEDGER_010` — Usage Quota Exceeded (429)
@@ -202,7 +207,10 @@ result, err := governed.Execute()
 - `governance.action.denied` — Action blocked
 - `governance.approval.required` — Human approval queued
 - `governance.kill_switch.activated` — Emergency halt triggered
-- `governance.trust_score.changed` — Agent trust score updated
+- `governance.trust_band.changed` — Agent trust band updated (REVOKED/PROBATION/STANDARD/TRUSTED/HIGHLY_TRUSTED)
+- `governance.trust_score.computed` — Agent trust score recalculated
+- `governance.trust_probation.started` — Probation period began
+- `governance.trust_probation.ended` — Probation period expired
 - `governance.audit.exported` — Compliance package generated
 
 ## Production Deployment

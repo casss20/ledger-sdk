@@ -282,6 +282,90 @@ Kill switch checks reuse the existing `KillSwitch` infrastructure. When `introsp
 
 The kill switch implementation does not need to understand orchestration patterns. It only needs to know which `decision_id` values are roots, and which child decisions descend from them. The lineage table provides this mapping.
 
+### Trust Model
+
+Orchestration decisions are enriched by the trust model. When `delegate()`, `handoff()`, or `gather()` is called, the kernel evaluates the requesting actor's trust band and score before creating the child decision.
+
+**Trust-Aware Orchestration Matrix:**
+
+| Trust Band | Delegate | Handoff | Gather | Introspect |
+|------------|----------|---------|--------|------------|
+| **REVOKED** | blocked | blocked | blocked | blocked |
+| **PROBATION** | blocked | blocked | blocked | allowed + introspection |
+| **STANDARD** | allowed | allowed | requires approval | allowed |
+| **TRUSTED** | allowed | allowed | allowed | allowed |
+| **HIGHLY_TRUSTED** | allowed | allowed | allowed | allowed |
+
+**Trust rules for orchestration:**
+1. **Kill switch checked first** — trust never bypasses emergency stop
+2. **REVOKED actors cannot orchestrate** — all delegation, handoff, and gather are blocked
+3. **PROBATION blocks delegation and handoff** — the agent can only execute with introspection
+4. **STANDARD requires approval for gather** — parallel branching needs oversight
+5. **TRUSTED/HIGHLY_TRUSTED have full orchestration privileges** — but `destroy` still requires approval
+6. **Every orchestration decision stores `trust_snapshot_id`** — for deterministic replay and audit
+
+**Trust context in orchestration decisions:**
+```json
+{
+  "trust_band": "TRUSTED",
+  "trust_score": 0.75,
+  "trust_snapshot_id": "snap-550e8400-e29b-41d4-a716-446655440000",
+  "trust_constraints": {
+    "max_spend_multiplier": 1.5,
+    "rate_limit_multiplier": 2.0,
+    "approval_required_for": ["destroy"]
+  }
+}
+```
+
+**Probation in orchestration:**
+If an actor is on probation, its `probation_until` field overrides the trust band for orchestration purposes. Even a TRUSTED actor in probation is treated as PROBATION for delegation and handoff.
+
+**Operator override in orchestration:**
+An operator can manually set an actor's trust band to REVOKED or PROBATION to immediately block all orchestration. This is useful for security incidents or compliance holds. The override is auditable and time-bounded.
+
+### Trust Score Computation in Orchestration
+
+Trust scores are computed deterministically before each orchestration decision:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Identity verification | 0.25 | Cryptographic identity verification |
+| Health score | 0.20 | Agent operational health (0-100) |
+| Identity age | 0.15 max | Days since creation (capped at 30d) |
+| Compliance record | 0.15 | Policy violations in last 7 days |
+| Quarantine status | 0.10 | Major penalty if quarantined |
+| Action rate | 0.10 | Daily action volume |
+| Budget adherence | 0.05 | Token spend vs budget ratio |
+| Challenge reliability | 0.05 | Pass rate on cryptographic challenges |
+| Score trend | 0.03 | Rapid score change bonus/penalty |
+
+Score boundaries: REVOKED (0.00–0.19), PROBATION (0.20–0.39), STANDARD (0.40–0.59), TRUSTED (0.60–0.79), HIGHLY_TRUSTED (0.80–1.00).
+
+### Trust-Aware Policy for Orchestration
+
+Custom policy rules can restrict orchestration based on trust:
+
+```yaml
+apiVersion: citadel.gov/v1
+kind: Policy
+metadata:
+  name: orchestration-trust-policy
+spec:
+  trigger:
+    action: orchestrate.gather
+  enforcement:
+    type: conditional
+    conditions:
+      - if: trust_band == "PROBATION"
+        then: deny
+      - if: trust_band == "STANDARD"
+        then: require_approval
+        approvers: [team-lead]
+      - if: trust_band in ["TRUSTED", "HIGHLY_TRUSTED"]
+        then: allow
+```
+
 ---
 
 ## Migration

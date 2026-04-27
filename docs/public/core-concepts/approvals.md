@@ -4,6 +4,7 @@
 
 - How approval workflows integrate with agent execution
 - Configuring approvers, timeouts, and escalations
+- How trust bands affect approval requirements
 - Approval via dashboard, API, email, and Slack
 - EU AI Act Article 14 human oversight requirements
 - Audit trail for every approval decision
@@ -23,7 +24,13 @@ This satisfies EU AI Act Article 14(4)(b): "natural persons overseeing high-risk
 ```
 Agent requests action
     ↓
+Kill Switch Check (first gate)
+    ↓
+Trust Evaluation → Band, Score, Constraints
+    ↓
 Policy evaluation: require_approval
+    ↓
+Trust constraints merged → May add additional approval requirements
     ↓
 Action PAUSED
     ↓
@@ -35,8 +42,31 @@ Approver reviews context
     ├─ DENY → Action rejected, agent notified
     └─ TIMEOUT → Auto-rejected after timeout
     ↓
-Decision recorded in audit trail
+Decision recorded in audit trail (with trust_snapshot_id)
 ```
+
+---
+
+## Trust Band Approval Matrix
+
+Trust bands determine which actions require approval:
+
+| Action | REVOKED | PROBATION | STANDARD | TRUSTED | HIGHLY_TRUSTED |
+|--------|---------|-----------|----------|---------|----------------|
+| **execute** | blocked | allowed + introspection | allowed | allowed | allowed |
+| **delegate** | blocked | blocked | allowed | allowed | allowed |
+| **handoff** | blocked | blocked | approval | allowed | allowed |
+| **gather** | blocked | blocked | approval | allowed | allowed |
+| **destroy** | blocked | blocked | approval | approval | approval |
+| **revoke** | blocked | blocked | approval | approval | allowed |
+| **kill_switch_trigger** | blocked | blocked | approval | allowed | allowed |
+
+### Key Rules
+
+- **Trust can only ADD approval requirements** — it cannot remove them
+- **Even HIGHLY_TRUSTED needs approval for `destroy`** — no band bypasses destructive action controls
+- **Probation blocks `delegate`, `handoff`, `gather`** regardless of score
+- **REVOKED blocks everything** — emergency state
 
 ---
 
@@ -81,6 +111,19 @@ enforcement:
       roles: [finance-manager]
 ```
 
+### Trust-based approver routing
+```yaml
+enforcement:
+  type: require_approval
+  approvers:
+    - condition: trust_band == "PROBATION"
+      roles: [security-manager]
+    - condition: trust_band == "STANDARD"
+      roles: [team-lead]
+    - condition: trust_band in ["TRUSTED", "HIGHLY_TRUSTED"]
+      roles: [senior-engineer]
+```
+
 ---
 
 ## Approval Channels
@@ -88,7 +131,8 @@ enforcement:
 ### Dashboard
 Approvers see pending approvals in the **Approval Queue** widget:
 - Action context and parameters
-- Agent history and trust score
+- Agent history and trust band
+- Trust score and factor breakdown
 - Risk assessment summary
 - One-click approve/deny
 
@@ -150,7 +194,14 @@ approval_context = {
     "action": "refund.create",
     "params": {"amount": 5000, "order_id": "ORD-123"},
     "agent_id": "refund-agent-01",
-    "agent_trust_score": 847,
+    "trust_band": "TRUSTED",
+    "trust_score": 0.75,
+    "trust_snapshot_id": "snap_550e8400...",
+    "trust_factors": {
+        "verification": 0.25,
+        "health": 0.20,
+        "compliance": 0.15
+    },
     "agent_history": "97% approval rate, last violation 30 days ago",
     "policy": "refund-approval-over-1000",
     "similar_approvals": [
@@ -193,6 +244,8 @@ records = citadel.audit.query(action="approval.decided")
 for record in records:
     print(f"{record.approver} {record.decision} {record.action}")
     print(f"  Reason: {record.reason}")
+    print(f"  Trust band: {record.trust_band}")
+    print(f"  Trust snapshot: {record.trust_snapshot_id}")
     print(f"  Time to decision: {record.decision_time - record.request_time}")
 ```
 
@@ -217,5 +270,5 @@ citadel.approvals.delegate(
 ## Next steps
 
 - [Kill Switch](./kill-switch.md) — Emergency stops when approvals aren't enough
-- [Trust Scoring](./trust-scoring.md) — Reduce approval burden for trusted agents
+- [Trust Scoring](./trust-scoring.md) — How trust bands reduce or increase approval burden
 - [Recipe: High-Risk Action Approval](../recipes/high-risk-action-approval.md)

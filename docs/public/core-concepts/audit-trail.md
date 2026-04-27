@@ -4,6 +4,7 @@
 
 - How the hash chain guarantees tamper evidence
 - The dual-write architecture (immutable archive + searchable index)
+- Trust audit events and replay
 - Querying and exporting audit records
 - Compliance proof generation for regulators
 - Independent verification without trusting Citadel
@@ -18,6 +19,7 @@ Citadel's audit trail is an append-only, cryptographically signed log of every g
 - **Immutable**: Records cannot be deleted or altered
 - **Verifiable**: Third parties can verify integrity without trusting Citadel
 - **Correlatable**: W3C trace context links related actions across agents
+- **Trust-aware**: Every decision includes trust snapshot ID for full replay
 
 ---
 
@@ -33,13 +35,42 @@ Record N:
   - policy: email-allowed
   - agent_id: agent-01
   - gt_token: gt_1Aa2...
+  - trust_snapshot_id: snap_550e8400...
+  - trust_band: TRUSTED
+  - trust_score: 0.75
   - prev_hash: sha256(Record N-1)
   - content_hash: sha256(this record's content)
   - chain_hash: sha256(prev_hash + content_hash)
   - signature: ECDSA(chain_hash, Citadel private key)
 ```
 
-The chain ensures that modifying any historical record invalidates all subsequent records.
+The chain ensures that modifying any historical record invalidates all subsequent records. The `trust_snapshot_id` ensures every decision can be replayed with the exact trust context that was active at decision time.
+
+---
+
+## Trust Audit Events
+
+Every trust-related change is recorded:
+
+| Event Type | Severity | Data |
+|---|---|---|
+| `TRUST_BAND_CHANGED` | MEDIUM | before/after band, score, snapshot_id, reason |
+| `TRUST_SCORE_COMPUTED` | LOW | score, band, factors, raw_inputs |
+| `TRUST_PROBATION_STARTED` | MEDIUM | probation_until, reason |
+| `TRUST_PROBATION_ENDED` | LOW | reason |
+| `TRUST_PROBATION_EXTENDED` | HIGH | new_until, reason |
+| `TRUST_OVERRIDE` | HIGH | operator_id, from/to band, reason |
+| `TRUST_CIRCUIT_BREAKER` | CRITICAL | from/to score/band, reason |
+| `TRUST_KILL_SWITCH_DROP` | CRITICAL | previous_band, kill_switch_reason |
+
+### Trust event severity levels
+
+| Severity | Description | Examples |
+|----------|-------------|----------|
+| **LOW** | Routine computation | Score computed, probation ended |
+| **MEDIUM** | Policy-relevant change | Band changed, probation started |
+| **HIGH** | Operator intervention required | Override, probation extended |
+| **CRITICAL** | Immediate attention required | Circuit breaker, kill switch drop |
 
 ---
 
@@ -83,6 +114,31 @@ records = citadel.audit.query(
 )
 ```
 
+### Trust-specific queries
+```python
+# All trust band changes for an agent
+records = citadel.audit.query(
+    event_type="TRUST_BAND_CHANGED",
+    agent_id="agent-01",
+    start="2026-04-01",
+    end="2026-04-30"
+)
+
+# All operator overrides
+records = citadel.audit.query(
+    event_type="TRUST_OVERRIDE",
+    severity="HIGH",
+    start="2026-04-01",
+    end="2026-04-30"
+)
+
+# All circuit breaker events
+records = citadel.audit.query(
+    event_type="TRUST_CIRCUIT_BREAKER",
+    severity="CRITICAL"
+)
+```
+
 ### Advanced filtering
 ```python
 records = citadel.audit.query(
@@ -97,8 +153,8 @@ records = citadel.audit.query(
 ### Full-text search
 ```python
 records = citadel.audit.search(
-    query="refund AND amount > 500",
-    fields=["action", "params", "outcome"]
+    query="trust_band changed to REVOKED",
+    fields=["event_type", "details", "outcome"]
 )
 ```
 
@@ -126,6 +182,7 @@ The package includes:
 3. Tamper-evidence attestation
 4. Policy snapshot at time of action
 5. Agent identity certificates
+6. Trust snapshot replay for each decision
 
 ---
 
@@ -181,9 +238,9 @@ action_b = citadel.govern(
 View correlated traces in dashboard:
 ```
 Trace: trace-123e4567-e89b-12d3-a456-426614174000
-├─ Agent A: order.create [allowed]
-├─ Agent B: inventory.reserve [allowed]
-├─ Agent C: payment.charge [require_approval]
+├─ Agent A: order.create [allowed, trust_band=TRUSTED]
+├─ Agent B: inventory.reserve [allowed, trust_band=TRUSTED]
+├─ Agent C: payment.charge [require_approval, trust_band=STANDARD]
 └─ Human: approved payment.charge
 ```
 
@@ -211,5 +268,6 @@ citadel.config.set_retention({
 ## Next steps
 
 - [Governance Tokens](./governance-tokens.md) — Understand `gt_` tokens
+- [Trust Scoring](./trust-scoring.md) — Trust model and audit integration
 - [Recipe: Audit Export for Regulator](../recipes/audit-export-for-regulator.md)
 - [Recipe: Compliance Proof Generation](../recipes/compliance-proof-generation.md)

@@ -20,6 +20,8 @@ CITADEL exposes these metrics at `/metrics`:
 | `citadel_approval_queue_size` | Gauge | Pending approvals |
 | `citadel_kill_switch_active` | Gauge | Active kill switches |
 | `citadel_trust_score_avg` | Gauge | Average trust score |
+| `citadel_trust_band_count` | Gauge | Agents per trust band |
+| `citadel_trust_snapshot_age` | Histogram | Trust snapshot staleness |
 
 ---
 
@@ -58,7 +60,19 @@ citadel_kill_switch_active
 
 **Trust Score Average:**
 ```promql
-avg(citadel_trust_score{level!="revoked"})
+avg(citadel_trust_score{band!="REVOKED"})
+```
+
+**Trust Band Distribution:**
+```promql
+citadel_trust_band_count
+```
+
+**Trust Snapshot Staleness:**
+```promql
+histogram_quantile(0.95, 
+  sum(rate(citadel_trust_snapshot_age_bucket[5m])) by (le)
+)
 ```
 
 **Approval Queue Depth:**

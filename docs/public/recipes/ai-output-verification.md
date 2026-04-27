@@ -28,11 +28,14 @@ spec:
   enforcement:
     type: conditional
     conditions:
-      - if: output.trust_score > 90
+      - if: agent.trust_band == "HIGHLY_TRUSTED" AND output.quality_score > 0.90
         then: allow
-      - if: output.trust_score > 50
+      - if: agent.trust_band in ["TRUSTED", "HIGHLY_TRUSTED"] AND output.quality_score > 0.60
         then: require_approval
         approvers: [role:content-review]
+      - if: agent.trust_band == "STANDARD"
+        then: require_approval
+        approvers: [role:content-review, role:team-lead]
       - else: deny
   audit:
     level: comprehensive

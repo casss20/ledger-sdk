@@ -231,8 +231,9 @@ curl -X POST http://localhost:8000/api/agent-identities/agent-scraper-001/capabi
   "verified": true,
   "authorized": true,
   "agent_id": "agent-scraper-001",
-  "trust_score": null,
-  "trust_level": "trusted",
+  "trust_band": "TRUSTED",
+  "trust_score": 0.72,
+  "trust_snapshot_id": "snap_550e8400-e29b-41d4-a716-446655440000",
   "token": {
     "type": "capability_token",
     "agent_id": "agent-scraper-001",
@@ -240,7 +241,7 @@ curl -X POST http://localhost:8000/api/agent-identities/agent-scraper-001/capabi
     "resource": "https://example.com/data",
     "issued_at": "2026-04-26T01:30:00",
     "expires_at": "2026-04-26T02:30:00",
-    "trust_level": "trusted"
+    "trust_band": "TRUSTED"
   }
 }
 ```
@@ -251,9 +252,10 @@ curl -X POST http://localhost:8000/api/agent-identities/agent-scraper-001/capabi
   "verified": true,
   "authorized": false,
   "agent_id": "agent-scraper-001",
-  "error": "Trust level unverified below minimum standard",
-  "trust_score": null,
-  "trust_level": "unverified",
+  "error": "Trust band PROBATION below minimum STANDARD for this action",
+  "trust_band": "PROBATION",
+  "trust_score": 0.28,
+  "trust_snapshot_id": "snap_550e8400-e29b-41d4-a716-446655440000",
   "token": null
 }
 ```
@@ -396,8 +398,8 @@ class CitadelAgent:
         # Note: real API returns api_key at registration, not auth
         return data
 
-    def get_trust_score(self, api_key: str) -> dict:
-        """Get current trust score."""
+    def get_trust_snapshot(self, api_key: str) -> dict:
+        """Get current trust snapshot."""
         resp = requests.get(
             f"{self.base}/api/agent-identities/{self.agent_id}/trust",
             headers={"Authorization": f"Bearer {api_key}"}
@@ -420,8 +422,8 @@ class CitadelAgent:
 agent = CitadelAgent("http://localhost:8000", "agent-scraper-001", "ak_...")
 
 # After registration, you have the api_key
-trust = agent.get_trust_score(api_key="ak_demo_...")
-print(f"Trust: {trust['score']} ({trust['level']})")
+trust = agent.get_trust_snapshot(api_key="ak_demo_...")
+print(f"Trust: {trust['score']} ({trust['band']}) — {trust['snapshot_id']}")
 
 cap = agent.get_capability(
     api_key="ak_demo_...",

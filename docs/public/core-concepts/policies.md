@@ -5,6 +5,7 @@
 - Policy structure and YAML syntax
 - All enforcement types and when to use them
 - Trigger conditions and matching patterns
+- Trust band integration in policy
 - Policy composition and inheritance
 - Testing policies before deployment
 
@@ -110,6 +111,59 @@ enforcement:
     - slack: #finance-alerts
     - email: finance@company.com
 ```
+
+---
+
+## Trust Band Integration
+
+Trust bands influence policy enforcement without replacing it. The policy engine evaluates trust context alongside policy rules.
+
+### Trust context available in policy evaluation
+
+When a policy is evaluated, the following trust context is injected:
+
+```json
+{
+  "trust_band": "STANDARD",
+  "trust_score": 0.55,
+  "trust_snapshot_id": "snap-550e8400-e29b-41d4-a716-446655440000",
+  "trust_probation_active": false,
+  "trust_constraints": {
+    "require_approval_for": ["destroy", "revoke"],
+    "approval_bypass_for_risk_below": "low",
+    "max_spend_multiplier": 1.0,
+    "rate_limit_multiplier": 1.0
+  }
+}
+```
+
+### Trust-based policy conditions
+
+```yaml
+spec:
+  trigger:
+    action: database.write
+    condition: table == "sensitive_data"
+  enforcement:
+    type: conditional
+    conditions:
+      - if: trust_band == "HIGHLY_TRUSTED"
+        then: allow
+      - if: trust_band == "TRUSTED"
+        then: require_approval
+        approvers: [data-owner]
+      - if: trust_band == "STANDARD"
+        then: require_approval
+        approvers: [data-owner, compliance-officer]
+      - else: deny
+```
+
+### Important rules
+
+1. **Trust can only ADD constraints** — it cannot override a policy `deny`
+2. **Kill switch is checked first** — trust never bypasses emergency stop
+3. **Probation overrides band** — if `probation_until` > now, agent is PROBATION regardless of score
+4. **Even HIGHLY_TRUSTED needs approval for `destroy`** — no band bypasses destructive action controls
 
 ---
 

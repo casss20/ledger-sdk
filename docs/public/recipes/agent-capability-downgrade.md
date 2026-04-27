@@ -17,35 +17,37 @@ When an agent's trust score drops below threshold, automatically remove risky pe
 ## Implementation
 
 ```python
-# Monitor trust score and downgrade capabilities
+# Monitor trust band and downgrade capabilities
 import requests
 
 BASE = "https://api.citadelsdk.com/api"
 ADMIN_JWT = "your-admin-jwt"
 
-# Get current trust score
+# Get current trust snapshot
 resp = requests.get(
     f"{BASE}/agent-identities/data-agent/trust",
     headers={"Authorization": f"Bearer {ADMIN_JWT}"}
 )
 trust = resp.json()
-score = trust["trust_score"]
+band = trust["band"]
+score = trust["score"]
+snapshot_id = trust["snapshot_id"]
 
-if score < 0.30:
+if band in ["REVOKED", "PROBATION"]:
     # Downgrade: quarantine agent (removes all capabilities)
     requests.post(
         f"{BASE}/agents/data-agent/quarantine",
         headers={"Authorization": f"Bearer {ADMIN_JWT}"}
     )
     # Alert
-    print(f"ALERT: Agent data-agent quarantined. Trust score: {score}")
-elif score > 0.60:
+    print(f"ALERT: Agent data-agent quarantined. Trust band: {band}, score: {score}")
+elif band in ["TRUSTED", "HIGHLY_TRUSTED"]:
     # Restore: unquarantine if previously downgraded
     requests.post(
-        f"{BASE}/agents/data-agent/quarantine",
+        f"{BASE}/agents/data-agent/unquarantine",
         headers={"Authorization": f"Bearer {ADMIN_JWT}"}
     )
-    print(f"Agent data-agent restored. Trust score: {score}")
+    print(f"Agent data-agent restored. Trust band: {band}, score: {score}")
 ```
 
 ---
@@ -59,8 +61,8 @@ metadata:
   name: auto-downgrade
 spec:
   trigger:
-    action: trust.score_changed
-    condition: score < 300
+    action: trust.band_changed
+    condition: band in ["REVOKED", "PROBATION"]
   enforcement:
     type: alert_only
     actions:
