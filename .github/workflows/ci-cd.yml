@@ -55,7 +55,120 @@ jobs:
         run: mypy apps/runtime/citadel --ignore-missing-imports --no-error-summary
 
   # ──────────────────────────────────────────
-  # 3. BACKEND TESTS
+  # 3. DOCKER SMOKE TEST
+  # ──────────────────────────────────────────
+  docker-smoke:
+    name: Docker Build & Smoke Test
+    runs-on: ubuntu-latest
+    needs: [lint-backend]
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: citadel
+          POSTGRES_PASSWORD: citadel
+          POSTGRES_DB: citadel
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t citadel-runtime:ci .
+      - name: Verify image imports work
+        run: docker run --rm citadel-runtime:ci python -c "import citadel; print('Package import OK')"
+      - name: Start API container and wait for readiness
+        env:
+          CI_NETWORK: host
+        run: |
+          # Wait for postgres to be ready
+          for i in {1..30}; do
+            pg_isready -h localhost -U citadel && break
+            sleep 1
+          done
+          # Run the API container pointing at the CI postgres service
+          docker run -d --name citadel-api-smoke \
+            -e CITADEL_DATABASE_URL=postgresql://citadel:citadel@host.docker.internal:5432/citadel \
+            -e CITADEL_JWT_SECRET=ci-smoke-jwt-secret \
+            -e CITADEL_API_KEYS=smoke-key:admin \
+            -e CITADEL_CORS_ORIGINS=http://localhost:5173 \
+            -p 8000:8000 \
+            citadel-runtime:ci
+          # Wait for readiness (up to 60s)
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/v1/health/live; then
+              echo "Liveness OK"
+              break
+            fi
+            sleep 1
+          done
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/v1/health/ready; then
+              echo "Readiness OK"
+              break
+            fi
+            sleep 1
+          done
+          # Verify both endpoints
+          curl -sf http://localhost:8000/v1/health/live || (echo "Liveness failed" && exit 1)
+          curl -sf http://localhost:8000/v1/health/ready || (echo "Readiness failed" && exit 1)
+          echo "Docker smoke test passed"
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f citadel-api-smoke || true
+
+  # ──────────────────────────────────────────
+  # 4. COMPOSE HEALTH TEST
+  # ──────────────────────────────────────────
+  compose-health:
+    name: Compose Stack Health Test
+    runs-on: ubuntu-latest
+    needs: [lint-backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create test environment
+        run: |
+          cat > .env <<EOF
+          CITADEL_DEBUG=false
+          CITADEL_LOG_LEVEL=INFO
+          CITADEL_DATABASE_URL=postgresql://citadel:citadel@postgres:5432/citadel
+          CITADEL_JWT_SECRET=ci-compose-jwt-secret
+          CITADEL_API_KEYS=compose-key:admin
+          CITADEL_ADMIN_BOOTSTRAP_PASSWORD=ci-bootstrap-password
+          CITADEL_CORS_ORIGINS=http://localhost:5173
+          CITADEL_RATE_LIMIT_REQUESTS=100
+          CITADEL_RATE_LIMIT_WINDOW_SECONDS=60
+          EOF
+      - name: Start compose stack
+        run: docker compose up -d --build
+      - name: Wait for services
+        run: |
+          # Wait for API readiness (up to 90s)
+          for i in {1..90}; do
+            if curl -sf http://localhost:8000/v1/health/ready; then
+              echo "API readiness OK"
+              break
+            fi
+            sleep 1
+          done
+          # Verify both health endpoints
+          curl -sf http://localhost:8000/v1/health/live || (echo "Liveness failed" && exit 1)
+          curl -sf http://localhost:8000/v1/health/ready || (echo "Readiness failed" && exit 1)
+          echo "Compose health test passed"
+      - name: Verify logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  # ──────────────────────────────────────────
+  # 5. BACKEND TESTS
   # ──────────────────────────────────────────
   test-backend:
     name: Test Backend
@@ -136,7 +249,7 @@ jobs:
         # the project pins a clean dependency set.  Revisit quarterly.
 
   # ──────────────────────────────────────────
-  # 4. SDK LINT & TYPECHECK
+  # 6. SDK LINT & TYPECHECK
   # ──────────────────────────────────────────
   lint-sdk:
     name: Lint Python SDK
@@ -180,7 +293,7 @@ jobs:
           mypy citadel_governance --ignore-missing-imports --no-error-summary || true
 
   # ──────────────────────────────────────────
-  # 5. SDK TESTS
+  # 7. SDK TESTS
   # ──────────────────────────────────────────
   test-sdk:
     name: Test Python SDK
@@ -206,7 +319,7 @@ jobs:
           python -c "import citadel_governance as cg; print('SDK import OK, version:', cg.__version__)"
 
   # ──────────────────────────────────────────
-  # 6. FRONTEND BUILD
+  # 8. FRONTEND BUILD
   # ──────────────────────────────────────────
   build-frontend:
     name: Build Frontend
@@ -243,7 +356,7 @@ jobs:
           npm run build
 
   # ──────────────────────────────────────────
-  # 7. DEPLOY API (Fly.io)
+  # 9. DEPLOY API (Fly.io)
   # ──────────────────────────────────────────
   deploy-api:
     name: Deploy API
@@ -272,7 +385,7 @@ jobs:
           echo "Set it in: GitHub Settings > Secrets and variables > Actions > FLY_API_TOKEN"
 
   # ──────────────────────────────────────────
-  # 8. DEPLOY DASHBOARD (Vercel)
+  # 10. DEPLOY DASHBOARD (Vercel)
   # ──────────────────────────────────────────
   deploy-dashboard:
     name: Deploy Dashboard
@@ -301,7 +414,7 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping dashboard deploy."
 
   # ──────────────────────────────────────────
-  # 9. DEPLOY LANDING (Vercel)
+  # 11. DEPLOY LANDING (Vercel)
   # ──────────────────────────────────────────
   deploy-landing:
     name: Deploy Landing

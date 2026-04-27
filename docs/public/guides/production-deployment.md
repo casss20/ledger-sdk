@@ -13,7 +13,7 @@
 
 - Kubernetes 1.28+ or Docker
 - PostgreSQL 15+ or managed database
-- Redis 7+ for caching
+- Redis 7+ (optional — see [Redis section](#redis))
 - TLS certificate
 
 ---
@@ -81,6 +81,30 @@ spec:
 
 ---
 
+## Redis (Optional)
+
+Redis is **not required** for single-node deployments. It becomes necessary when running multiple API instances that need shared state.
+
+### Without Redis (single-node)
+
+| Feature | Behavior |
+|---|---|
+| Rate limiting | In-memory token bucket per instance |
+| Kill switch | In-memory per instance |
+| Caching | In-memory dict per process |
+
+### With Redis (multi-node)
+
+| Feature | Behavior |
+|---|---|
+| Rate limiting | Distributed token bucket across all instances |
+| Kill switch | Shared state (planned) |
+| Caching | Shared cache across instances |
+
+To enable Redis, set `CITADEL_REDIS_URL=redis://host:6379/0` in your environment and uncomment the `redis` service in `docker-compose.yml`.
+
+---
+
 ## Helm Chart
 
 > **Helm Chart**: A Helm chart is planned but not yet published. Track progress at https://github.com/casss20/citadel-sdk/issues.
@@ -91,7 +115,7 @@ spec:
 
 - Run 3+ replicas across availability zones
 - Use managed PostgreSQL with replication
-- Configure Redis Sentinel for cache HA
+- Configure Redis Sentinel for cache HA (if using Redis)
 - Enable automatic failover
 
 ---

@@ -468,6 +468,20 @@ asyncio_mode = "auto"
 
 See `.env.example` for a complete template.
 
+### Redis (Optional)
+
+Redis is **not required** for single-node development or self-hosting. Without it, the system uses in-memory fallbacks:
+
+| Feature | With Redis | Without Redis |
+|---|---|---|
+| Rate limiting | Distributed token bucket across instances | In-memory token bucket (single-instance only) |
+| Kill switch storage | Shared state (future) | In-memory (per-process) |
+| Caching | Shared cache | In-memory dict (per-process) |
+
+To enable Redis, start a Redis instance and set `CITADEL_REDIS_URL=redis://localhost:6379/0` in `.env`.
+
+For Docker Compose, uncomment the `redis` service in `docker-compose.yml`.
+
 ---
 
 ## 📊 Performance Tips

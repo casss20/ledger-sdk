@@ -21,7 +21,7 @@ citadel-sdk/
 │   └── open-spec/        ← Governance schemas & token specs (Apache 2.0)
 ├── db/
 │   ├── schema.sql        ← Canonical database schema
-│   └── migrations/       ← Alembic / manual SQL migrations
+│   └── migrations/       ← Ordered SQL migrations (source of truth)
 ├── docs/
 │   ├── public/           ← Static docs site (HTML + Markdown)
 │   └── *.md              ← Internal architecture docs
@@ -241,17 +241,19 @@ cg.guard(action="...", resource="...")  # decorator
 ```
 db/
 ├── schema.sql                # Canonical schema (source of truth)
-├── migrations/               # Ordered SQL migrations
-│   ├── 2026-04-24-initial.sql
-│   └── 2026-04-25-rls-policies.sql
-└── 00-init-test-db.sql       # Local dev helper (not used in CI)
+├── migrations/               # Ordered SQL migrations (source of truth)
+│   ├── 001_tenant_isolation.sql
+│   ├── 002_api_keys.sql
+│   └── ...
+└── 00-init-test-db.sql       # Local dev helper (not used in CI or production)
 ```
 
 **Rules:**
 - `schema.sql` is the canonical schema. It must always represent the current state.
+- `db/migrations/*.sql` are the source of truth for schema changes. The runtime applies them automatically on startup via `_run_migrations()`.
 - Migrations are additive. Never modify an already-deployed migration.
 - All tables must have RLS policies for tenant isolation.
-- New migrations must be idempotent (`CREATE TABLE IF NOT EXISTS`, etc.).
+- New migrations must be idempotent (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ADD COLUMN IF NOT EXISTS`, etc.).
 
 ---
 

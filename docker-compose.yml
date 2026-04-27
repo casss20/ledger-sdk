@@ -21,6 +21,20 @@ services:
       retries: 5
       start_period: 5s
 
+  # OPTIONAL: Redis for distributed rate limiting and caching.
+  # Uncomment to enable cross-instance rate limiting and caching.
+  # Without Redis, rate limiting falls back to in-memory (single-instance only).
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 3
+
   api:
     build: .
     restart: unless-stopped
@@ -32,6 +46,9 @@ services:
       CITADEL_DATABASE_URL: postgresql://citadel:citadel@postgres:5432/citadel
       # If CITADEL_API_KEYS is not set in .env, the app will fail startup in production.
       # Set it in .env: CITADEL_API_KEYS=prod-key-1:admin,prod-key-2:read
+      #
+      # OPTIONAL: Redis connection (uncomment the redis service above to use)
+      # CITADEL_REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:

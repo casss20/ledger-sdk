@@ -156,6 +156,18 @@ docker compose up --build -d
 curl http://localhost:8000/v1/health/ready
 ```
 
+### Optional: Redis for distributed features
+
+Redis is **optional** for single-node deployments. Without Redis, the system falls back to in-memory implementations:
+
+| Feature | Without Redis | With Redis |
+|---|---|---|
+| Rate limiting | In-memory token bucket (single-instance only) | Distributed token bucket across all instances |
+| Kill switch | In-memory storage | Distributed state (planned) |
+| Caching | In-memory dict (per-process) | Shared cache across instances |
+
+To enable Redis, uncomment the `redis` service in `docker-compose.yml` and set `CITADEL_REDIS_URL=redis://redis:6379/0` in `.env`.
+
 ## Hardening & Verification
 
 Citadel is tested against adversarial scenarios:

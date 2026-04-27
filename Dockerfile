@@ -1,29 +1,38 @@
 # Citadel Governance API
 # Production-ready container for the governance kernel
+# Multi-stage build: wheel build → runtime
 
+# ── Stage 1: Build the wheel ───────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS builder
+
+WORKDIR /app
+COPY pyproject.toml README.md LICENSE ./
+COPY apps/runtime/ ./apps/runtime/
+
+# Install build tools and produce a wheel
+RUN pip install --no-cache-dir build
+RUN python -m build --wheel
+
+# ── Stage 2: Runtime ───────────────────────────────────────────────────
 FROM python:3.12-slim-bookworm
 
 # Security: run as non-root
 RUN groupadd -r citadel && useradd -r -g citadel citadel
 
-# Install dependencies
 WORKDIR /app
-COPY pyproject.toml README.md LICENSE ./
-COPY apps/runtime/ ./apps/runtime/
+
+# Copy the wheel from the builder stage
+COPY --from=builder /app/dist/*.whl ./
+
+# Copy runtime data files (schema + migrations) needed by the app at startup
 COPY db/ ./db/
-COPY migrations/ ./migrations/
 
-# Install with all production dependencies
-RUN pip install --no-cache-dir -e ".[all]"
+# Install the wheel with all production extras, then clean up
+RUN pip install --no-cache-dir "$(ls *.whl)[all]" && rm *.whl && \
+    rm -rf /root/.cache /tmp/*
 
-# Ensure the non-root user can read the application code
+# Ensure the non-root user can read application files
 RUN chown -R citadel:citadel /app
-
-# Security: remove build artifacts
-RUN rm -rf /root/.cache /tmp/*
-
-# Make the citadel package importable from the container layout
-ENV PYTHONPATH=/app/apps/runtime
 
 # Switch to non-root user
 USER citadel
