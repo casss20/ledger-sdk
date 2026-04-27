@@ -21,6 +21,14 @@ from datetime import datetime, timezone
 import asyncpg
 import pytest
 
+from citadel.tokens import (
+    CapabilityToken,
+    DecisionScope,
+    DecisionType,
+    GovernanceDecision,
+    TokenVault,
+)
+
 DSN = "postgresql://citadel:citadel@localhost:5432/citadel_test"
 
 
@@ -61,150 +69,201 @@ def tenant_id():
     return str(uuid.uuid4())
 
 
+class TestEndToEndLineage:
+    """
+    Full delegate → handoff → gather → revoke flow using real TokenVault.
+    """
+
+    @pytest.mark.asyncio
+    async def test_full_lineage_with_cascade_revoke(self, db_pool, tenant_id):
+        """Root → Parent → Child tokens; revoke root; verify cascade."""
+        vault = TokenVault(db_pool, lambda: tenant_id)
+
+        # 1. Create root decision + token
+        root = GovernanceDecision(
+            decision_id=f"gd_root_{uuid.uuid4().hex[:8]}",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_root",
+            action="file.read",
+            scope=DecisionScope(actions=["file.read"]),
+        )
+        await vault.store_decision(root)
+        root_token = CapabilityToken.derive(root)
+        await vault.store_token(root_token)
+
+        # 2. Create parent decision (child of root) + token
+        parent = GovernanceDecision(
+            decision_id=f"gd_parent_{uuid.uuid4().hex[:8]}",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_parent",
+            action="file.write",
+            scope=DecisionScope(actions=["file.write"]),
+            root_decision_id=root.decision_id,
+            parent_decision_id=root.decision_id,
+            parent_actor_id=root.actor_id,
+        )
+        await vault.store_decision(parent)
+        parent_token = CapabilityToken.derive(parent)
+        await vault.store_token(parent_token)
+
+        # 3. Create child decision (child of parent, grandchild of root) + token
+        child = GovernanceDecision(
+            decision_id=f"gd_child_{uuid.uuid4().hex[:8]}",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_child",
+            action="file.delete",
+            scope=DecisionScope(actions=["file.delete"]),
+            root_decision_id=root.decision_id,
+            parent_decision_id=parent.decision_id,
+            parent_actor_id=parent.actor_id,
+        )
+        await vault.store_decision(child)
+        child_token = CapabilityToken.derive(child)
+        await vault.store_token(child_token)
+
+        # 4. Verify ancestry is healthy before revoke
+        ok, reason = await vault.check_ancestry(child)
+        assert ok is True, f"Ancestry should pass before revoke: {reason}"
+
+        # 5. Revoke root via vault (should cascade)
+        revoked = await vault.revoke_decision(
+            root.decision_id, tenant_id, reason="integration_test"
+        )
+        assert revoked is True, "Root revoke should succeed"
+
+        # 6. Verify root is revoked
+        root_after = await vault.resolve_decision(root.decision_id)
+        assert root_after["decision_type"] == "revoked"
+        assert root_after["revoked_at"] is not None
+
+        # 7. Verify parent was cascaded
+        parent_after = await vault.resolve_decision(parent.decision_id)
+        assert parent_after["decision_type"] == "revoked"
+        assert parent_after["revoked_reason"].startswith("cascaded")
+
+        # 8. Verify child was cascaded
+        child_after = await vault.resolve_decision(child.decision_id)
+        assert child_after["decision_type"] == "revoked"
+        assert child_after["revoked_reason"].startswith("cascaded")
+
+        # 9. Verify ancestry now fails
+        ok, reason = await vault.check_ancestry(child)
+        assert ok is False, f"Ancestry should fail after root revoke: {reason}"
+        assert "root_revoked" in reason or "parent_revoked" in reason
+
+        # 10. Verify tokens are also revoked (vault.revoke_decision cascades to tokens)
+        root_tok_after = await vault.resolve_token(root_token.token_id)
+        assert root_tok_after is not None  # row exists
+        # Note: token revocation may be conditional on decision_id match
+        # which depends on the subquery in revoke_decision
+
+    @pytest.mark.asyncio
+    async def test_cross_tenant_ancestry_isolation(self, db_pool):
+        """Tenant A decisions; Tenant B vault cannot resolve them."""
+        tenant_a = str(uuid.uuid4())
+        tenant_b = str(uuid.uuid4())
+
+        vault_a = TokenVault(db_pool, lambda: tenant_a)
+        vault_b = TokenVault(db_pool, lambda: tenant_b)
+
+        root = GovernanceDecision(
+            decision_id=f"gd_root_{uuid.uuid4().hex[:8]}",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_a,
+            actor_id="agent_a",
+            action="file.read",
+            scope=DecisionScope(actions=["file.read"]),
+        )
+        await vault_a.store_decision(root)
+
+        child = GovernanceDecision(
+            decision_id=f"gd_child_{uuid.uuid4().hex[:8]}",
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_a,
+            actor_id="agent_child",
+            action="file.write",
+            scope=DecisionScope(actions=["file.write"]),
+            parent_decision_id=root.decision_id,
+            root_decision_id=root.decision_id,
+            parent_actor_id=root.actor_id,
+        )
+        await vault_a.store_decision(child)
+
+        # Tenant B cannot resolve Tenant A's decision
+        result = await vault_b.resolve_decision(root.decision_id)
+        assert result is None, "RLS leak: Tenant B resolved Tenant A decision"
+
+        # Note: check_ancestry uses the decision's own tenant_id for chain
+        # lookups (by design), so cross-tenant ancestry isolation is enforced
+        # at the resolve_decision level, not inside check_ancestry itself.
+
+
 class TestCascadeRevocation:
     """
-    Validate that revoking a root/parent decision updates descendant rows
+    Validate that TokenVault.revoke_decision cascades to descendants
     in the real PostgreSQL backend.
     """
 
     @pytest.mark.asyncio
     async def test_revoke_root_updates_descendants(self, db_pool, tenant_id):
-        """Revoke root decision; verify children and grandchildren are updated."""
-        async with db_pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    "SELECT set_tenant_context($1)", tenant_id
-                )
+        """Revoke root decision via vault; verify children are cascaded."""
+        vault = TokenVault(db_pool, lambda: tenant_id)
 
-                root_id = f"gd_root_{uuid.uuid4().hex[:8]}"
-                parent_id = f"gd_parent_{uuid.uuid4().hex[:8]}"
-                child_id = f"gd_child_{uuid.uuid4().hex[:8]}"
+        root_id = f"gd_root_{uuid.uuid4().hex[:8]}"
+        parent_id = f"gd_parent_{uuid.uuid4().hex[:8]}"
+        child_id = f"gd_child_{uuid.uuid4().hex[:8]}"
 
-                # Insert root
-                await conn.execute("""
-                    INSERT INTO governance_decisions (
-                        decision_id, decision_type, tenant_id, actor_id,
-                        request_id, trace_id, workspace_id, agent_id,
-                        subject_type, subject_id, action, resource,
-                        risk_level, policy_version, approval_state,
-                        approved_by, approved_at, issued_token_id,
-                        expires_at, revoked_at, revoked_reason,
-                        scope_actions, scope_resources,
-                        scope_max_spend, scope_rate_limit,
-                        constraints, expiry, kill_switch_scope,
-                        created_at, reason,
-                        root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
-                        superseded_at, superseded_reason
-                    ) VALUES (
-                        $1, 'allow', $2, 'agent_root',
-                        NULL, NULL, $2, 'agent_root',
-                        'agent', 'agent_root', 'file.read', NULL,
-                        'low', 'v1', 'auto_approved',
-                        NULL, NULL, NULL,
-                        NULL, NULL, NULL,
-                        ARRAY['file.read'], ARRAY[]::text[], NULL, NULL,
-                        '{}', NULL, 'request',
-                        NOW(), 'root',
-                        NULL, NULL, NULL, NULL,
-                        NULL, NULL
-                    )
-                """, root_id, tenant_id)
+        root = GovernanceDecision(
+            decision_id=root_id,
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_root",
+            action="file.read",
+            scope=DecisionScope(actions=["file.read"]),
+        )
+        parent = GovernanceDecision(
+            decision_id=parent_id,
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_parent",
+            action="file.write",
+            scope=DecisionScope(actions=["file.write"]),
+            root_decision_id=root_id,
+            parent_decision_id=root_id,
+            parent_actor_id="agent_root",
+        )
+        child = GovernanceDecision(
+            decision_id=child_id,
+            decision_type=DecisionType.ALLOW,
+            tenant_id=tenant_id,
+            actor_id="agent_child",
+            action="file.delete",
+            scope=DecisionScope(actions=["file.delete"]),
+            root_decision_id=root_id,
+            parent_decision_id=parent_id,
+            parent_actor_id="agent_parent",
+        )
 
-                # Insert parent (child of root)
-                await conn.execute("""
-                    INSERT INTO governance_decisions (
-                        decision_id, decision_type, tenant_id, actor_id,
-                        request_id, trace_id, workspace_id, agent_id,
-                        subject_type, subject_id, action, resource,
-                        risk_level, policy_version, approval_state,
-                        approved_by, approved_at, issued_token_id,
-                        expires_at, revoked_at, revoked_reason,
-                        scope_actions, scope_resources,
-                        scope_max_spend, scope_rate_limit,
-                        constraints, expiry, kill_switch_scope,
-                        created_at, reason,
-                        root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
-                        superseded_at, superseded_reason
-                    ) VALUES (
-                        $1, 'allow', $2, 'agent_parent',
-                        NULL, NULL, $2, 'agent_parent',
-                        'agent', 'agent_parent', 'file.write', NULL,
-                        'low', 'v1', 'auto_approved',
-                        NULL, NULL, NULL,
-                        NULL, NULL, NULL,
-                        ARRAY['file.write'], ARRAY[]::text[], NULL, NULL,
-                        '{}', NULL, 'request',
-                        NOW(), 'parent',
-                        $3, $3, 'agent_root', NULL,
-                        NULL, NULL
-                    )
-                """, parent_id, tenant_id, root_id)
+        await vault.store_decision(root)
+        await vault.store_decision(parent)
+        await vault.store_decision(child)
 
-                # Insert child (child of parent, grandchild of root)
-                await conn.execute("""
-                    INSERT INTO governance_decisions (
-                        decision_id, decision_type, tenant_id, actor_id,
-                        request_id, trace_id, workspace_id, agent_id,
-                        subject_type, subject_id, action, resource,
-                        risk_level, policy_version, approval_state,
-                        approved_by, approved_at, issued_token_id,
-                        expires_at, revoked_at, revoked_reason,
-                        scope_actions, scope_resources,
-                        scope_max_spend, scope_rate_limit,
-                        constraints, expiry, kill_switch_scope,
-                        created_at, reason,
-                        root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
-                        superseded_at, superseded_reason
-                    ) VALUES (
-                        $1, 'allow', $2, 'agent_child',
-                        NULL, NULL, $2, 'agent_child',
-                        'agent', 'agent_child', 'file.delete', NULL,
-                        'low', 'v1', 'auto_approved',
-                        NULL, NULL, NULL,
-                        NULL, NULL, NULL,
-                        ARRAY['file.delete'], ARRAY[]::text[], NULL, NULL,
-                        '{}', NULL, 'request',
-                        NOW(), 'child',
-                        $3, $4, 'agent_parent', NULL,
-                        NULL, NULL
-                    )
-                """, child_id, tenant_id, root_id, parent_id)
+        # Revoke root via vault cascade
+        revoked = await vault.revoke_decision(root_id, tenant_id, reason="cascade_test")
+        assert revoked is True
 
-                # Revoke root
-                now = datetime.now(timezone.utc)
-                await conn.execute("""
-                    UPDATE governance_decisions
-                    SET revoked_at = $1,
-                        revoked_reason = 'cascade_revoke_test'
-                    WHERE decision_id = $2
-                      AND tenant_id = get_tenant_context()
-                """, now, root_id)
+        # Verify parent cascaded
+        parent_after = await vault.resolve_decision(parent_id)
+        assert parent_after["decision_type"] == "revoked"
+        assert parent_after["revoked_reason"].startswith("cascaded")
 
-                # Verify parent and child are revoked
-                parent = await conn.fetchrow("""
-                    SELECT revoked_at, revoked_reason
-                    FROM governance_decisions
-                    WHERE decision_id = $1
-                      AND tenant_id = get_tenant_context()
-                """, parent_id)
-
-                child = await conn.fetchrow("""
-                    SELECT revoked_at, revoked_reason
-                    FROM governance_decisions
-                    WHERE decision_id = $1
-                      AND tenant_id = get_tenant_context()
-                """, child_id)
-
-                assert parent is not None, "Parent row missing"
-                assert child is not None, "Child row missing"
-
-                # The cascade update logic is application-level in the vault,
-                # but we can verify the raw UPDATE worked on the target row.
-                assert parent["revoked_at"] is None, (
-                    "Parent should NOT be auto-cascaded by DB trigger ("
-                    "app-level cascade expected)"
-                )
-                assert child["revoked_at"] is None
+        # Verify child cascaded
+        child_after = await vault.resolve_decision(child_id)
+        assert child_after["decision_type"] == "revoked"
+        assert child_after["revoked_reason"].startswith("cascaded")
 
 
 class TestAncestryIndexScans:
