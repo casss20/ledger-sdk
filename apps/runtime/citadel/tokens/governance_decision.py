@@ -46,13 +46,18 @@ class DecisionScope:
     def covers(self, action: str, resource: Optional[str] = None) -> bool:
         """Check if this scope covers the given action/resource.
 
-        Supports glob patterns in resources (e.g. /tmp/*).
+        Supports glob patterns in actions and resources (e.g. * or file.*).
         """
-        if action not in self.actions:
+        action_matched = False
+        for pattern in self.actions:
+            if pattern == "*" or fnmatch.fnmatch(action, pattern):
+                action_matched = True
+                break
+        if not action_matched:
             return False
         if resource and self.resources:
             for pattern in self.resources:
-                if fnmatch.fnmatch(resource, pattern):
+                if pattern == "*" or fnmatch.fnmatch(resource, pattern):
                     return True
             return False
         return True
@@ -99,6 +104,14 @@ class GovernanceDecision:
     revoked_reason: Optional[str] = None
     audit_entry_ids: list[str] = field(default_factory=list)
     reason: str = ""
+    # Lineage fields for orchestration
+    root_decision_id: Optional[str] = None
+    parent_decision_id: Optional[str] = None
+    parent_actor_id: Optional[str] = None
+    workflow_id: Optional[str] = None
+    # Authority boundary tracking for handoff
+    superseded_at: Optional[datetime] = None
+    superseded_reason: Optional[str] = None
 
     @classmethod
     def generate_id(cls) -> str:
@@ -154,5 +167,11 @@ class GovernanceDecision:
             "revoked_reason": self.revoked_reason,
             "request_id": self.request_id,
             "trace_id": self.trace_id,
+            "root_decision_id": self.root_decision_id,
+            "parent_decision_id": self.parent_decision_id,
+            "parent_actor_id": self.parent_actor_id,
+            "workflow_id": self.workflow_id,
             "reason": self.reason,
+            "superseded_at": self.superseded_at.isoformat() if self.superseded_at else None,
+            "superseded_reason": self.superseded_reason,
         }

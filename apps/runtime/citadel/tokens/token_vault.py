@@ -60,18 +60,24 @@ class TokenVault:
                         expires_at, revoked_at, revoked_reason,
                         scope_actions, scope_resources,
                         constraints, expiry, kill_switch_scope,
-                        created_at, reason
+                        created_at, reason,
+                        root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
+                        superseded_at, superseded_reason
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15,
                         $16, $17, $18, $19, $20, $21, $22,
-                        $23, $24, $25, $26, $27, $28
+                        $23, $24, $25, $26, $27, $28,
+                        $29, $30, $31, $32,
+                        $33, $34
                     )
                     ON CONFLICT (decision_id) DO UPDATE SET
                         decision_type = EXCLUDED.decision_type,
                         issued_token_id = COALESCE(EXCLUDED.issued_token_id, governance_decisions.issued_token_id),
                         revoked_at = EXCLUDED.revoked_at,
                         revoked_reason = EXCLUDED.revoked_reason,
+                        superseded_at = EXCLUDED.superseded_at,
+                        superseded_reason = EXCLUDED.superseded_reason,
                         reason = EXCLUDED.reason
                     """,
                     decision.decision_id,
@@ -102,6 +108,12 @@ class TokenVault:
                     decision.kill_switch_scope.value,
                     decision.created_at,
                     decision.reason,
+                    decision.root_decision_id,
+                    decision.parent_decision_id,
+                    decision.parent_actor_id,
+                    decision.workflow_id,
+                    decision.superseded_at,
+                    decision.superseded_reason,
                 )
 
     async def store_token(self, token) -> None:
@@ -117,11 +129,12 @@ class TokenVault:
                         action, resource_scope, risk_level, not_before,
                         trace_id, approval_ref, revoked_at, revoked_reason,
                         scope_actions, scope_resources, expiry,
-                        created_at, chain_hash
+                        created_at, chain_hash,
+                        parent_decision_id, parent_actor_id, workflow_id
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15,
-                        $16, $17, $18, $19, $20, $21, $22
+                        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
                     )
                     """,
                     token.token_id,
@@ -146,6 +159,9 @@ class TokenVault:
                     token.expiry,
                     token.created_at,
                     token.chain_hash,
+                    token.parent_decision_id,
+                    token.parent_actor_id,
+                    token.workflow_id,
                 )
                 await conn.execute(
                     """
@@ -170,7 +186,8 @@ class TokenVault:
                            action, resource_scope, risk_level, not_before,
                            trace_id, approval_ref, revoked_at, revoked_reason,
                            scope_actions, scope_resources, expiry,
-                           created_at, chain_hash
+                           created_at, chain_hash,
+                           parent_decision_id, parent_actor_id, workflow_id
                     FROM governance_tokens
                     WHERE token_id = $1
                     """,
@@ -194,7 +211,9 @@ class TokenVault:
                            expires_at, revoked_at, revoked_reason,
                            scope_actions, scope_resources,
                            constraints, expiry, kill_switch_scope,
-                           created_at, reason
+                           created_at, reason,
+                           root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
+                           superseded_at, superseded_reason
                     FROM governance_decisions
                     WHERE decision_id = $1
                     """,

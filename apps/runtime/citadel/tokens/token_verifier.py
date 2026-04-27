@@ -122,6 +122,12 @@ class TokenVerifier:
             revoked_at=self._parse_datetime(decision_data.get("revoked_at")),
             revoked_reason=decision_data.get("revoked_reason"),
             reason=decision_data.get("reason", ""),
+            root_decision_id=decision_data.get("root_decision_id"),
+            parent_decision_id=decision_data.get("parent_decision_id"),
+            parent_actor_id=decision_data.get("parent_actor_id"),
+            workflow_id=decision_data.get("workflow_id"),
+            superseded_at=self._parse_datetime(decision_data.get("superseded_at")),
+            superseded_reason=decision_data.get("superseded_reason"),
         )
 
         workspace_id = context.get("workspace_id")

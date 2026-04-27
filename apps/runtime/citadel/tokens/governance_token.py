@@ -70,6 +70,10 @@ class CapabilityToken:
     expiry: Optional[datetime] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     chain_hash: Optional[str] = None
+    # Lineage fields for orchestration
+    parent_decision_id: Optional[str] = None
+    parent_actor_id: Optional[str] = None
+    workflow_id: Optional[str] = None
 
     @classmethod
     def derive(
@@ -138,6 +142,9 @@ class CapabilityToken:
             scope_resources=decision.scope.resources,
             expiry=expiry,
             chain_hash=chain_hash,
+            parent_decision_id=decision.parent_decision_id,
+            parent_actor_id=decision.parent_actor_id,
+            workflow_id=decision.workflow_id,
         )
 
     def to_public_dict(self) -> dict:
@@ -163,4 +170,7 @@ class CapabilityToken:
             "approval_ref": self.approval_ref,
             "created_at": self.created_at.isoformat(),
             "chain_hash": self.chain_hash,
+            "parent_decision_id": self.parent_decision_id,
+            "parent_actor_id": self.parent_actor_id,
+            "workflow_id": self.workflow_id,
         }

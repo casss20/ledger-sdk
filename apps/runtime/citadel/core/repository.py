@@ -44,8 +44,10 @@ class Repository:
             row = await conn.fetchrow("""
                 INSERT INTO actions (
                     action_id, actor_id, actor_type, action_name, resource, tenant_id,
-                    payload_json, context_json, session_id, request_id, idempotency_key, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    payload_json, context_json, session_id, request_id, idempotency_key,
+                    root_decision_id, parent_decision_id, trace_id, parent_actor_id, workflow_id,
+                    created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
                 ON CONFLICT (actor_id, idempotency_key) WHERE idempotency_key IS NOT NULL
                 DO NOTHING
                 RETURNING action_id
@@ -61,6 +63,11 @@ class Repository:
                 action.session_id,
                 action.request_id,
                 action.idempotency_key,
+                action.root_decision_id,
+                action.parent_decision_id,
+                action.trace_id,
+                action.parent_actor_id,
+                action.workflow_id,
                 action.created_at
             )
             return row is not None
@@ -90,8 +97,9 @@ class Repository:
             await conn.execute("""
                 INSERT INTO decisions (
                     decision_id, action_id, policy_snapshot_id, status, winning_rule, reason,
-                    capability_token, risk_level, risk_score, path_taken, created_at, tenant_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    capability_token, risk_level, risk_score, path_taken, created_at, tenant_id,
+                    root_decision_id, parent_decision_id, trace_id, parent_actor_id, workflow_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             """,
                 decision.decision_id,
                 decision.action_id,
@@ -105,6 +113,11 @@ class Repository:
                 decision.path_taken,
                 decision.created_at,
                 decision.tenant_id,
+                decision.root_decision_id,
+                decision.parent_decision_id,
+                decision.trace_id,
+                decision.parent_actor_id,
+                decision.workflow_id,
             )
     
     async def find_decision_by_idempotency(
@@ -153,6 +166,11 @@ class Repository:
             path_taken=row['path_taken'],
             created_at=row['created_at'],
             tenant_id=row.get('tenant_id'),
+            root_decision_id=row.get('root_decision_id'),
+            parent_decision_id=row.get('parent_decision_id'),
+            trace_id=row.get('trace_id'),
+            parent_actor_id=row.get('parent_actor_id'),
+            workflow_id=row.get('workflow_id'),
         )
     
     # =========================================================================

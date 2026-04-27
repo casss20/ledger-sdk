@@ -22,7 +22,7 @@ Usage:
 """
 
 import os
-from typing import Optional, Dict, Any, Callable, Awaitable
+from typing import Optional, Dict, Any, Callable, Awaitable, List
 from dataclasses import dataclass
 
 import httpx
@@ -130,8 +130,11 @@ class CitadelClient:
     ) -> CitadelResult:
         """
         Get a decision without executing the action.
-        
-        Useful for: pre-flight checks, dry runs, policy debugging.
+
+        Note: This is a convenience alias that calls execute() with the same
+        semantics. It does not perform a true dry-run (policies are still
+        fully evaluated and decisions are persisted). For actual dry-run
+        evaluation, pass dry_run=True to delegate(), handoff(), or gather().
         """
         return await self.execute(
             action=action,
@@ -195,6 +198,171 @@ class CitadelClient:
             governed_send = citadel.wrap(send_email)
         """
         return self.guard()(fn)
+    
+    # =====================================================================
+    # ORCHESTRATION
+    # =====================================================================
+    
+    async def delegate(
+        self,
+        parent_decision_id: str,
+        child_actor_id: str,
+        action: str,
+        resource: str,
+        scope: Dict[str, Any] = None,
+        payload: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
+        tenant_id: str = None,
+        trace_id: str = None,
+        workflow_id: str = None,
+        dry_run: bool = False,
+    ) -> CitadelResult:
+        """
+        Delegate authority from a parent decision to a child agent.
+        """
+        request = {
+            "parent_decision_id": parent_decision_id,
+            "child_actor_id": child_actor_id,
+            "action_name": action,
+            "resource": resource,
+            "scope": scope or {"actions": [action], "resources": [resource]},
+            "payload": payload or {},
+            "context": context or {},
+            "dry_run": dry_run,
+        }
+        if tenant_id:
+            request["tenant_id"] = tenant_id
+        if trace_id:
+            request["trace_id"] = trace_id
+        if workflow_id:
+            request["workflow_id"] = workflow_id
+        
+        response = await self._client.post("/v1/orchestrate/delegate", json=request)
+        response.raise_for_status()
+        data = response.json()
+        return CitadelResult(
+            action_id=data.get("child_action_id", ""),
+            status="delegated" if data["success"] else "blocked",
+            winning_rule="delegate",
+            reason=data["reason"],
+            executed=data["success"],
+            error=data.get("error"),
+        )
+    
+    async def handoff(
+        self,
+        current_decision_id: str,
+        new_actor_id: str,
+        action: str,
+        resource: str,
+        scope: Dict[str, Any] = None,
+        payload: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
+        tenant_id: str = None,
+        trace_id: str = None,
+        workflow_id: str = None,
+        reason: str = "",
+        dry_run: bool = False,
+    ) -> CitadelResult:
+        """
+        Transfer active authority from one agent to another.
+        """
+        request = {
+            "current_decision_id": current_decision_id,
+            "new_actor_id": new_actor_id,
+            "action_name": action,
+            "resource": resource,
+            "scope": scope or {"actions": [action], "resources": [resource]},
+            "payload": payload or {},
+            "context": context or {},
+            "reason": reason,
+            "dry_run": dry_run,
+        }
+        if tenant_id:
+            request["tenant_id"] = tenant_id
+        if trace_id:
+            request["trace_id"] = trace_id
+        if workflow_id:
+            request["workflow_id"] = workflow_id
+        
+        response = await self._client.post("/v1/orchestrate/handoff", json=request)
+        response.raise_for_status()
+        data = response.json()
+        return CitadelResult(
+            action_id=data.get("new_decision_id", ""),
+            status="handed_off" if data["success"] else "blocked",
+            winning_rule="handoff",
+            reason=data["reason"],
+            executed=data["success"],
+            error=data.get("error"),
+        )
+    
+    async def gather(
+        self,
+        parent_decision_id: str,
+        branches: List[Dict[str, Any]],
+        tenant_id: str = None,
+        trace_id: str = None,
+        workflow_id: str = None,
+        dry_run: bool = False,
+    ) -> CitadelResult:
+        """
+        Run parallel child branches under one parent orchestration scope.
+        """
+        request = {
+            "parent_decision_id": parent_decision_id,
+            "branches": branches,
+            "dry_run": dry_run,
+        }
+        if tenant_id:
+            request["tenant_id"] = tenant_id
+        if trace_id:
+            request["trace_id"] = trace_id
+        if workflow_id:
+            request["workflow_id"] = workflow_id
+        
+        response = await self._client.post("/v1/orchestrate/gather", json=request)
+        response.raise_for_status()
+        data = response.json()
+        return CitadelResult(
+            action_id=parent_decision_id,
+            status="gathered" if data["success"] else "partial_failure",
+            winning_rule="gather",
+            reason=data["reason"],
+            executed=data["success"],
+            result=data.get("branches"),
+            error=data.get("error"),
+        )
+    
+    async def introspect(
+        self,
+        token_id: str = None,
+        decision_id: str = None,
+        required_action: str = "",
+        required_resource: str = None,
+        workspace_id: str = None,
+        tenant_id: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Runtime safety check for any grant or decision.
+        """
+        request = {
+            "required_action": required_action,
+        }
+        if token_id:
+            request["token_id"] = token_id
+        if decision_id:
+            request["decision_id"] = decision_id
+        if required_resource:
+            request["required_resource"] = required_resource
+        if workspace_id:
+            request["workspace_id"] = workspace_id
+        if tenant_id:
+            request["tenant_id"] = tenant_id
+        
+        response = await self._client.post("/v1/orchestrate/introspect", json=request)
+        response.raise_for_status()
+        return response.json()
     
     # =====================================================================
     # APPROVALS
@@ -330,3 +498,35 @@ async def verify_audit() -> Dict:
     if _default_client is None:
         configure()
     return await _default_client.verify_audit()
+
+
+async def delegate(*args, **kwargs) -> CitadelResult:
+    """Delegate authority to a child agent using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.delegate(*args, **kwargs)
+
+
+async def handoff(*args, **kwargs) -> CitadelResult:
+    """Transfer active authority to another agent using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.handoff(*args, **kwargs)
+
+
+async def gather(*args, **kwargs) -> CitadelResult:
+    """Run parallel child branches under one parent scope using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.gather(*args, **kwargs)
+
+
+async def introspect(*args, **kwargs) -> Dict[str, Any]:
+    """Runtime safety check for any grant or decision using the default client."""
+    global _default_client
+    if _default_client is None:
+        configure()
+    return await _default_client.introspect(*args, **kwargs)

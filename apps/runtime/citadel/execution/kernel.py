@@ -203,7 +203,7 @@ class Kernel:
             exec_error = str(exec_err)
             logger.error(f"Action execution failed ({type(exec_err).__name__}): {exec_err}", exc_info=True)
 
-        # 7. Write terminal decision
+        # 7. Write terminal decision (with lineage from action)
         decision = await self._terminal_decision(
             action,
             exec_status,
@@ -242,7 +242,7 @@ class Kernel:
         risk_score: Optional[int] = None,
         path_taken: Optional[str] = None,
     ) -> Decision:
-        """Create and persist a terminal decision."""
+        """Create and persist a terminal decision (with lineage from action)."""
         decision = Decision(
             decision_id=uuid.uuid4(),
             action_id=action.action_id,
@@ -256,6 +256,11 @@ class Kernel:
             path_taken=path_taken,
             created_at=datetime.now(timezone.utc),
             tenant_id=action.tenant_id,
+            root_decision_id=action.root_decision_id,
+            parent_decision_id=action.parent_decision_id,
+            trace_id=action.trace_id,
+            parent_actor_id=action.parent_actor_id,
+            workflow_id=action.workflow_id,
         )
         await self.repo.save_decision(decision)
         await self.audit.decision_made(action, decision)

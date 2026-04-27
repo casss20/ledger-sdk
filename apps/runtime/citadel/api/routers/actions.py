@@ -31,7 +31,13 @@ class SubmitActionRequest(BaseModel):
     request_id: Optional[str] = None
     idempotency_key: Optional[str] = Field(None, max_length=256)
     capability_token: Optional[str] = None
-    dry_run: bool = False  # If True, evaluate policies but don't execute
+    dry_run: bool = False
+    # Lineage fields for orchestration
+    root_decision_id: Optional[str] = None
+    parent_decision_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    parent_actor_id: Optional[str] = None
+    workflow_id: Optional[str] = None  # If True, evaluate policies but don't execute
 
 
 class ActionResponse(BaseModel):
@@ -89,6 +95,11 @@ async def submit_action(
         session_id=req.session_id,
         request_id=req.request_id or str(uuid.uuid4()),
         idempotency_key=req.idempotency_key,
+        root_decision_id=req.root_decision_id,
+        parent_decision_id=req.parent_decision_id,
+        trace_id=req.trace_id,
+        parent_actor_id=req.parent_actor_id,
+        workflow_id=req.workflow_id,
         created_at=datetime.utcnow(),
     )
     

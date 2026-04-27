@@ -25,6 +25,7 @@ class KernelStatus(Enum):
     EXECUTED = "EXECUTED"
     FAILED_EXECUTION = "FAILED_EXECUTION"
     FAILED_AUDIT = "FAILED_AUDIT"
+    DRY_RUN = "DRY_RUN"
 
 
 @dataclass
@@ -49,6 +50,12 @@ class Action:
     request_id: Optional[str]
     idempotency_key: Optional[str]
     created_at: datetime
+    # Lineage fields for orchestration
+    root_decision_id: Optional[str] = None
+    parent_decision_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    parent_actor_id: Optional[str] = None
+    workflow_id: Optional[str] = None
 
 
 @dataclass
@@ -66,6 +73,12 @@ class Decision:
     path_taken: Optional[str]
     created_at: datetime
     tenant_id: Optional[str] = None
+    # Lineage fields for orchestration
+    root_decision_id: Optional[str] = None
+    parent_decision_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    parent_actor_id: Optional[str] = None
+    workflow_id: Optional[str] = None
 
 
 @dataclass

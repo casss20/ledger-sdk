@@ -22,6 +22,8 @@ from citadel.services.audit_service import AuditService
 from citadel.execution.executor import Executor as ActionExecutor
 from citadel.tokens import TokenVault, KillSwitch, TokenVerifier
 
+from citadel.execution.orchestration import OrchestrationRuntime
+
 # Global pool reference (set in lifespan)
 _pool: Optional = None
 
@@ -105,4 +107,33 @@ async def get_kernel(request: Request) -> Kernel:
         capability_service=capability_service,
         audit_service=audit_service,
         executor=executor,
+    )
+
+
+async def get_orchestration_runtime(request: Request) -> OrchestrationRuntime:
+    """Dependency: Get orchestration runtime instance with DB pool from app state."""
+    pool = getattr(request.app.state, "db_pool", None)
+    if pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not connected",
+        )
+    
+    from citadel.middleware.tenant_context import TenantAwarePool
+    repo = Repository(TenantAwarePool(pool))
+    
+    vault = TokenVault(pool)
+    kill_switch = KillSwitch(pool)
+    verifier = TokenVerifier(vault, kill_switch)
+    audit_service = AuditService(repo)
+    
+    kernel = await get_kernel(request)
+    
+    return OrchestrationRuntime(
+        kernel=kernel,
+        token_vault=vault,
+        token_verifier=verifier,
+        repository=repo,
+        audit_service=audit_service,
+        kill_switch=kill_switch,
     )
