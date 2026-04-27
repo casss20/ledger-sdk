@@ -416,7 +416,7 @@ psql -c "GRANT ALL PRIVILEGES ON DATABASE citadel_test TO citadel;"
 
 You need to set CORS origins in `.env`:
 ```bash
-echo "CORS_ORIGINS=http://localhost:5173,http://localhost:3000" >> .env
+echo "CITADEL_CORS_ORIGINS=http://localhost:5173,http://localhost:3000" >> .env
 ```
 
 Or set `CITADEL_TESTING=true` for tests.
@@ -455,16 +455,16 @@ asyncio_mode = "auto"
 
 | Variable | Required? | Default | Purpose |
 |---|---|---|---|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `CITADEL_DATABASE_URL` | Yes | — | PostgreSQL connection string |
 | `CITADEL_JWT_SECRET` | Yes (prod) | `secret_key_change_me_in_prod` | JWT signing key |
 | `CITADEL_API_KEYS` | Yes (prod) | `dev-key-for-testing:admin` | Comma-separated API keys with scopes |
-| `CORS_ORIGINS` | Yes (prod) | — | Comma-separated allowed origins |
+| `CITADEL_CORS_ORIGINS` | Yes (prod) | — | Comma-separated allowed origins |
 | `CITADEL_TESTING` | No | `false` | Disables startup validation (tests only) |
-| `STRIPE_SECRET_KEY` | No | — | Stripe API key |
-| `STRIPE_WEBHOOK_SECRET` | No | — | Stripe webhook signing secret |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OpenTelemetry OTLP endpoint |
-| `REDIS_URL` | No | — | Redis for distributed rate limiting |
-| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `CITADEL_STRIPE_SECRET_KEY` | No | — | Stripe API key |
+| `CITADEL_STRIPE_WEBHOOK_SECRET` | No | — | Stripe webhook signing secret |
+| `CITADEL_OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OpenTelemetry OTLP endpoint |
+| `CITADEL_REDIS_URL` | No | — | Redis for distributed rate limiting |
+| `CITADEL_LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 
 See `.env.example` for a complete template.
 

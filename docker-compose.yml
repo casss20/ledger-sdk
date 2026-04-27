@@ -3,13 +3,14 @@ version: "3.8"
 services:
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: citadel
+      # SECURITY: Change this in production. Use Docker secrets or .env for real deployments.
       POSTGRES_PASSWORD: citadel
       POSTGRES_DB: citadel
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/00-init-test-db.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
       - "5432:5432"
@@ -18,30 +19,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   api:
     build: .
+    restart: unless-stopped
+    stop_grace_period: 30s
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://citadel:citadel@postgres:5432/citadel
-      DB_MIN_SIZE: 2
-      DB_MAX_SIZE: 10
-      # API_KEYS must be set via .env file or environment override
-      # Example: API_KEYS=prod-key-1:admin,prod-key-2:read
-      REQUIRE_AUTH: true
-      RATE_LIMIT_REQUESTS: 100
-      RATE_LIMIT_WINDOW_SECONDS: 60
-      LOG_LEVEL: INFO
-      METRICS_ENABLED: true
+      # Override .env defaults for the container network
+      CITADEL_DATABASE_URL: postgresql://citadel:citadel@postgres:5432/citadel
+      # If CITADEL_API_KEYS is not set in .env, the app will fail startup in production.
+      # Set it in .env: CITADEL_API_KEYS=prod-key-1:admin,prod-key-2:read
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/live')"]
-      interval: 30s
+      # Readiness probe: verifies DB connectivity, not just process liveness
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/ready')"]
+      interval: 15s
       timeout: 5s
       retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:

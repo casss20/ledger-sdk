@@ -119,12 +119,41 @@ async def delete_repo(name: str):
     await github.repos.delete(name)
 ```
 
-### Self-hosted setup
+### Self-hosted setup (Quick Dev)
+
+Run PostgreSQL in Docker, then start the API locally:
 
 ```bash
+# 1. Start PostgreSQL
 docker compose up -d postgres
+
+# 2. Copy and edit environment variables
+cp .env.example .env
+# Edit .env — set CITADEL_JWT_SECRET and CITADEL_API_KEYS
+
+# 3. Install backend locally
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[all]"
-uvicorn citadel.api:app --host 0.0.0.0 --port 8000
+
+# 4. Start the backend
+uvicorn citadel.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Self-hosted setup (Full Docker)
+
+Run everything in containers:
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env — set CITADEL_JWT_SECRET, CITADEL_API_KEYS, and CITADEL_ADMIN_BOOTSTRAP_PASSWORD
+
+# 2. Start the full stack
+docker compose up --build -d
+
+# 3. Verify readiness
+curl http://localhost:8000/v1/health/ready
 ```
 
 ## Hardening & Verification

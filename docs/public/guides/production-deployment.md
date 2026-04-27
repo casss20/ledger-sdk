@@ -21,7 +21,13 @@
 ## Docker Deployment
 
 ```bash
-docker run -d   --name citadel-sdk   -p 8080:8080   -e CITADEL_API_KEY=ldk_live_...   -e DATABASE_URL=postgres://...   CITADEL/sdk:latest
+docker run -d \
+  --name citadel \
+  -p 8000:8000 \
+  -e CITADEL_API_KEYS=prod-key-1:admin \
+  -e CITADEL_DATABASE_URL=postgresql://user:pass@host:5432/citadel \
+  -e CITADEL_JWT_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(32))") \
+  citadel-runtime:latest
 ```
 
 ---
@@ -32,37 +38,43 @@ docker run -d   --name citadel-sdk   -p 8080:8080   -e CITADEL_API_KEY=ldk_live_
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: citadel-sdk
+  name: citadel
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: citadel-sdk
+      app: citadel
   template:
     metadata:
       labels:
-        app: citadel-sdk
+        app: citadel
     spec:
       containers:
-      - name: CITADEL
-        image: CITADEL/sdk:latest
+      - name: citadel
+        image: citadel-runtime:latest
         ports:
-        - containerPort: 8080
+        - containerPort: 8000
         env:
-        - name: CITADEL_API_KEY
+        - name: CITADEL_API_KEYS
           valueFrom:
             secretKeyRef:
-              name: CITADEL-secrets
-              key: api-key
-        - name: DATABASE_URL
+              name: citadel-secrets
+              key: api-keys
+        - name: CITADEL_DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: CITADEL-secrets
+              name: citadel-secrets
               key: database-url
+        livenessProbe:
+          httpGet:
+            path: /v1/health/live
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
         readinessProbe:
           httpGet:
-            path: /healthz
-            port: 8080
+            path: /v1/health/ready
+            port: 8000
           initialDelaySeconds: 5
           periodSeconds: 10
 ```
@@ -71,10 +83,7 @@ spec:
 
 ## Helm Chart
 
-```bash
-helm repo add CITADEL https://charts.CITADEL.dev
-helm install citadel-sdk CITADEL/citadel-sdk   --set apiKey=ldk_live_...   --set database.url=postgres://...
-```
+> **Helm Chart**: A Helm chart is planned but not yet published. Track progress at https://github.com/casss20/citadel-sdk/issues.
 
 ---
 
@@ -91,9 +100,9 @@ helm install citadel-sdk CITADEL/citadel-sdk   --set apiKey=ldk_live_...   --set
 
 ### Health checks
 ```
-GET /healthz     # Liveness probe
-GET /readyz      # Readiness probe
-GET /metrics     # Prometheus metrics
+GET /v1/health/live   # Liveness probe
+GET /v1/health/ready  # Readiness probe
+GET /metrics          # Prometheus metrics
 ```
 
 ### Key metrics
