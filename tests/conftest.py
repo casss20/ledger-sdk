@@ -30,6 +30,12 @@ async def clean_database(postgres_dsn):
         # PostgreSQL not available — skip silently for non-DB tests
         yield
         return
+    try:
+        conn = await asyncpg.connect(postgres_dsn)
+    except (OSError, asyncpg.PostgresError, ConnectionRefusedError) as e:
+        # PostgreSQL not available — skip silently for non-DB tests
+        yield
+        return
     await conn.execute("SET app.admin_bypass = 'true'")
     await conn.execute("SET LOCAL lock_timeout = '3s'")
     try:
@@ -43,7 +49,8 @@ async def clean_database(postgres_dsn):
             DELETE FROM audit_events WHERE tenant_id LIKE 'test_%';
             DELETE FROM execution_results;
             DELETE FROM api_keys;
-            DELETE FROM governance_tokens WHERE token_id LIKE 'gt_%';
+            DELETE FROM governance_tokens;
+            DELETE FROM governance_decisions;
             DELETE FROM actions WHERE tenant_id LIKE 'test_%';
             DELETE FROM policies WHERE tenant_id LIKE 'test_%';
             DELETE FROM actors WHERE tenant_id LIKE 'test_%';

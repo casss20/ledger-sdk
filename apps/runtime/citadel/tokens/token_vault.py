@@ -67,9 +67,9 @@ class TokenVault:
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15,
-                        $16, $17, $18, $19, $20, $21, $22,
-                        $23, $24, $25, $26, $27, $28, $29, $30, $31,
-                        $32, $33, $34, $35, $36, $37
+                        $16, $17, $18, $19, $20, $21,
+                        $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                        $31, $32, $33, $34, $35, $36
                     )
                     ON CONFLICT (decision_id) DO UPDATE SET
                         decision_type = EXCLUDED.decision_type,
@@ -109,7 +109,7 @@ class TokenVault:
                     decision.scope.resources,
                     decision.scope.max_spend,
                     decision.scope.rate_limit,
-                    json.dumps(decision.constraints) if decision.constraints else None,
+                    json.dumps(decision.constraints) if decision.constraints else '{}',
                     decision.expiry,
                     decision.kill_switch_scope.value,
                     decision.created_at,
@@ -182,8 +182,8 @@ class TokenVault:
             async with conn.transaction():
                 await conn.execute("SELECT set_tenant_context($1)", decision.tenant_id)
                 await conn.execute(
-                    """
-                    INSERT INTO governance_decisions (
+                """
+                INSERT INTO governance_decisions (
                         decision_id, decision_type, tenant_id, actor_id,
                         request_id, trace_id, workspace_id, agent_id,
                         subject_type, subject_id, action, resource,
@@ -199,9 +199,9 @@ class TokenVault:
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15,
-                        $16, $17, $18, $19, $20, $21, $22,
-                        $23, $24, $25, $26, $27, $28, $29, $30, $31,
-                        $32, $33, $34, $35, $36, $37
+                        $16, $17, $18, $19, $20, $21,
+                        $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                        $31, $32, $33, $34, $35, $36
                     )
                     ON CONFLICT (decision_id) DO UPDATE SET
                         decision_type = EXCLUDED.decision_type,
@@ -241,7 +241,7 @@ class TokenVault:
                     decision.scope.resources,
                     decision.scope.max_spend,
                     decision.scope.rate_limit,
-                    json.dumps(decision.constraints) if decision.constraints else None,
+                    json.dumps(decision.constraints) if decision.constraints else '{}',
                     decision.expiry,
                     decision.kill_switch_scope.value,
                     decision.created_at,

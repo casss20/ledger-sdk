@@ -20,7 +20,7 @@ async def get_pool():
     return await asyncpg.create_pool(DSN, min_size=1, max_size=2)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def tenant_id():
     return str(uuid.uuid4())
 
@@ -29,11 +29,12 @@ class TestDecisionStorage:
     @pytest.mark.asyncio
     async def test_store_and_resolve_decision(self, tenant_id):
         """Store a decision and resolve it back."""
-        pool = await get_pool()
+        pool = await asyncpg.create_pool(DSN, min_size=1, max_size=2)
         vault = TokenVault(pool, lambda: tenant_id)
 
+        decision_id = f"gd_test_{uuid.uuid4().hex[:8]}"
         decision = GovernanceDecision(
-            decision_id="gd_test_001",
+            decision_id=decision_id,
             decision_type=DecisionType.ALLOW,
             tenant_id=tenant_id,
             actor_id="agent_1",
@@ -42,10 +43,10 @@ class TestDecisionStorage:
         )
 
         await vault.store_decision(decision)
-        result = await vault.resolve_decision("gd_test_001")
+        result = await vault.resolve_decision(decision_id)
 
         assert result is not None
-        assert result["decision_id"] == "gd_test_001"
+        assert result["decision_id"] == decision_id
         assert result["decision_type"] == "allow"
 
     @pytest.mark.asyncio
@@ -54,8 +55,9 @@ class TestDecisionStorage:
         pool = await get_pool()
         vault = TokenVault(pool, lambda: tenant_id)
 
+        decision_id = f"gd_test_{uuid.uuid4().hex[:8]}"
         decision = GovernanceDecision(
-            decision_id="gd_test_002",
+            decision_id=decision_id,
             decision_type=DecisionType.ALLOW,
             tenant_id=tenant_id,
             actor_id="agent_1",
@@ -81,8 +83,9 @@ class TestTenantIsolation:
         tenant_a = str(uuid.uuid4())
         tenant_b = str(uuid.uuid4())
 
+        decision_id = f"gd_a_{uuid.uuid4().hex[:8]}"
         decision = GovernanceDecision(
-            decision_id="gd_a_001",
+            decision_id=decision_id,
             decision_type=DecisionType.ALLOW,
             tenant_id=tenant_a,
             actor_id="agent_1",
@@ -94,7 +97,7 @@ class TestTenantIsolation:
         await vault_a.store_decision(decision)
 
         vault_b = TokenVault(pool, lambda: tenant_b)
-        result = await vault_b.resolve_decision("gd_a_001")
+        result = await vault_b.resolve_decision(decision_id)
         assert result is None
 
 
@@ -105,8 +108,9 @@ class TestTokenChain:
         pool = await get_pool()
         vault = TokenVault(pool, lambda: tenant_id)
 
+        decision_id = f"gd_chain_{uuid.uuid4().hex[:8]}"
         decision = GovernanceDecision(
-            decision_id="gd_chain_001",
+            decision_id=decision_id,
             decision_type=DecisionType.ALLOW,
             tenant_id=tenant_id,
             actor_id="agent_1",
