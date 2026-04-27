@@ -211,16 +211,18 @@ class MockVault:
         """
         if decision.parent_decision_id and decision.parent_decision_id != decision.decision_id:
             parent = self._decisions.get(decision.parent_decision_id)
-            if parent is not None:
-                if parent.get("revoked_at") or parent.get("decision_type") == "revoked":
-                    return False, "parent_revoked"
-                # Superseded does NOT cascade via ancestry — checked at decision level
+            if parent is None:
+                return False, "parent_decision_not_found"
+            if parent.get("revoked_at") or parent.get("decision_type") == "revoked":
+                return False, "parent_revoked"
+            # Superseded does NOT cascade via ancestry — checked at decision level
         if decision.root_decision_id and decision.root_decision_id != decision.decision_id and decision.root_decision_id != decision.parent_decision_id:
             root = self._decisions.get(decision.root_decision_id)
-            if root is not None:
-                if root.get("revoked_at") or root.get("decision_type") == "revoked":
-                    return False, "root_revoked"
-                # Superseded does NOT cascade via ancestry
+            if root is None:
+                return False, "root_decision_not_found"
+            if root.get("revoked_at") or root.get("decision_type") == "revoked":
+                return False, "root_revoked"
+            # Superseded does NOT cascade via ancestry
         return True, None
 
     async def issue_token_for_decision(
@@ -420,6 +422,9 @@ class TestLineagePersistence:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.delegate(
             parent_decision=parent,
             child_actor_id=CHILD_ACTOR,
@@ -445,6 +450,9 @@ class TestLineagePersistence:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.delegate(
             parent_decision=parent,
             child_actor_id=CHILD_ACTOR,
@@ -494,6 +502,9 @@ class TestLineagePersistence:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(current)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.handoff(
             current_decision=current,
             new_actor_id=NEW_ACTOR,
@@ -510,6 +521,9 @@ class TestLineagePersistence:
         await self._setup_kernel_for_success(mock_kernel)
         parent = _make_governance_decision(trace_id=trace_id, root_decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
         await mock_vault.store_decision(parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.gather(
             parent_decision=parent,
             branches=[
@@ -669,6 +683,9 @@ class TestDelegation:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.delegate(
             parent_decision=parent,
             child_actor_id=CHILD_ACTOR,
@@ -826,6 +843,9 @@ class TestHandoff:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(current)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.handoff(
             current_decision=current,
             new_actor_id=NEW_ACTOR,
@@ -885,6 +905,9 @@ class TestGather:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(decision_id="root_1", scope=DecisionScope(actions=["*"], resources=["*"]))
+        await mock_vault.store_decision(root)
         result = await runtime.gather(
             parent_decision=parent,
             branches=[
@@ -990,6 +1013,7 @@ class TestIntrospection:
             action="child.action",
             scope=DecisionScope(actions=["child.action"], resources=["child:res"]),
         )
+        await self._store_decision_in_vault(runtime, parent)
         await self._store_decision_in_vault(runtime, child)
         result = await runtime.introspect(
             decision_id=child.decision_id,
@@ -1486,6 +1510,12 @@ class TestSecurityHardening:
             scope=DecisionScope(actions=["*"], resources=["*"]),
         )
         await mock_vault.store_decision(real_parent)
+        # Store root so ancestry checks pass
+        root = _make_governance_decision(
+            decision_id="real_root_456",
+            scope=DecisionScope(actions=["*"], resources=["*"]),
+        )
+        await mock_vault.store_decision(root)
         # Attacker creates a forged parent object with same decision_id but fake lineage
         forged_parent = _make_governance_decision(
             decision_id=real_parent.decision_id,

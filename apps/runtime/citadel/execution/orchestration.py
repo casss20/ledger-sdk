@@ -796,14 +796,13 @@ class OrchestrationRuntime:
 
         # Merge branch-specific context with same filtering
         for k, v in branch_context.items():
-            if k in distilled:
-                continue  # Branch context wins over shared for same key
             if isinstance(v, (str, int, float, bool, type(None))):
                 distilled[k] = v
             elif isinstance(v, (list, tuple)) and len(v) <= 16:
                 distilled[k] = list(v)
             elif isinstance(v, dict) and len(v) <= 8:
                 distilled[k] = dict(v)
+            # Skip large objects, bytes, custom classes
 
         return distilled
 
