@@ -1307,9 +1307,9 @@ class TestSecurityHardening:
         # Old decision is now superseded
         old_token_id = old_token.token_id
         verifier = runtime.verifier
-        valid, reason, _ = await verifier.verify_token(old_token_id, action="test.action", resource="test:resource")
-        assert valid is False
-        assert "superseded" in reason.lower()
+        result = await verifier.verify_token(old_token_id, action="test.action", resource="test:resource")
+        assert result.valid is False
+        assert "superseded" in result.reason.lower()
 
     async def test_request_scoped_kill_switch_caught(self, runtime, mock_kernel, mock_kill_switch, mock_vault):
         """REQUEST-scoped kill switch (targeting a specific decision) blocks delegation."""
@@ -1412,9 +1412,9 @@ class TestSecurityHardening:
             "workflow_id": None,
         }
         verifier = runtime.verifier
-        valid, reason, _ = await verifier.verify_token(fake_token_id, action="test.action", resource="test:resource")
-        assert valid is False
-        assert "not allowed" in reason.lower()
+        result = await verifier.verify_token(fake_token_id, action="test.action", resource="test:resource")
+        assert result.valid is False
+        assert "not allowed" in result.reason.lower()
 
     async def test_forged_lineage_ignored_after_vault_resolution(self, runtime, mock_kernel, mock_vault):
         """Caller supplies forged root_decision_id and trace_id; vault-resolved values are used."""

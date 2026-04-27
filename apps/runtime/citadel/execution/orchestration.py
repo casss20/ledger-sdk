@@ -550,10 +550,8 @@ class OrchestrationRuntime:
                         error=governed.error,
                     ))
 
-        # Audit each branch
-        for br in branch_results:
-            if br.decision:
-                await self._audit_branch_completed(parent_decision, br)
+        # Audit branches in a single batched call instead of N individual writes
+        await self._audit_branches_completed_batch(parent_decision, branch_results)
 
         completed = sum(1 for br in branch_results if br.success)
         failed = len(branch_results) - completed
@@ -998,6 +996,56 @@ class OrchestrationRuntime:
                 actor_id=parent.actor_id,
                 payload={**payload, "blocked": True},
             )
+
+    async def _audit_branches_completed_batch(
+        self,
+        parent: GovernanceDecision,
+        branch_results: List[BranchResult],
+    ):
+        """Batch audit all branch completions into a single record.
+
+        Reduces DB round-trips from N individual writes to 1 summary write.
+        Each branch still gets its own entry in the payload for traceability.
+        """
+        if self.audit is None:
+            return
+        payload = {
+            "parent_decision_id": parent.decision_id,
+            "branches": [
+                {
+                    "index": br.branch_index,
+                    "action_id": str(br.action.action_id) if br.action else None,
+                    "decision_id": str(br.decision.decision_id) if br.decision else None,
+                    "success": br.success,
+                    "error": br.error,
+                }
+                for br in branch_results
+            ],
+            "trace_id": parent.trace_id,
+        }
+        if hasattr(self.audit, 'branches_completed'):
+            await self.audit.branches_completed(parent, payload)
+        elif hasattr(self.audit, 'record'):
+            await self.audit.record(
+                event_type="branches_completed",
+                tenant_id=parent.tenant_id,
+                actor_id=parent.actor_id,
+                payload=payload,
+            )
+        else:
+            # Fallback: log each branch individually if no batch support
+            for br in branch_results:
+                if br.action:
+                    await self.audit._log(
+                        action=br.action,
+                        event_type="branch_completed",
+                        payload={
+                            "parent_decision_id": parent.decision_id,
+                            "branch_index": br.branch_index,
+                            "success": br.success,
+                            "error": br.error,
+                        },
+                    )
 
     async def _audit_branch_completed(
         self,

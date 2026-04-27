@@ -109,7 +109,7 @@ class TokenVault:
                     decision.scope.resources,
                     decision.scope.max_spend,
                     decision.scope.rate_limit,
-                    json.dumps(decision.constraints),
+                    json.dumps(decision.constraints) if decision.constraints else None,
                     decision.expiry,
                     decision.kill_switch_scope.value,
                     decision.created_at,
@@ -183,62 +183,62 @@ class TokenVault:
         """Resolve a capability token by ID."""
         tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
         async with self.db.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute("SELECT set_tenant_context($1)", tid)
-                row = await conn.fetchrow(
-                    """
-                    SELECT token_id, decision_id, tenant_id, actor_id,
-                           iss, subject, audience, workspace_id, tool,
-                           action, resource_scope, risk_level, not_before,
-                           trace_id, approval_ref, revoked_at, revoked_reason,
-                           scope_actions, scope_resources, expiry,
-                           created_at, chain_hash,
-                           parent_decision_id, parent_actor_id, workflow_id
-                    FROM governance_tokens
-                    WHERE token_id = $1
-                    """,
-                    token_id,
-                )
-                return dict(row) if row else None
+            # Read-only: no explicit transaction needed (autocommit)
+            await conn.execute("SELECT set_tenant_context($1)", tid)
+            row = await conn.fetchrow(
+                """
+                SELECT token_id, decision_id, tenant_id, actor_id,
+                       iss, subject, audience, workspace_id, tool,
+                       action, resource_scope, risk_level, not_before,
+                       trace_id, approval_ref, revoked_at, revoked_reason,
+                       scope_actions, scope_resources, expiry,
+                       created_at, chain_hash,
+                       parent_decision_id, parent_actor_id, workflow_id
+                FROM governance_tokens
+                WHERE token_id = $1
+                """,
+                token_id,
+            )
+            return dict(row) if row else None
 
     async def resolve_decision(self, decision_id: str, tenant_id: str = None) -> Optional[dict]:
         """Resolve a governance decision by ID."""
         tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
         async with self.db.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute("SELECT set_tenant_context($1)", tid)
-                row = await conn.fetchrow(
-                    """
-                    SELECT decision_id, decision_type, tenant_id, actor_id,
-                           request_id, trace_id, workspace_id, agent_id,
-                           subject_type, subject_id, action, resource,
-                           risk_level, policy_version, approval_state,
-                           approved_by, approved_at, issued_token_id,
-                           expires_at, revoked_at, revoked_reason,
-                           scope_actions, scope_resources,
-                           scope_max_spend, scope_rate_limit,
-                           constraints, expiry, kill_switch_scope,
-                           created_at, reason,
-                           root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
-                           superseded_at, superseded_reason
-                    FROM governance_decisions
-                    WHERE decision_id = $1
-                    """,
-                    decision_id,
-                )
-                return dict(row) if row else None
+            # Read-only: no explicit transaction needed (autocommit)
+            await conn.execute("SELECT set_tenant_context($1)", tid)
+            row = await conn.fetchrow(
+                """
+                SELECT decision_id, decision_type, tenant_id, actor_id,
+                       request_id, trace_id, workspace_id, agent_id,
+                       subject_type, subject_id, action, resource,
+                       risk_level, policy_version, approval_state,
+                       approved_by, approved_at, issued_token_id,
+                       expires_at, revoked_at, revoked_reason,
+                       scope_actions, scope_resources,
+                       scope_max_spend, scope_rate_limit,
+                       constraints, expiry, kill_switch_scope,
+                       created_at, reason,
+                       root_decision_id, parent_decision_id, parent_actor_id, workflow_id,
+                       superseded_at, superseded_reason
+                FROM governance_decisions
+                WHERE decision_id = $1
+                """,
+                decision_id,
+            )
+            return dict(row) if row else None
 
     async def get_chain(self, token_id: str, tenant_id: str = None) -> list:
         """Get token chain for tamper detection."""
         tid = tenant_id or (self.get_tenant() if self.get_tenant else None)
         async with self.db.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute("SELECT set_tenant_context($1)", tid)
-                row = await conn.fetchrow(
-                    "SELECT token_id, chain_hash FROM governance_tokens WHERE token_id = $1",
-                    token_id,
-                )
-                return [dict(row)] if row else []
+            # Read-only: no explicit transaction needed (autocommit)
+            await conn.execute("SELECT set_tenant_context($1)", tid)
+            row = await conn.fetchrow(
+                "SELECT token_id, chain_hash FROM governance_tokens WHERE token_id = $1",
+                token_id,
+            )
+            return [dict(row)] if row else []
 
     async def verify_chain(self, token_id: str) -> bool:
         """Verify token integrity by checking linked decision exists."""
@@ -304,42 +304,42 @@ class TokenVault:
     ) -> Optional[dict]:
         """Check central kill_switches state for introspection enforcement."""
         async with self.db.acquire() as conn:
-            async with conn.transaction():
-                # Introspection must see global/tool emergency state even when
-                # a row is not tenant-scoped, so this deliberately uses the
-                # existing explicit admin bypass inside this read-only check.
-                await conn.execute("SET LOCAL app.admin_bypass = 'true'")
-                row = await conn.fetchrow(
-                    """
-                    SELECT switch_id, tenant_id, scope_type::text AS scope_type,
-                           scope_value, reason
-                    FROM kill_switches
-                    WHERE enabled = TRUE
-                      AND (
-                        scope_type = 'global'
-                        OR (scope_type = 'tenant' AND scope_value = $1)
-                        OR (scope_type = 'actor' AND scope_value = $2)
-                        OR (scope_type = 'request' AND scope_value = $6)
-                        OR (scope_type = 'action' AND scope_value IN ($3, COALESCE($5, $3)))
-                        OR ($4::text IS NOT NULL AND scope_type = 'resource' AND scope_value = $4)
-                      )
-                    ORDER BY
-                      CASE scope_type
-                        WHEN 'request' THEN 1
-                        WHEN 'resource' THEN 2
-                        WHEN 'action' THEN 3
-                        WHEN 'actor' THEN 4
-                        WHEN 'tenant' THEN 5
-                        ELSE 6
-                      END,
-                      created_at DESC
-                    LIMIT 1
-                    """,
-                    tenant_id,
-                    actor_id,
-                    action,
-                    resource,
-                    tool,
-                    decision_id,
-                )
-                return dict(row) if row else None
+            # Read-only: no explicit transaction needed (autocommit)
+            # Introspection must see global/tool emergency state even when
+            # a row is not tenant-scoped, so this deliberately uses the
+            # existing explicit admin bypass inside this read-only check.
+            await conn.execute("SET LOCAL app.admin_bypass = 'true'")
+            row = await conn.fetchrow(
+                """
+                SELECT switch_id, tenant_id, scope_type::text AS scope_type,
+                       scope_value, reason
+                FROM kill_switches
+                WHERE enabled = TRUE
+                  AND (
+                    scope_type = 'global'
+                    OR (scope_type = 'tenant' AND scope_value = $1)
+                    OR (scope_type = 'actor' AND scope_value = $2)
+                    OR (scope_type = 'request' AND scope_value = $6)
+                    OR (scope_type = 'action' AND scope_value IN ($3, COALESCE($5, $3)))
+                    OR ($4::text IS NOT NULL AND scope_type = 'resource' AND scope_value = $4)
+                  )
+                ORDER BY
+                  CASE scope_type
+                    WHEN 'request' THEN 1
+                    WHEN 'resource' THEN 2
+                    WHEN 'action' THEN 3
+                    WHEN 'actor' THEN 4
+                    WHEN 'tenant' THEN 5
+                    ELSE 6
+                  END,
+                  created_at DESC
+                LIMIT 1
+                """,
+                tenant_id,
+                actor_id,
+                action,
+                resource,
+                tool,
+                decision_id,
+            )
+            return dict(row) if row else None

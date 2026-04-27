@@ -62,6 +62,10 @@ class TokenVerifier:
         """Verify a gt_ token for the given action."""
         context = context or {}
 
+        # 0. Fast-path: reject malformed or empty token IDs without DB lookup
+        if not token_id or not isinstance(token_id, str):
+            return VerificationResult(valid=False, reason="token_id_invalid")
+
         # 1. Resolve token (pass tenant_id from context if vault supports it)
         tenant_id = context.get("tenant_id")
         token_data = await self.vault.resolve_token(token_id, tenant_id=tenant_id)
@@ -69,16 +73,22 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "token_not_found", context)
             return VerificationResult(valid=False, reason="token_not_found")
 
+        # 2. Token-level fast checks (no decision lookup needed)
         token_nbf = self._parse_datetime(token_data.get("not_before"))
         if token_nbf and datetime.now(timezone.utc) < token_nbf:
             await self._audit_token_verification(token_id, False, "token_not_yet_valid", context)
             return VerificationResult(valid=False, reason="token_not_yet_valid")
 
+        token_expiry = self._parse_datetime(token_data.get("expiry"))
+        if token_expiry and datetime.now(timezone.utc) > token_expiry:
+            await self._audit_token_verification(token_id, False, "token_expired", context)
+            return VerificationResult(valid=False, reason="token_expired")
+
         if token_data.get("revoked_at"):
             await self._audit_token_verification(token_id, False, "token_revoked", context)
             return VerificationResult(valid=False, reason="token_revoked")
 
-        # 2. Resolve linked decision
+        # 3. Resolve linked decision
         decision_id = token_data.get("decision_id")
         if not decision_id:
             await self._audit_token_verification(token_id, False, "no_linked_decision", context)
@@ -136,29 +146,30 @@ class TokenVerifier:
             await self._audit_token_verification(token_id, False, "workspace_mismatch", context, decision)
             return VerificationResult(valid=False, reason="workspace_mismatch", decision=decision)
 
-        # 3. Check expiry — decision expiry takes precedence over token expiry
-        # since the token derives its lifetime from the decision.
+        # 4. Decision-level checks (after reconstructing the decision)
         if decision.is_expired:
             await self._audit_token_verification(token_id, False, "decision_expired", context, decision)
             return VerificationResult(valid=False, reason="decision_expired", decision=decision)
 
-        token_expiry = self._parse_datetime(token_data.get("expiry"))
-        if token_expiry and datetime.now(timezone.utc) > token_expiry:
-            await self._audit_token_verification(token_id, False, "token_expired", context, decision)
-            return VerificationResult(valid=False, reason="token_expired", decision=decision)
-
-        # 4. Check revocation
         if decision.decision_type == DecisionType.REVOKED or decision.revoked_at is not None:
             await self._audit_token_verification(token_id, False, "decision_revoked", context, decision)
             return VerificationResult(valid=False, reason="decision_revoked", decision=decision)
 
-# 4b. Check superseded — handoff must invalidate old tokens
         if decision.superseded_at is not None:
-            return False, f"Decision superseded at {decision.superseded_at} — authority transferred", token_data
+            await self._audit_token_verification(token_id, False, "decision_superseded", context, decision)
+            return VerificationResult(
+                valid=False,
+                reason=f"Decision superseded at {decision.superseded_at} — authority transferred",
+                decision=decision,
+            )
 
-        # 4c. Check decision type — only ALLOW decisions are valid
         if decision.decision_type != DecisionType.ALLOW:
-            return False, f"Decision type is {decision.decision_type.value} — not allowed", token_data
+            await self._audit_token_verification(token_id, False, "decision_not_allowed", context, decision)
+            return VerificationResult(
+                valid=False,
+                reason=f"Decision type is {decision.decision_type.value} — not allowed",
+                decision=decision,
+            )
 
         # 5. Check scope
         if not decision.scope.covers(action, resource):
