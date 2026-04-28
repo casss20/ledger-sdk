@@ -100,6 +100,16 @@ async def list_approvals(
     return ApprovalListResponse(approvals=approvals, total=len(approvals))
 
 
+@router.get("/approvals/queue-metrics")
+async def get_approval_queue_metrics(
+    kernel: Kernel = Depends(get_kernel),
+    _: str = Depends(require_api_key),
+):
+    """Return current approval queue metrics: depth, wait times, throughput, capacity signals."""
+    metrics = await kernel.repo.get_approval_queue_metrics(tenant_id=None)
+    return metrics
+
+
 @router.get("/approvals/{approval_id}", response_model=ApprovalResponse)
 async def get_approval(
     approval_id: str,

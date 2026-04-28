@@ -506,3 +506,207 @@ class Repository:
                 UPDATE api_keys SET last_used_at = NOW()
                 WHERE key_hash = $1
             """, key_hash)
+
+    # =========================================================================
+    # LINEAGE / PROVENANCE
+    # =========================================================================
+
+    async def get_decision_lineage(
+        self,
+        decision_id: uuid.UUID,
+        depth: int = 5,
+        tenant_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Return ancestor chain for a decision (parents up to `depth` levels).
+        Uses recursive CTE over decisions.parent_decision_id.
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH RECURSIVE lineage AS (
+                    -- anchor: the target decision
+                    SELECT
+                        d.decision_id,
+                        d.action_id,
+                        d.parent_decision_id,
+                        d.root_decision_id,
+                        d.trace_id,
+                        d.workflow_id,
+                        d.status,
+                        d.winning_rule,
+                        d.reason,
+                        d.risk_level,
+                        d.risk_score,
+                        d.created_at,
+                        0 AS depth_level
+                    FROM decisions d
+                    WHERE d.decision_id = $1
+                      AND ($2::text IS NULL OR EXISTS (
+                          SELECT 1 FROM actions a
+                          WHERE a.action_id = d.action_id AND a.tenant_id = $2
+                      ))
+
+                    UNION ALL
+
+                    -- recurse upward via parent_decision_id
+                    SELECT
+                        d.decision_id,
+                        d.action_id,
+                        d.parent_decision_id,
+                        d.root_decision_id,
+                        d.trace_id,
+                        d.workflow_id,
+                        d.status,
+                        d.winning_rule,
+                        d.reason,
+                        d.risk_level,
+                        d.risk_score,
+                        d.created_at,
+                        lin.depth_level + 1
+                    FROM decisions d
+                    JOIN lineage lin ON d.decision_id = lin.parent_decision_id
+                    WHERE lin.depth_level < $3
+                )
+                SELECT * FROM lineage ORDER BY depth_level ASC;
+            """, decision_id, tenant_id, depth)
+            return [dict(r) for r in rows]
+
+    async def get_decision_descendants(
+        self,
+        decision_id: uuid.UUID,
+        depth: int = 5,
+        tenant_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Return descendant chain for a decision (children down to `depth` levels).
+        Uses recursive CTE over decisions.parent_decision_id in reverse.
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH RECURSIVE descendants AS (
+                    -- anchor: the target decision
+                    SELECT
+                        d.decision_id,
+                        d.action_id,
+                        d.parent_decision_id,
+                        d.root_decision_id,
+                        d.trace_id,
+                        d.workflow_id,
+                        d.status,
+                        d.winning_rule,
+                        d.reason,
+                        d.risk_level,
+                        d.risk_score,
+                        d.created_at,
+                        0 AS depth_level
+                    FROM decisions d
+                    WHERE d.decision_id = $1
+                      AND ($2::text IS NULL OR EXISTS (
+                          SELECT 1 FROM actions a
+                          WHERE a.action_id = d.action_id AND a.tenant_id = $2
+                      ))
+
+                    UNION ALL
+
+                    -- recurse downward: find decisions whose parent is in the set
+                    SELECT
+                        d.decision_id,
+                        d.action_id,
+                        d.parent_decision_id,
+                        d.root_decision_id,
+                        d.trace_id,
+                        d.workflow_id,
+                        d.status,
+                        d.winning_rule,
+                        d.reason,
+                        d.risk_level,
+                        d.risk_score,
+                        d.created_at,
+                        desc.depth_level + 1
+                    FROM decisions d
+                    JOIN descendants desc ON d.parent_decision_id = desc.decision_id
+                    WHERE desc.depth_level < $3
+                )
+                SELECT * FROM descendants ORDER BY depth_level ASC;
+            """, decision_id, tenant_id, depth)
+            return [dict(r) for r in rows]
+
+    async def get_workflow_tree(
+        self,
+        workflow_id: str,
+        tenant_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Return all decisions belonging to a workflow, ordered by creation time.
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    d.decision_id,
+                    d.action_id,
+                    d.parent_decision_id,
+                    d.root_decision_id,
+                    d.trace_id,
+                    d.workflow_id,
+                    d.status,
+                    d.winning_rule,
+                    d.reason,
+                    d.risk_level,
+                    d.risk_score,
+                    d.created_at
+                FROM decisions d
+                WHERE d.workflow_id = $1
+                  AND ($2::text IS NULL OR EXISTS (
+                      SELECT 1 FROM actions a
+                      WHERE a.action_id = d.action_id AND a.tenant_id = $2
+                  ))
+                ORDER BY d.created_at ASC;
+            """, workflow_id, tenant_id)
+            return [dict(r) for r in rows]
+
+    # =========================================================================
+    # QUEUE METRICS
+    # =========================================================================
+
+    async def get_approval_queue_metrics(
+        self,
+        tenant_id: Optional[str] = None,
+    ) -> Dict:
+        """
+        Return current approval queue metrics from the approval_queue_metrics view.
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT
+                    queue_depth,
+                    avg_wait_seconds,
+                    throughput_per_hour,
+                    avg_service_seconds,
+                    arrival_rate_per_hour,
+                    implied_arrival_rate_per_second,
+                    observed_load_factor,
+                    computed_at
+                FROM approval_queue_metrics
+                LIMIT 1
+            """)
+            if row is None:
+                return {
+                    'queue_depth': 0,
+                    'avg_wait_seconds': 0.0,
+                    'throughput_per_hour': 0,
+                    'avg_service_seconds': 0.0,
+                    'arrival_rate_per_hour': 0,
+                    'implied_arrival_rate_per_second': None,
+                    'observed_load_factor': None,
+                    'computed_at': datetime.utcnow().isoformat(),
+                }
+            return {
+                'queue_depth': row['queue_depth'],
+                'avg_wait_seconds': float(row['avg_wait_seconds']) if row['avg_wait_seconds'] is not None else 0.0,
+                'throughput_per_hour': row['throughput_per_hour'],
+                'avg_service_seconds': float(row['avg_service_seconds']) if row['avg_service_seconds'] is not None else 0.0,
+                'arrival_rate_per_hour': row['arrival_rate_per_hour'],
+                'implied_arrival_rate_per_second': float(row['implied_arrival_rate_per_second']) if row['implied_arrival_rate_per_second'] is not None else None,
+                'observed_load_factor': float(row['observed_load_factor']) if row['observed_load_factor'] is not None else None,
+                'computed_at': row['computed_at'].isoformat() if hasattr(row['computed_at'], 'isoformat') else row['computed_at'],
+            }

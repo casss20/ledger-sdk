@@ -258,6 +258,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_actions_actor_idempotency
 CREATE INDEX IF NOT EXISTS idx_actions_payload_gin ON actions USING GIN (payload_json);
 CREATE INDEX IF NOT EXISTS idx_actions_context_gin ON actions USING GIN (context_json);
 
+CREATE INDEX IF NOT EXISTS idx_actions_parent_decision_id ON actions (parent_decision_id) WHERE parent_decision_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_actions_trace_id ON actions (trace_id) WHERE trace_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_actions_workflow_id ON actions (workflow_id) WHERE workflow_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_actions_root_decision_id ON actions (root_decision_id) WHERE root_decision_id IS NOT NULL;
+
 COMMENT ON TABLE actions IS 'Canonical action requests - immutable normalized record';
 
 -- ============================================================================
@@ -282,6 +287,12 @@ CREATE TABLE IF NOT EXISTS decisions (
 CREATE INDEX IF NOT EXISTS idx_decisions_status_created ON decisions (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_decisions_policy_snapshot ON decisions (policy_snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_decisions_capability ON decisions (capability_token);
+
+-- Lineage indexes for provenance graph queries
+CREATE INDEX IF NOT EXISTS idx_decisions_parent_decision_id ON decisions (parent_decision_id) WHERE parent_decision_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_decisions_trace_id ON decisions (trace_id) WHERE trace_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_decisions_workflow_id ON decisions (workflow_id) WHERE workflow_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_decisions_root_decision_id ON decisions (root_decision_id) WHERE root_decision_id IS NOT NULL;
 
 COMMENT ON TABLE decisions IS 'Terminal decision for each action - immutable, replayable';
 
@@ -636,6 +647,51 @@ ORDER BY
         ELSE 4 
     END,
     a.created_at;
+
+-- Approval queue metrics for capacity planning (Little's Law: L = λW)
+CREATE OR REPLACE VIEW approval_queue_metrics AS
+WITH pending_stats AS (
+    SELECT
+        COUNT(*) AS queue_depth,
+        COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - created_at))), 0) AS avg_wait_seconds
+    FROM approvals
+    WHERE status = 'pending'
+),
+resolved_last_hour AS (
+    SELECT
+        COUNT(*) AS resolved_count,
+        COALESCE(AVG(EXTRACT(EPOCH FROM (decided_at - created_at))), 0) AS avg_service_seconds
+    FROM approvals
+    WHERE status IN ('approved', 'rejected')
+      AND decided_at >= NOW() - INTERVAL '1 hour'
+),
+arrival_stats AS (
+    SELECT COUNT(*) AS arrivals_last_hour
+    FROM approvals
+    WHERE created_at >= NOW() - INTERVAL '1 hour'
+)
+SELECT
+    ps.queue_depth,
+    ps.avg_wait_seconds,
+    rh.resolved_count AS throughput_per_hour,
+    rh.avg_service_seconds,
+    ar.arrivals_last_hour AS arrival_rate_per_hour,
+    CASE 
+        WHEN rh.avg_service_seconds > 0 
+        THEN ROUND((ps.queue_depth::numeric / NULLIF(rh.avg_service_seconds, 0))::numeric, 2)
+        ELSE NULL 
+    END AS implied_arrival_rate_per_second,
+    CASE 
+        WHEN rh.resolved_count > 0 AND ps.queue_depth > 0
+        THEN ROUND(
+            (ps.avg_wait_seconds / NULLIF(rh.avg_service_seconds, 0))::numeric, 2
+        )
+        ELSE NULL 
+    END AS observed_load_factor,
+    NOW() AS computed_at
+FROM pending_stats ps
+CROSS JOIN resolved_last_hour rh
+CROSS JOIN arrival_stats ar;
 
 -- Action decision view
 CREATE OR REPLACE VIEW action_decision_view AS
