@@ -49,6 +49,10 @@ services:
       #
       # OPTIONAL: Redis connection (uncomment the redis service above to use)
       # CITADEL_REDIS_URL: redis://redis:6379/0
+      #
+      # OPTIONAL: OpenTelemetry export through the local collector.
+      # Enable the collector with: docker compose --profile telemetry up
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports:
       - "8000:8000"
     depends_on:
@@ -58,6 +62,29 @@ services:
       # Readiness probe: verifies DB connectivity, not just process liveness
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/ready')"]
       interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    restart: unless-stopped
+    profiles:
+      - telemetry
+    command:
+      - "--config=/etc/otelcol/config.yaml"
+    environment:
+      # Point this at Jaeger, Tempo, Honeycomb, or another OTLP-compatible backend.
+      OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT: ${OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT:-jaeger:4317}
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ./.data/otelcol/file_storage:/var/lib/otelcol/file_storage
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol/config.yaml"]
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s

@@ -1,12 +1,10 @@
 # Citadel SDK for TypeScript
 
-The official TypeScript/JavaScript client library for integrating with the Citadel governance runtime.
+> **Status: Not yet implemented.** This package is a placeholder for the planned TypeScript/JavaScript client.
 
-## Installation
+The TypeScript SDK is on the roadmap. See [FORGE_ROADMAP.md](../../docs/FORGE_ROADMAP.md) for timeline.
 
-```bash
-npm install @citadel/sdk
-```
+In the meantime, you can use the Citadel REST API directly — see the [REST API reference](../../docs/public/api-reference/rest-api.md).
 
 ## License
 

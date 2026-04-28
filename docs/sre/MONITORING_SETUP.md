@@ -145,6 +145,24 @@ services:
     networks:
       - monitoring
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    container_name: citadel-otel-collector
+    command:
+      - "--config=/etc/otelcol/config.yaml"
+    environment:
+      OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT: ${OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT:-jaeger:4317}
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ./.data/otelcol/file_storage:/var/lib/otelcol/file_storage
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - monitoring
+    depends_on:
+      - jaeger
+
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: citadel-node-exporter
@@ -170,6 +188,81 @@ networks:
   monitoring:
     driver: bridge
 ```
+
+The root `docker-compose.yml` also includes an optional `otel-collector` service under the
+`telemetry` profile for local API deployments:
+
+```bash
+docker compose --profile telemetry up
+```
+
+Set `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317` for the API container when
+you want runtime traces to flow through the collector. The collector forwards telemetry
+to `OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT` and stores queued export batches under
+`./.data/otelcol/file_storage` while that backend is unavailable.
+
+This queue is intentionally limited to OpenTelemetry export traffic. Citadel audit and
+governance decisions continue to use their existing database-backed, fail-closed paths.
+
+---
+
+## 2.1 OpenTelemetry Collector Persistent Queue
+
+`monitoring/otel-collector-config.yaml`:
+
+```yaml
+extensions:
+  file_storage:
+    directory: /var/lib/otelcol/file_storage
+    timeout: 1s
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: ${env:OTEL_EXPORTER_OTLP_BACKEND_ENDPOINT}
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      storage: file_storage
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 0s
+
+service:
+  extensions:
+    - file_storage
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - otlp
+```
+
+Recovery behavior:
+
+- Backend outage queueing: failed OTLP exports remain in the disk-backed sending queue.
+- Collector restart recovery: queued batches survive because `file_storage` is mounted at
+  `./.data/otelcol/file_storage`.
+- Queue draining after recovery: retry-on-failure keeps retrying failed exports according
+  to the configured backoff until the backend accepts traffic again.
 
 ---
 

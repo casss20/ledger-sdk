@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citadel — AI Governance Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS ──────────────────────────────────────────────────────── */
+:root {
+  /* Surfaces — elevation through luminance, no shadows */
+  --bg-deepest:   #0D0D0D;
+  --surface-1:    #141414;
+  --surface-2:    #1A1A1A;
+  --surface-3:    #222222;
+  --surface-4:    #2A2A2A;
+
+  /* Borders */
+  --border-subtle: #2A2A2A;
+  --border-focus:  #3A3A3A;
+  --border-accent: #5E6AD2;
+
+  /* Text hierarchy */
+  --text-primary:   #E8E8EC;
+  --text-secondary: #8A8F98;
+  --text-tertiary:  #5C6168;
+  --text-disabled:  #4A4F57;
+
+  /* Accent — single interactive color */
+  --accent:        #5E6AD2;
+  --accent-hover:  #6B77E8;
+  --accent-ai:     #7C5CFF;
+
+  /* Semantic — icon + label always accompany color */
+  --status-success: #27AE60;
+  --status-warning: #F5A623;
+  --status-error:   #E74C3C;
+  --status-info:    #4A90E2;
+  --status-live:    #22C55E;
+  --status-neutral: #5C6168;
+
+  /* Semantic surface tints (5% opacity) */
+  --tint-success: rgba(39,174,96,.08);
+  --tint-warning: rgba(245,166,35,.08);
+  --tint-error:   rgba(231,76,60,.08);
+  --tint-info:    rgba(74,144,226,.08);
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* Spacing */
+  --nav-h:    48px;
+  --sidebar-w: 220px;
+  --detail-w:  340px;
+  --radius:    6px;
+  --radius-md: 8px;
+
+  /* Motion */
+  --t-fast: 150ms;
+  --t-std:  200ms;
+  --ease:   cubic-bezier(0.25,0.1,0.25,1);
+}
+
+/* ─── RESET ──────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;-webkit-font-smoothing:antialiased}
+body{
+  background:var(--bg-deepest);
+  color:var(--text-primary);
+  font-family:var(--font-sans);
+  font-size:13px;
+  line-height:1.5;
+  min-height:100vh;
+  overflow:hidden;
+}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+
+/* ─── REDUCED MOTION ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  [data-reveal], [data-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface-4);border-radius:3px}
+
+/* ─── APP SHELL ──────────────────────────────────────────────────────────── */
+.app{
+  display:grid;
+  grid-template-rows:var(--nav-h) 1fr;
+  grid-template-columns:var(--sidebar-w) 1fr var(--detail-w);
+  height:100vh;
+}
+
+/* ─── TOP NAV ────────────────────────────────────────────────────────────── */
+.topnav{
+  grid-column:1/-1;
+  grid-row:1;
+  background:var(--surface-1);
+  border-bottom:1px solid var(--border-subtle);
+  display:flex;
+  align-items:center;
+  padding:0 16px;
+  gap:0;
+  position:relative;
+  z-index:100;
+}
+.topnav__brand{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-right:32px;
+}
+.topnav__logo{
+  width:22px;height:22px;
+  background:var(--accent);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.topnav__logo svg{width:12px;height:12px;fill:#fff}
+.topnav__wordmark{
+  font-size:14px;font-weight:600;letter-spacing:0.01em;
+  color:var(--text-primary);
+}
+.topnav__divider{
+  width:1px;height:20px;background:var(--border-subtle);margin-right:20px;
+}
+.topnav__nav{
+  display:flex;gap:2px;flex:1;
+}
+.topnav__nav-item{
+  padding:6px 12px;
+  border-radius:var(--radius);
+  font-size:13px;font-weight:400;
+  color:var(--text-secondary);
+  cursor:pointer;
+  transition:color var(--t-fast) var(--ease),background var(--t-fast) var(--ease);
+  white-space:nowrap;
+}
+.topnav__nav-item:hover{color:var(--text-primary);background:var(--surface-3)}
+.topnav__nav-item.active{color:var(--text-primary);font-weight:500}
+.topnav__right{
+  display:flex;align-items:center;gap:8px;margin-left:auto;
+}
+.topnav__search{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface-2);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius);
+  padding:5px 10px;
+  color:var(--text-tertiary);
+  font-size:12px;
+  cursor:pointer;
+  transition:border-color var(--t-fast) var(--ease);
+}
+.topnav__search:hover{border-color:var(--border-focus);color:var(--text-secondary)}
+.topnav__kbd{
+  background:var(--surface-4);border-radius:3px;
+  padding:1px 5px;font-family:var(--font-mono);font-size:10px;
+  color:var(--text-tertiary);
+}
+.topnav__icon-btn{
+  width:30px;height:30px;border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-secondary);
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease);
+  position:relative;
+}
+.topnav__icon-btn:hover{background:var(--surface-3);color:var(--text-primary)}
+.topnav__badge{
+  position:absolute;top:4px;right:4px;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--status-warning);
+  border:1px solid var(--surface-1);
+}
+
+/* Kill switch button — always visible */
+.btn-killswitch{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px;
+  border-radius:var(--radius);
+  border:1px solid var(--status-warning);
+  color:var(--status-warning);
+  font-size:12px;font-weight:500;
+  background:rgba(245,166,35,.06);
+  transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease);
+  cursor:pointer;
+}
+.btn-killswitch:hover{background:rgba(245,166,35,.12);border-color:var(--status-warning)}
+.btn-killswitch svg{width:12px;height:12px;stroke:currentColor;fill:none}
+
+@keyframes c-pulseKS {
+  0%,100% { box-shadow: 0 0 0 0px rgba(245,166,35,0.0); }
+  50%      { box-shadow: 0 0 0 6px rgba(245,166,35,0.20); }
+}
+.ks-armed { animation: c-pulseKS 2.4s ease-in-out infinite; }
+
+@keyframes c-pulseLive {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.85); }
+}
+.is-live { animation: c-pulseLive 2s ease-in-out infinite; }
+
+[data-reveal] {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+[data-reveal].is-visible { opacity: 1; transform: none; }
+
+.topnav__avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,#5E6AD2,#7C5CFF);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:#fff;cursor:pointer;
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────────────────────────── */
+.sidebar{
+  grid-row:2;grid-column:1;
+  background:var(--surface-1);
+  border-right:1px solid var(--border-subtle);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+  padding:12px 8px;
+}
+.sidebar__section{margin-bottom:4px}
+.sidebar__label{
+  font-size:10px;font-weight:500;letter-spacing:0.08em;
+  color:var(--text-tertiary);text-transform:uppercase;
+  padding:6px 8px 4px;
+}
+.sidebar__item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 8px;border-radius:var(--radius);
+  font-size:13px;color:var(--text-secondary);
+  cursor:pointer;
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease);
+  position:relative;
+}
+.sidebar__item:hover{background:var(--surface-2);color:var(--text-primary)}
+.sidebar__item.active{
+  background:var(--surface-2);color:var(--text-primary);font-weight:500;
+}
+.sidebar__item.active::before{
+  content:'';position:absolute;left:0;top:4px;bottom:4px;
+  width:2px;background:var(--accent);border-radius:0 2px 2px 0;
+}
+.sidebar__item-icon{
+  width:16px;height:16px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  opacity:.6;
+}
+.sidebar__item.active .sidebar__item-icon{opacity:1}
+.sidebar__item svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6}
+.sidebar__badge{
+  margin-left:auto;
+  background:var(--status-warning);color:#fff;
+  font-size:10px;font-weight:600;
+  padding:1px 5px;border-radius:10px;min-width:18px;text-align:center;
+}
+.sidebar__badge.info{background:var(--status-info)}
+.sidebar__badge.error{background:var(--status-error)}
+
+.sidebar__emergency{
+  margin-top:auto;padding:8px;
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  background:var(--surface-2);
+}
+.sidebar__emergency-label{
+  font-size:10px;font-weight:500;letter-spacing:0.06em;
+  color:var(--text-tertiary);text-transform:uppercase;
+  margin-bottom:6px;
+}
+.sidebar__status-row{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--text-secondary);
+  margin-bottom:4px;
+}
+.dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;
+}
+.dot-live{background:var(--status-live);animation:pulse 2s infinite}
+.dot-ok{background:var(--status-success)}
+.dot-warn{background:var(--status-warning)}
+.dot-err{background:var(--status-error)}
+.dot-info{background:var(--status-info)}
+.dot-neu{background:var(--status-neutral)}
+
+@keyframes pulse{
+  0%,100%{opacity:1}50%{opacity:.4}
+}
+
+/* ─── MAIN CONTENT ───────────────────────────────────────────────────────── */
+.main{
+  grid-row:2;grid-column:2;
+  overflow-y:auto;
+  padding:20px 24px;
+}
+
+/* ─── DETAIL PANEL ───────────────────────────────────────────────────────── */
+.detail{
+  grid-row:2;grid-column:3;
+  background:var(--surface-1);
+  border-left:1px solid var(--border-subtle);
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+.detail__header{
+  padding:16px;
+  border-bottom:1px solid var(--border-subtle);
+  display:flex;align-items:center;gap:8px;
+}
+.detail__title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.detail__subtitle{font-size:11px;color:var(--text-tertiary);margin-top:1px}
+.detail__close{
+  margin-left:auto;width:22px;height:22px;
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-tertiary);
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease);
+}
+.detail__close:hover{background:var(--surface-3);color:var(--text-primary)}
+.detail__close svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ─── PAGE HEADER ────────────────────────────────────────────────────────── */
+.page-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:20px;
+}
+.page-header__title{
+  font-size:18px;font-weight:600;letter-spacing:-0.01em;
+  color:var(--text-primary);
+  line-height:1.2;
+}
+.page-header__sub{
+  font-size:12px;color:var(--text-tertiary);margin-top:3px;
+}
+.page-header__actions{display:flex;align-items:center;gap:8px}
+
+/* ─── BUTTONS ────────────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:var(--radius);
+  font-size:13px;font-weight:500;
+  cursor:pointer;
+  transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),transform var(--t-fast) var(--ease);
+}
+.btn:active{transform:scale(0.98)}
+.btn-primary{
+  background:var(--accent);color:#fff;border:1px solid transparent;
+}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-ghost{
+  background:transparent;color:var(--text-secondary);
+  border:1px solid var(--border-subtle);
+}
+.btn-ghost:hover{background:var(--surface-3);color:var(--text-primary);border-color:var(--border-focus)}
+.btn-danger{
+  background:rgba(231,76,60,.1);color:var(--status-error);
+  border:1px solid rgba(231,76,60,.25);
+}
+.btn-danger:hover{background:rgba(231,76,60,.18)}
+.btn-success{
+  background:rgba(39,174,96,.1);color:var(--status-success);
+  border:1px solid rgba(39,174,96,.25);
+}
+.btn-success:hover{background:rgba(39,174,96,.18)}
+.btn-sm{padding:4px 8px;font-size:12px}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+/* ─── KPI GRID ───────────────────────────────────────────────────────────── */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+.kpi-card{
+  background:var(--surface-2);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  padding:14px 16px;
+  cursor:pointer;
+  transition:border-color var(--t-fast) var(--ease),background var(--t-fast) var(--ease);
+}
+.kpi-card:hover{border-color:var(--border-focus);background:var(--surface-3)}
+.kpi-card__label{
+  font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-tertiary);margin-bottom:8px;
+}
+.kpi-card__value{
+  font-family:var(--font-mono);
+  font-size:28px;font-weight:400;letter-spacing:-0.02em;
+  color:var(--text-primary);line-height:1.1;
+  margin-bottom:6px;
+}
+.kpi-card__value.warn{color:var(--status-warning)}
+.kpi-card__value.ok{color:var(--status-success)}
+.kpi-card__value.err{color:var(--status-error)}
+.kpi-card__value.info{color:var(--status-info)}
+.kpi-card__meta{
+  display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--text-tertiary);
+}
+.kpi-delta{
+  display:inline-flex;align-items:center;gap:2px;
+  padding:1px 6px;border-radius:10px;
+  font-size:11px;font-weight:500;
+}
+.kpi-delta.up{background:var(--tint-success);color:var(--status-success)}
+.kpi-delta.down{background:var(--tint-error);color:var(--status-error)}
+.kpi-delta.flat{background:var(--surface-3);color:var(--text-tertiary)}
+
+/* ─── STATUS BADGE ───────────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 7px;border-radius:10px;
+  font-size:11px;font-weight:500;white-space:nowrap;
+}
+.badge svg{width:9px;height:9px;stroke:currentColor;fill:none;stroke-width:2.5}
+.badge-success{background:var(--tint-success);color:var(--status-success)}
+.badge-warning{background:var(--tint-warning);color:var(--status-warning)}
+.badge-error{background:var(--tint-error);color:var(--status-error)}
+.badge-info{background:var(--tint-info);color:var(--status-info)}
+.badge-neutral{background:var(--surface-3);color:var(--text-secondary)}
+.badge-ai{background:rgba(124,92,255,.12);color:var(--accent-ai)}
+.badge-accent{background:rgba(94,106,210,.12);color:var(--accent)}
+
+/* ─── DATA TABLE ─────────────────────────────────────────────────────────── */
+.data-table-wrap{
+  background:var(--surface-2);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+}
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{
+  padding:9px 14px;
+  text-align:left;
+  font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-tertiary);
+  border-bottom:1px solid var(--border-subtle);
+  white-space:nowrap;
+  background:var(--surface-2);
+}
+.data-table td{
+  padding:10px 14px;
+  font-size:13px;
+  border-bottom:1px solid var(--border-subtle);
+  color:var(--text-secondary);
+  vertical-align:middle;
+}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tbody tr{
+  transition:background var(--t-fast) var(--ease);
+  cursor:pointer;
+}
+.data-table tbody tr:hover{background:var(--surface-3)}
+.data-table tbody tr.active{background:rgba(94,106,210,.06)}
+.td-mono{font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary)}
+.td-primary{color:var(--text-primary);font-weight:500}
+.td-link{color:var(--accent);cursor:pointer}
+.td-link:hover{color:var(--accent-hover);text-decoration:underline}
+
+/* ─── SECTION HEADER ─────────────────────────────────────────────────────── */
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.section-title{
+  font-size:13px;font-weight:600;color:var(--text-primary);
+  display:flex;align-items:center;gap:6px;
+}
+.section-title .dot{margin-top:0}
+.section-link{
+  font-size:12px;color:var(--accent);cursor:pointer;
+  transition:color var(--t-fast) var(--ease);
+}
+.section-link:hover{color:var(--accent-hover)}
+
+/* ─── ACTIVITY FEED ──────────────────────────────────────────────────────── */
+.feed{padding:0}
+.feed-item{
+  display:flex;gap:10px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--border-subtle);
+  transition:background var(--t-fast) var(--ease);
+  cursor:pointer;
+}
+.feed-item:last-child{border-bottom:none}
+.feed-item:hover{background:var(--surface-2)}
+.feed-item__avatar{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:600;color:#fff;
+  margin-top:1px;
+}
+.feed-item__avatar.human{background:linear-gradient(135deg,#4A90E2,#357ABD)}
+.feed-item__avatar.agent{
+  background:rgba(124,92,255,.15);
+  border:1px solid rgba(124,92,255,.3);
+  color:var(--accent-ai);
+  font-family:var(--font-mono);font-size:9px;
+}
+.feed-item__avatar.system{background:var(--surface-4);color:var(--text-secondary)}
+.feed-item__content{flex:1;min-width:0}
+.feed-item__row{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.feed-item__actor{font-size:12px;font-weight:500;color:var(--text-primary)}
+.feed-item__action{font-size:12px;color:var(--text-secondary)}
+.feed-item__target{
+  font-size:12px;color:var(--accent);
+  font-family:var(--font-mono);
+}
+.feed-item__time{
+  font-size:11px;color:var(--text-tertiary);
+  font-family:var(--font-mono);
+  white-space:nowrap;
+}
+.feed-item__detail{
+  font-size:11px;color:var(--text-tertiary);
+  font-family:var(--font-mono);
+  margin-top:2px;
+  padding:4px 8px;
+  background:var(--surface-4);
+  border-radius:4px;
+  border-left:2px solid var(--accent-ai);
+  display:none;
+}
+.feed-item.ai-expanded .feed-item__detail{display:block}
+.feed-item__meta{display:flex;align-items:center;gap:6px;margin-top:3px}
+
+/* ─── FILTER CHIPS ───────────────────────────────────────────────────────── */
+.filter-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border-subtle);
+  overflow-x:auto;
+  flex-wrap:nowrap;
+}
+.filter-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px 3px 10px;
+  background:var(--surface-3);
+  border:1px solid var(--border-subtle);
+  border-radius:10px;
+  font-size:11px;color:var(--text-secondary);
+  cursor:pointer;white-space:nowrap;
+  transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),color var(--t-fast) var(--ease);
+}
+.filter-chip:hover{background:var(--surface-4);border-color:var(--border-focus);color:var(--text-primary)}
+.filter-chip.active{
+  background:rgba(94,106,210,.1);
+  border-color:rgba(94,106,210,.35);
+  color:var(--accent);
+}
+.filter-chip__x{
+  width:13px;height:13px;border-radius:50%;
+  background:var(--surface-4);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--text-tertiary);
+  margin-left:2px;
+  transition:background var(--t-fast) var(--ease);
+}
+.filter-chip:hover .filter-chip__x,.filter-chip.active .filter-chip__x{background:var(--surface-4);color:var(--text-primary)}
+.filter-search{
+  flex:1;min-width:180px;
+  background:var(--surface-3);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius);
+  padding:5px 10px;
+  font:inherit;font-size:12px;
+  color:var(--text-primary);
+  outline:none;
+  transition:border-color var(--t-fast) var(--ease);
+}
+.filter-search::placeholder{color:var(--text-tertiary)}
+.filter-search:focus{border-color:var(--border-focus)}
+
+/* ─── TIMELINE ───────────────────────────────────────────────────────────── */
+.timeline{padding:16px}
+.timeline-step{
+  display:flex;gap:12px;
+  position:relative;
+  padding-bottom:16px;
+}
+.timeline-step:last-child{padding-bottom:0}
+.timeline-step__connector{
+  display:flex;flex-direction:column;align-items:center;flex-shrink:0;
+}
+.timeline-step__node{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;
+  flex-shrink:0;z-index:1;
+}
+.timeline-step__node svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5}
+.timeline-step__node.ok{background:var(--status-success)}
+.timeline-step__node.warn{background:var(--status-warning)}
+.timeline-step__node.err{background:var(--status-error)}
+.timeline-step__node.info{background:var(--status-info)}
+.timeline-step__node.neu{background:var(--surface-4);border:1px solid var(--border-focus)}
+.timeline-step__line{
+  width:1px;flex:1;min-height:16px;
+  background:var(--border-subtle);
+  margin:3px 0;
+}
+.timeline-step__body{flex:1;padding-top:4px;min-width:0}
+.timeline-step__title{
+  font-size:13px;font-weight:500;color:var(--text-primary);
+  margin-bottom:3px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+}
+.timeline-step__detail{
+  font-size:11px;color:var(--text-tertiary);
+  font-family:var(--font-mono);
+  margin-top:4px;
+  padding:6px 10px;
+  background:var(--surface-4);
+  border-radius:4px;
+  border-left:2px solid var(--border-focus);
+  white-space:pre;
+  overflow-x:auto;
+}
+.timeline-step__time{
+  font-family:var(--font-mono);font-size:11px;
+  color:var(--text-tertiary);
+}
+
+/* ─── APPROVAL QUEUE ─────────────────────────────────────────────────────── */
+.approval-row{cursor:pointer;transition:background var(--t-fast) var(--ease)}
+.approval-row:hover{background:var(--surface-3)}
+.approval-actions{display:flex;gap:6px;align-items:center}
+.age-badge{
+  font-family:var(--font-mono);font-size:11px;
+  padding:2px 6px;border-radius:4px;font-weight:500;
+}
+.age-ok{background:var(--tint-success);color:var(--status-success)}
+.age-warn{background:var(--tint-warning);color:var(--status-warning)}
+.age-err{background:var(--tint-error);color:var(--status-error)}
+
+/* ─── RISK INDICATOR ─────────────────────────────────────────────────────── */
+.risk-bar{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;
+}
+.risk-pips{display:flex;gap:2px}
+.risk-pip{
+  width:4px;height:14px;border-radius:2px;
+  background:var(--surface-4);
+}
+.risk-pip.filled-low{background:var(--status-success)}
+.risk-pip.filled-med{background:var(--status-warning)}
+.risk-pip.filled-high{background:var(--status-error)}
+
+/* ─── POSTURE SCORE ──────────────────────────────────────────────────────── */
+.posture-ring{
+  width:56px;height:56px;flex-shrink:0;
+}
+.posture-ring circle{fill:none;stroke-width:4}
+.posture-ring .track{stroke:var(--surface-4)}
+.posture-ring .fill-ok{stroke:var(--status-success)}
+.posture-ring .fill-warn{stroke:var(--status-warning)}
+.posture-ring .fill-err{stroke:var(--status-error)}
+
+/* ─── KILL SWITCH PANEL ──────────────────────────────────────────────────── */
+.ks-panel{
+  background:var(--surface-2);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.ks-panel__header{
+  background:rgba(245,166,35,.06);
+  border-bottom:1px solid rgba(245,166,35,.2);
+  padding:12px 16px;
+  display:flex;align-items:center;gap:8px;
+}
+.ks-panel__icon{
+  width:24px;height:24px;border-radius:5px;
+  background:rgba(245,166,35,.15);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--status-warning);
+}
+.ks-panel__icon svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ks-panel__title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.ks-panel__status{font-size:11px;color:var(--text-tertiary);margin-left:auto;font-family:var(--font-mono)}
+.ks-panel__body{padding:16px}
+.ks-controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.ks-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:12px 8px;
+  border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  background:var(--surface-3);
+  cursor:pointer;
+  transition:border-color var(--t-fast) var(--ease),background var(--t-fast) var(--ease);
+  text-align:center;
+}
+.ks-btn:hover{background:var(--surface-4);border-color:var(--border-focus)}
+.ks-btn__icon{
+  width:28px;height:28px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:2px;
+}
+.ks-btn__icon svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ks-btn.scope-agent .ks-btn__icon{background:var(--tint-info);color:var(--status-info)}
+.ks-btn.scope-group .ks-btn__icon{background:var(--tint-warning);color:var(--status-warning)}
+.ks-btn.scope-global{border-color:rgba(231,76,60,.3);background:rgba(231,76,60,.04)}
+.ks-btn.scope-global:hover{background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5)}
+.ks-btn.scope-global .ks-btn__icon{background:var(--tint-error);color:var(--status-error)}
+.ks-btn__label{font-size:11px;font-weight:500;color:var(--text-primary)}
+.ks-btn__sub{font-size:10px;color:var(--text-tertiary)}
+.ks-active-list{border-top:1px solid var(--border-subtle);padding-top:12px;margin-top:4px}
+.ks-active-label{
+  font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-tertiary);margin-bottom:8px;
+}
+.ks-active-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  background:var(--surface-3);
+  border:1px solid rgba(231,76,60,.2);
+  border-radius:var(--radius);
+  margin-bottom:6px;font-size:12px;
+}
+.ks-active-item:last-child{margin-bottom:0}
+.ks-active-item__name{color:var(--text-primary);font-weight:500;flex:1}
+.ks-active-item__scope{color:var(--text-tertiary);font-family:var(--font-mono);font-size:11px}
+.ks-active-item__resume{font-size:11px;color:var(--status-success);cursor:pointer;font-weight:500}
+
+/* ─── MODAL OVERLAY ──────────────────────────────────────────────────────── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(12,12,14,.75);
+  backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--surface-2);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  width:440px;max-width:90vw;
+  padding:24px;
+  animation:modal-in var(--t-std) var(--ease);
+}
+@keyframes modal-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal__title{
+  font-size:16px;font-weight:600;color:var(--status-error);
+  margin-bottom:6px;
+  display:flex;align-items:center;gap:8px;
+}
+.modal__title svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.modal__body{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+.modal__impact{
+  background:var(--tint-error);
+  border:1px solid rgba(231,76,60,.25);
+  border-radius:var(--radius);
+  padding:10px 12px;
+  margin-bottom:16px;font-size:12px;
+}
+.modal__impact-row{
+  display:flex;justify-content:space-between;
+  color:var(--text-secondary);margin-bottom:3px;
+}
+.modal__impact-row:last-child{margin-bottom:0}
+.modal__impact-row span:last-child{color:var(--status-error);font-weight:600;font-family:var(--font-mono)}
+.modal__confirm-label{
+  font-size:12px;color:var(--text-secondary);margin-bottom:6px;
+}
+.modal__confirm-label strong{color:var(--text-primary);font-family:var(--font-mono)}
+.modal__input{
+  width:100%;background:var(--surface-3);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius);padding:8px 12px;
+  font:inherit;font-family:var(--font-mono);font-size:13px;
+  color:var(--text-primary);outline:none;
+  margin-bottom:16px;
+  transition:border-color var(--t-fast) var(--ease);
+}
+.modal__input:focus{border-color:var(--status-error)}
+.modal__actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* ─── METRIC TICKER ──────────────────────────────────────────────────────── */
+.ticker-bar{
+  display:flex;align-items:center;gap:0;
+  background:var(--surface-1);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  margin-bottom:20px;
+}
+.ticker-item{
+  flex:1;padding:10px 16px;
+  border-right:1px solid var(--border-subtle);
+}
+.ticker-item:last-child{border-right:none}
+.ticker-item__val{
+  font-family:var(--font-mono);font-size:20px;font-weight:400;
+  color:var(--text-primary);letter-spacing:-0.02em;
+  line-height:1.1;
+}
+.ticker-item__label{font-size:10px;color:var(--text-tertiary);margin-top:2px;text-transform:uppercase;letter-spacing:0.06em}
+
+/* ─── SCREEN VIEWS ───────────────────────────────────────────────────────── */
+.screen{display:none}
+.screen.active{display:block}
+
+/* ─── KEY-VALUE GRID ─────────────────────────────────────────────────────── */
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.kv-pair{
+  padding:8px 14px;border-bottom:1px solid var(--border-subtle);
+}
+.kv-pair:nth-child(odd){border-right:1px solid var(--border-subtle)}
+.kv-pair:last-child,.kv-pair:nth-last-child(2):nth-child(odd){border-bottom:none}
+.kv-key{font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+.kv-val{font-size:12px;color:var(--text-primary);font-family:var(--font-mono)}
+.kv-val.normal{font-family:var(--font-sans)}
+
+/* ─── AGENT GRID ─────────────────────────────────────────────────────────── */
+.agent-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border-subtle);
+  cursor:pointer;
+  transition:background var(--t-fast) var(--ease);
+}
+.agent-row:last-child{border-bottom:none}
+.agent-row:hover{background:var(--surface-3)}
+.agent-avatar{
+  width:32px;height:32px;border-radius:7px;
+  background:rgba(94,106,210,.15);
+  border:1px solid rgba(94,106,210,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  color:var(--accent);flex-shrink:0;
+}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:13px;font-weight:500;color:var(--text-primary);display:flex;align-items:center;gap:6px}
+.agent-id{font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.agent-meta{
+  display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;
+}
+.agent-stat{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);text-align:right}
+
+/* ─── EMPTY STATE ────────────────────────────────────────────────────────── */
+.empty-state{
+  text-align:center;padding:40px 20px;color:var(--text-tertiary);
+}
+.empty-state svg{width:32px;height:32px;stroke:currentColor;fill:none;opacity:.3;margin-bottom:10px;stroke-width:1.2}
+.empty-state p{font-size:13px;margin-bottom:4px;color:var(--text-secondary)}
+.empty-state span{font-size:12px}
+
+/* ─── SKELETON ───────────────────────────────────────────────────────────── */
+.skel{
+  background:linear-gradient(90deg,var(--surface-3) 25%,var(--surface-4) 50%,var(--surface-3) 75%);
+  background-size:200% 100%;
+  animation:skel-wave 1.5s infinite;
+  border-radius:4px;
+}
+@keyframes skel-wave{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ─── FRESHNESS STAMP ────────────────────────────────────────────────────── */
+.freshness{
+  display:flex;align-items:center;gap:4px;
+  font-size:10px;color:var(--text-tertiary);
+  font-family:var(--font-mono);
+}
+.freshness svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ─── POLICY CITATION TOOLTIP ────────────────────────────────────────────── */
+.cite{
+  border-bottom:1px dashed rgba(94,106,210,.5);
+  color:var(--accent);cursor:pointer;
+  position:relative;
+  transition:border-color var(--t-fast) var(--ease);
+}
+.cite:hover{border-color:var(--accent)}
+.cite-tooltip{
+  display:none;
+  position:absolute;bottom:calc(100% + 6px);left:0;
+  width:280px;z-index:200;
+  background:var(--surface-3);
+  border:1px solid var(--border-focus);
+  border-radius:var(--radius-md);
+  padding:10px 12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.cite:hover .cite-tooltip{display:block}
+.cite-tooltip__name{font-size:12px;font-weight:500;color:var(--text-primary);margin-bottom:4px}
+.cite-tooltip__excerpt{font-size:11px;color:var(--text-secondary);line-height:1.5;margin-bottom:6px}
+.cite-tooltip__meta{font-size:10px;color:var(--text-tertiary);font-family:var(--font-mono)}
+
+/* ─── SCROLLABLE SECTION ─────────────────────────────────────────────────── */
+.scroll-section{overflow-y:auto;flex:1}
+
+/* ─── MISC ───────────────────────────────────────────────────────────────── */
+.text-mono{font-family:var(--font-mono)}
+.text-dim{color:var(--text-tertiary)}
+.text-sm{font-size:12px}
+.mt-4{margin-top:4px}.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}
+.flex{display:flex}.items-center{align-items:center}.gap-6{gap:6px}.gap-8{gap:8px}
+.ml-auto{margin-left:auto}
+.w-full{width:100%}
+.hidden{display:none}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  :root { --detail-w: 280px; }
+}
+@media (max-width: 900px) {
+  :root { --sidebar-w: 48px; --detail-w: 0px; }
+  .sidebar__item-label, .sidebar__label, .sidebar__badge,
+  .sidebar__emergency-label, .sidebar__status-row { display: none; }
+  .sidebar__item { justify-content: center; padding: 10px 0; }
+  .sidebar__item-icon { opacity: 1; }
+  .detail-panel { display: none; }
+  .app { grid-template-columns: 48px 1fr 0; }
+}
+@media (max-width: 640px) {
+  :root { --sidebar-w: 0px; --detail-w: 0px; }
+  .sidebar { display: none; }
+  .detail-panel { display: none; }
+  .app { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: 1fr 1fr; }
+  .topnav__breadcrumb { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ─── TOP NAV ─────────────────────────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="topnav__brand">
+    <div class="topnav__logo">
+      <svg viewBox="0 0 12 12"><path d="M6 1L1 4v4l5 3 5-3V4L6 1z"/></svg>
+    </div>
+    <span class="topnav__wordmark">Citadel</span>
+  </div>
+  <div class="topnav__divider"></div>
+  <div class="topnav__nav">
+    <div class="topnav__nav-item active" onclick="switchScreen('overview')">Overview</div>
+    <div class="topnav__nav-item" onclick="switchScreen('agents')">Agents</div>
+    <div class="topnav__nav-item" onclick="switchScreen('policies')">Policies</div>
+    <div class="topnav__nav-item" onclick="switchScreen('approvals')">Approvals <span style="color:var(--status-warning);font-size:11px;margin-left:2px">7</span></div>
+    <div class="topnav__nav-item" onclick="switchScreen('audit')">Audit Log</div>
+  </div>
+  <div class="topnav__right">
+    <div class="topnav__search">
+      <svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+      <span>Search…</span>
+      <span class="topnav__kbd">⌘K</span>
+    </div>
+    <div class="topnav__icon-btn">
+      <svg viewBox="0 0 16 16" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6"><path d="M8 1a5 5 0 0 0-5 5v2l-1 2h12l-1-2V6a5 5 0 0 0-5-5zM6 13a2 2 0 0 0 4 0"/></svg>
+      <div class="topnav__badge"></div>
+    </div>
+    <button class="btn-killswitch" onclick="openKillSwitchModal()">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10v.5" stroke-linecap="round"/></svg>
+      Kill Switch
+    </button>
+    <div class="topnav__avatar">CA</div>
+  </div>
+</nav>
+
+<!-- ─── SIDEBAR ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar__section">
+    <div class="sidebar__label">Command</div>
+    <div class="sidebar__item active" onclick="switchSidebar(this,'overview')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      </div>
+      Overview
+    </div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'agents')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>
+      </div>
+      Active Agents
+      <span class="sidebar__badge info">14</span>
+    </div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'approvals')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><path d="M13 4L6 11 3 8"/></svg>
+      </div>
+      Approval Queue
+      <span class="sidebar__badge">7</span>
+    </div>
+  </div>
+  <div class="sidebar__section">
+    <div class="sidebar__label">Governance</div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'policies')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><path d="M4 1h8l2 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M5 7h6M5 10h4"/></svg>
+      </div>
+      Policy Engine
+    </div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'killswitch')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10v.5" stroke-linecap="round"/></svg>
+      </div>
+      Kill Switch
+      <span class="sidebar__badge error">2</span>
+    </div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'audit')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h8M2 12h5"/></svg>
+      </div>
+      Audit Log
+    </div>
+    <div class="sidebar__item" onclick="switchSidebar(this,'lineage')">
+      <div class="sidebar__item-icon">
+        <svg viewBox="0 0 16 16"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="8" r="2"/><circle cx="4" cy="12" r="2"/><path d="M6 4h4l-2 4M6 12h4l-2-4"/></svg>
+      </div>
+      Decision Lineage
+    </div>
+  </div>
+
+  <!-- System status -->
+  <div class="sidebar__emergency">
+    <div class="sidebar__emergency-label">System Status</div>
+    <div class="sidebar__status-row"><div class="dot dot-live"></div> Kernel online</div>
+    <div class="sidebar__status-row"><div class="dot dot-ok"></div> Policy engine</div>
+    <div class="sidebar__status-row"><div class="dot dot-warn"></div> 2 kill switches active</div>
+    <div class="sidebar__status-row"><div class="dot dot-info"></div> Audit chain verified</div>
+  </div>
+</aside>
+
+<!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ══ OVERVIEW ════════════════════════════════════════════════════════ -->
+  <div id="screen-overview" class="screen active">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Command Center</div>
+        <div class="page-header__sub">
+          <span class="freshness">
+            <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+            Updated 12s ago · Tenant: acme-corp
+          </span>
+        </div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 16 16"><path d="M8 2v4l3 3"/><circle cx="8" cy="8" r="6"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>
+          New Policy
+        </button>
+      </div>
+    </div>
+
+    <!-- Ticker -->
+    <div class="ticker-bar">
+      <div class="ticker-item">
+        <div class="ticker-item__val" id="tick-decisions">24,817</div>
+        <div class="ticker-item__label">Decisions today</div>
+      </div>
+      <div class="ticker-item">
+        <div class="ticker-item__val" style="color:var(--status-success)" id="tick-allowed">23,409</div>
+        <div class="ticker-item__label">Allowed</div>
+      </div>
+      <div class="ticker-item">
+        <div class="ticker-item__val" style="color:var(--status-error)" id="tick-blocked">1,284</div>
+        <div class="ticker-item__label">Blocked</div>
+      </div>
+      <div class="ticker-item">
+        <div class="ticker-item__val" style="color:var(--status-warning)" id="tick-pending">124</div>
+        <div class="ticker-item__label">Pending approval</div>
+      </div>
+      <div class="ticker-item">
+        <div class="ticker-item__val" id="tick-agents">14</div>
+        <div class="ticker-item__label">Active agents</div>
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card" onclick="switchSidebar(null,'agents')">
+        <div class="kpi-card__label">Total Agents Monitored</div>
+        <div class="kpi-card__value">18</div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta up">+2 this week</span>
+          <span>14 active · 3 paused · 1 revoked</span>
+        </div>
+      </div>
+      <div class="kpi-card" onclick="switchSidebar(null,'approvals')">
+        <div class="kpi-card__label">Approval Queue Depth</div>
+        <div class="kpi-card__value warn">7</div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta up" style="background:var(--tint-warning);color:var(--status-warning)">+3 since noon</span>
+          <span>Oldest: <span class="text-mono">4h 12m</span></span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__label">Policy Compliance Rate</div>
+        <div class="kpi-card__value ok">94.8%</div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta down">-0.4% vs. yesterday</span>
+          <span>38 active policies</span>
+        </div>
+      </div>
+      <div class="kpi-card" onclick="switchSidebar(null,'killswitch')">
+        <div class="kpi-card__label">Kill Switches Active</div>
+        <div class="kpi-card__value err">2</div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta down" style="background:var(--tint-error);color:var(--status-error)">AGENT scope</span>
+          <span>pricing-engine-v2, content-mod-03</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__label">Governance Posture Score</div>
+        <div class="kpi-card__value ok">8.7<span style="font-size:16px;color:var(--text-tertiary)">/10</span></div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta flat">Stable</span>
+          <span>3 open findings</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__label">Audit Chain Integrity</div>
+        <div class="kpi-card__value ok info" style="color:var(--status-info)">100%</div>
+        <div class="kpi-card__meta">
+          <span class="kpi-delta flat">All blocks verified</span>
+          <span>Last verified: <span class="text-mono">2m ago</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Decisions -->
+    <div class="section-header">
+      <div class="section-title">
+        <div class="dot dot-live"></div>
+        Recent Decisions
+      </div>
+      <span class="section-link" onclick="switchSidebar(null,'audit')">View all →</span>
+    </div>
+    <div class="data-table-wrap mb-16">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Decision ID</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Path</th>
+            <th>Risk</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="selectDecision(this)" class="active">
+            <td class="td-mono td-link">gd_4f2e1a9c</td>
+            <td><span class="badge badge-ai">⬡ pricing-engine-v2</span></td>
+            <td><span class="text-mono text-sm">api.external_call</span></td>
+            <td><span class="badge badge-success">✓ ALLOWED</span></td>
+            <td><span class="badge badge-neutral">FAST</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-low"></div><div class="risk-pip"></div><div class="risk-pip"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">low</span></div></td>
+            <td class="td-mono text-dim">14:32:07</td>
+          </tr>
+          <tr onclick="selectDecision(this)">
+            <td class="td-mono td-link">gd_8b3c2f11</td>
+            <td><span class="badge badge-neutral">compliance-sentinel</span></td>
+            <td><span class="text-mono text-sm">db.query</span></td>
+            <td><span class="badge badge-warning">⏳ PENDING_APPROVAL</span></td>
+            <td><span class="badge badge-neutral">STANDARD</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">high</span></div></td>
+            <td class="td-mono text-dim">14:31:55</td>
+          </tr>
+          <tr onclick="selectDecision(this)">
+            <td class="td-mono td-link">gd_1d9a7e30</td>
+            <td><span class="badge badge-ai">⬡ content-mod-03</span></td>
+            <td><span class="text-mono text-sm">model.invoke</span></td>
+            <td><span class="badge badge-error">⊗ BLOCKED_EMERGENCY</span></td>
+            <td><span class="badge badge-neutral">BYPASS</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div></div><span style="color:var(--status-error)" class="text-sm">critical</span></div></td>
+            <td class="td-mono text-dim">14:30:18</td>
+          </tr>
+          <tr onclick="selectDecision(this)">
+            <td class="td-mono td-link">gd_9c5b4d22</td>
+            <td><span class="badge badge-neutral">workflow-orchestrator</span></td>
+            <td><span class="text-mono text-sm">file.write</span></td>
+            <td><span class="badge badge-success">✓ EXECUTED</span></td>
+            <td><span class="badge badge-accent">STRUCTURED</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-low"></div><div class="risk-pip filled-low"></div><div class="risk-pip"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">med</span></div></td>
+            <td class="td-mono text-dim">14:29:44</td>
+          </tr>
+          <tr onclick="selectDecision(this)">
+            <td class="td-mono td-link">gd_7f8e2c05</td>
+            <td><span class="badge badge-ai">⬡ audit-agent-01</span></td>
+            <td><span class="text-mono text-sm">report.generate</span></td>
+            <td><span class="badge badge-error">⊗ BLOCKED_POLICY</span></td>
+            <td><span class="badge badge-neutral">STANDARD</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">med</span></div></td>
+            <td class="td-mono text-dim">14:29:01</td>
+          </tr>
+          <tr onclick="selectDecision(this)">
+            <td class="td-mono td-link">gd_2a1b3e88</td>
+            <td><span class="badge badge-neutral">data-pipeline-v3</span></td>
+            <td><span class="text-mono text-sm">data.transform</span></td>
+            <td><span class="badge badge-success">✓ ALLOWED</span></td>
+            <td><span class="badge badge-neutral">FAST</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-low"></div><div class="risk-pip"></div><div class="risk-pip"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">low</span></div></td>
+            <td class="td-mono text-dim">14:28:33</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ AGENTS ══════════════════════════════════════════════════════════ -->
+  <div id="screen-agents" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Active Agents</div>
+        <div class="page-header__sub">14 active · 3 suspended · 1 revoked</div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-ghost btn-sm">Register Agent</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <div class="filter-bar">
+        <input class="filter-search" placeholder="Filter by name, ID, or model…">
+        <div class="filter-chip active">Status: Active <span class="filter-chip__x">×</span></div>
+        <div class="filter-chip">Trust: Standard</div>
+        <div class="filter-chip">Model: All</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Agent</th><th>Type</th><th>Trust</th><th>Decisions (24h)</th><th>Compliance</th><th>Health</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">PE</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">pricing-engine-v2</div><div class="td-mono text-dim" style="font-size:11px">agt_4f2e1a9c3b</div></div></div></td>
+            <td><span class="badge badge-ai">AGENT</span></td>
+            <td><span class="badge badge-success">standard</span></td>
+            <td class="td-mono">4,217</td>
+            <td><span style="color:var(--status-success);font-weight:500">97.2%</span></td>
+            <td><span style="color:var(--status-success)">●</span> <span style="font-size:12px">0.94</span></td>
+            <td><span class="badge badge-error">KILL SWITCH</span></td>
+          </tr>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">CS</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">compliance-sentinel</div><div class="td-mono text-dim" style="font-size:11px">agt_8b3c2f1107</div></div></div></td>
+            <td><span class="badge badge-ai">AGENT</span></td>
+            <td><span class="badge badge-success">verified</span></td>
+            <td class="td-mono">9,043</td>
+            <td><span style="color:var(--status-success);font-weight:500">99.1%</span></td>
+            <td><span style="color:var(--status-success)">●</span> <span style="font-size:12px">0.99</span></td>
+            <td><span class="badge badge-info">ACTIVE</span></td>
+          </tr>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">CM</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">content-mod-03</div><div class="td-mono text-dim" style="font-size:11px">agt_1d9a7e30ff</div></div></div></td>
+            <td><span class="badge badge-ai">AGENT</span></td>
+            <td><span class="badge badge-neutral">standard</span></td>
+            <td class="td-mono">1,881</td>
+            <td><span style="color:var(--status-warning);font-weight:500">81.3%</span></td>
+            <td><span style="color:var(--status-warning)">●</span> <span style="font-size:12px">0.61</span></td>
+            <td><span class="badge badge-error">KILL SWITCH</span></td>
+          </tr>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">WO</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">workflow-orchestrator</div><div class="td-mono text-dim" style="font-size:11px">agt_9c5b4d2214</div></div></div></td>
+            <td><span class="badge badge-neutral">WORKFLOW</span></td>
+            <td><span class="badge badge-success">verified</span></td>
+            <td class="td-mono">6,712</td>
+            <td><span style="color:var(--status-success);font-weight:500">98.4%</span></td>
+            <td><span style="color:var(--status-success)">●</span> <span style="font-size:12px">0.97</span></td>
+            <td><span class="badge badge-info">ACTIVE</span></td>
+          </tr>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">AA</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">audit-agent-01</div><div class="td-mono text-dim" style="font-size:11px">agt_7f8e2c05a3</div></div></div></td>
+            <td><span class="badge badge-ai">AGENT</span></td>
+            <td><span class="badge badge-success">verified</span></td>
+            <td class="td-mono">2,509</td>
+            <td><span style="color:var(--status-warning);font-weight:500">88.7%</span></td>
+            <td><span style="color:var(--status-info)">●</span> <span style="font-size:12px">0.82</span></td>
+            <td><span class="badge badge-info">ACTIVE</span></td>
+          </tr>
+          <tr onclick="selectAgent(this)">
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar">DP</div><div><div style="font-size:13px;font-weight:500;color:var(--text-primary)">data-pipeline-v3</div><div class="td-mono text-dim" style="font-size:11px">agt_2a1b3e88cc</div></div></div></td>
+            <td><span class="badge badge-neutral">SERVICE</span></td>
+            <td><span class="badge badge-success">standard</span></td>
+            <td class="td-mono">11,204</td>
+            <td><span style="color:var(--status-success);font-weight:500">99.7%</span></td>
+            <td><span style="color:var(--status-success)">●</span> <span style="font-size:12px">0.99</span></td>
+            <td><span class="badge badge-info">ACTIVE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ APPROVALS ═══════════════════════════════════════════════════════ -->
+  <div id="screen-approvals" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Approval Queue</div>
+        <div class="page-header__sub">7 pending · SLA: 2 critical, 3 high, 2 medium</div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-ghost btn-sm">Bulk Assign</button>
+        <button class="btn btn-success btn-sm">Approve Selected</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <div class="filter-bar">
+        <input class="filter-search" placeholder="Search by action, actor, policy…">
+        <div class="filter-chip active">Priority: All <span class="filter-chip__x">×</span></div>
+        <div class="filter-chip">Assigned: Me</div>
+        <div class="filter-chip">Age: Oldest first</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:30px"><input type="checkbox" style="accent-color:var(--accent)"></th><th>Request</th><th>Actor</th><th>Action</th><th>Priority</th><th>Risk</th><th>Age</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr class="approval-row" onclick="selectApproval(this)">
+            <td><input type="checkbox" style="accent-color:var(--accent)"></td>
+            <td>
+              <div class="td-primary">Deploy policy to prod</div>
+              <div class="td-mono text-dim" style="font-size:11px">apr_3c4d1e2f · <span class="cite">PII Data Handling v2.1<span class="cite-tooltip"><div class="cite-tooltip__name">PII Data Handling v2.1 §4.3</div><div class="cite-tooltip__excerpt">Production deployments require senior engineer approval when policy affects PII processing scope…</div><div class="cite-tooltip__meta">Effective 2026-01-15 · SOC2 CC6.1</div></span></span></div>
+            </td>
+            <td><span class="badge badge-neutral">compliance-sentinel</span></td>
+            <td class="td-mono" style="font-size:12px">policy.deploy</td>
+            <td><span class="badge badge-error">CRITICAL</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div></div><span style="color:var(--status-error)" class="text-sm">critical</span></div></td>
+            <td><span class="age-badge age-err">4h 12m</span></td>
+            <td><div class="approval-actions"><button class="btn btn-success btn-sm">Approve</button><button class="btn btn-danger btn-sm">Reject</button></div></td>
+          </tr>
+          <tr class="approval-row" onclick="selectApproval(this)">
+            <td><input type="checkbox" style="accent-color:var(--accent)"></td>
+            <td>
+              <div class="td-primary">Access EU citizen PII</div>
+              <div class="td-mono text-dim" style="font-size:11px">apr_9e7f3b41 · <span class="cite">EU AI Act Art. 14<span class="cite-tooltip"><div class="cite-tooltip__name">EU AI Act Article 14 — Human Oversight</div><div class="cite-tooltip__excerpt">High-risk AI systems shall be designed and developed in such a way that natural persons can oversee their functioning…</div><div class="cite-tooltip__meta">Regulation (EU) 2024/1689 · Effective 2026-08-02</div></span></span></div>
+            </td>
+            <td><span class="badge badge-ai">⬡ audit-agent-01</span></td>
+            <td class="td-mono" style="font-size:12px">db.query</td>
+            <td><span class="badge badge-error">CRITICAL</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div><div class="risk-pip filled-high"></div></div><span style="color:var(--status-error)" class="text-sm">critical</span></div></td>
+            <td><span class="age-badge age-err">3h 58m</span></td>
+            <td><div class="approval-actions"><button class="btn btn-success btn-sm">Approve</button><button class="btn btn-danger btn-sm">Reject</button></div></td>
+          </tr>
+          <tr class="approval-row" onclick="selectApproval(this)">
+            <td><input type="checkbox" style="accent-color:var(--accent)"></td>
+            <td>
+              <div class="td-primary">External API write operation</div>
+              <div class="td-mono text-dim" style="font-size:11px">apr_5a2c9d76 · <span class="cite">Rate Limit Policy v1.4<span class="cite-tooltip"><div class="cite-tooltip__name">Rate Limit Policy v1.4 §2.1</div><div class="cite-tooltip__excerpt">External API calls exceeding 1000/hr per agent require explicit approval from the service owner…</div><div class="cite-tooltip__meta">Effective 2025-11-01 · Internal Ops</div></span></span></div>
+            </td>
+            <td><span class="badge badge-ai">⬡ pricing-engine-v2</span></td>
+            <td class="td-mono" style="font-size:12px">api.external_write</td>
+            <td><span class="badge badge-warning">HIGH</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">high</span></div></td>
+            <td><span class="age-badge age-warn">1h 23m</span></td>
+            <td><div class="approval-actions"><button class="btn btn-success btn-sm">Approve</button><button class="btn btn-danger btn-sm">Reject</button></div></td>
+          </tr>
+          <tr class="approval-row" onclick="selectApproval(this)">
+            <td><input type="checkbox" style="accent-color:var(--accent)"></td>
+            <td>
+              <div class="td-primary">Model inference on sensitive data</div>
+              <div class="td-mono text-dim" style="font-size:11px">apr_6b1e4c98</div>
+            </td>
+            <td><span class="badge badge-neutral">workflow-orchestrator</span></td>
+            <td class="td-mono" style="font-size:12px">model.invoke</td>
+            <td><span class="badge badge-warning">HIGH</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">high</span></div></td>
+            <td><span class="age-badge age-warn">0h 47m</span></td>
+            <td><div class="approval-actions"><button class="btn btn-success btn-sm">Approve</button><button class="btn btn-danger btn-sm">Reject</button></div></td>
+          </tr>
+          <tr class="approval-row" onclick="selectApproval(this)">
+            <td><input type="checkbox" style="accent-color:var(--accent)"></td>
+            <td>
+              <div class="td-primary">Batch export audit records</div>
+              <div class="td-mono text-dim" style="font-size:11px">apr_0d3f7a52</div>
+            </td>
+            <td><span class="badge badge-ai">⬡ audit-agent-01</span></td>
+            <td class="td-mono" style="font-size:12px">audit.export</td>
+            <td><span class="badge badge-warning">HIGH</span></td>
+            <td><div class="risk-bar"><div class="risk-pips"><div class="risk-pip filled-low"></div><div class="risk-pip filled-med"></div><div class="risk-pip filled-med"></div><div class="risk-pip"></div></div><span class="text-dim text-sm">high</span></div></td>
+            <td><span class="age-badge age-ok">0h 18m</span></td>
+            <td><div class="approval-actions"><button class="btn btn-success btn-sm">Approve</button><button class="btn btn-danger btn-sm">Reject</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ POLICIES ═════════════════════════════════════════════════════════ -->
+  <div id="screen-policies" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Policy Engine</div>
+        <div class="page-header__sub">38 active · 4 draft · 2 retired</div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>
+          New Policy
+        </button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Policy</th><th>Framework</th><th>Severity</th><th>Violations (7d)</th><th>Coverage</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="td-primary td-link" onclick="selectPolicy()">PII Data Handling v2.1</td><td><span class="badge badge-accent">SOC2</span></td><td><span class="badge badge-error">CRITICAL</span></td><td class="td-mono" style="color:var(--status-error)">14</td><td><span style="color:var(--status-success)">100%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">EU AI Act Art. 14 Compliance</td><td><span class="badge badge-accent">EU AI Act</span></td><td><span class="badge badge-error">CRITICAL</span></td><td class="td-mono" style="color:var(--status-warning)">3</td><td><span style="color:var(--status-success)">97%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">Rate Limit Policy v1.4</td><td><span class="badge badge-neutral">Internal</span></td><td><span class="badge badge-warning">HIGH</span></td><td class="td-mono">8</td><td><span style="color:var(--status-success)">100%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">NIST AI RMF — Govern 1.1</td><td><span class="badge badge-accent">NIST</span></td><td><span class="badge badge-warning">HIGH</span></td><td class="td-mono">0</td><td><span style="color:var(--status-warning)">84%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">Schema Validation v3.0</td><td><span class="badge badge-neutral">Internal</span></td><td><span class="badge badge-neutral">MEDIUM</span></td><td class="td-mono">29</td><td><span style="color:var(--status-success)">100%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">Output Toxicity Filter</td><td><span class="badge badge-neutral">Internal</span></td><td><span class="badge badge-warning">HIGH</span></td><td class="td-mono" style="color:var(--status-warning)">7</td><td><span style="color:var(--status-success)">100%</span></td><td><span class="badge badge-success">ACTIVE</span></td></tr>
+          <tr><td class="td-primary td-link">Reversibility Check v1.0</td><td><span class="badge badge-neutral">Internal</span></td><td><span class="badge badge-error">CRITICAL</span></td><td class="td-mono">1</td><td><span style="color:var(--status-warning)">91%</span></td><td><span class="badge badge-info">DRAFT</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ KILL SWITCH ══════════════════════════════════════════════════════ -->
+  <div id="screen-killswitch" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Kill Switch Control</div>
+        <div class="page-header__sub">Emergency runtime intervention · 2 switches active</div>
+      </div>
+    </div>
+
+    <div class="ks-panel">
+      <div class="ks-panel__header">
+        <div class="ks-panel__icon">
+          <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10v.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="ks-panel__title">Emergency Runtime Controls</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:1px">All actions require confirmation and are logged with full attribution</div>
+        </div>
+        <div class="ks-panel__status">2 active · Updated 4m ago</div>
+      </div>
+      <div class="ks-panel__body">
+        <div class="ks-controls">
+          <div class="ks-btn scope-agent" onclick="showKSConfirm('agent')">
+            <div class="ks-btn__icon">
+              <svg viewBox="0 0 16 16"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>
+            </div>
+            <div class="ks-btn__label">Pause Agent</div>
+            <div class="ks-btn__sub">Single agent scope</div>
+          </div>
+          <div class="ks-btn scope-group" onclick="showKSConfirm('group')">
+            <div class="ks-btn__icon">
+              <svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+            </div>
+            <div class="ks-btn__label">Pause Policy Group</div>
+            <div class="ks-btn__sub">Group scope</div>
+          </div>
+          <div class="ks-btn scope-global" onclick="openKillSwitchModal()">
+            <div class="ks-btn__icon">
+              <svg viewBox="0 0 16 16"><path d="M8 1v7M4.5 3a6 6 0 1 0 7 0"/></svg>
+            </div>
+            <div class="ks-btn__label" style="color:var(--status-error)">Emergency Pause All</div>
+            <div class="ks-btn__sub" style="color:var(--status-error)">Global · requires confirmation</div>
+          </div>
+        </div>
+
+        <div class="ks-active-list">
+          <div class="ks-active-label">Active Kill Switches</div>
+          <div class="ks-active-item">
+            <div class="dot dot-err" style="width:8px;height:8px;flex-shrink:0"></div>
+            <div class="ks-active-item__name">pricing-engine-v2</div>
+            <div class="ks-active-item__scope">AGENT · activated 2h 14m ago</div>
+            <div class="ks-active-item__resume" onclick="resumeAgent()">Resume →</div>
+          </div>
+          <div class="ks-active-item">
+            <div class="dot dot-err" style="width:8px;height:8px;flex-shrink:0"></div>
+            <div class="ks-active-item__name">content-mod-03</div>
+            <div class="ks-active-item__scope">AGENT · activated 0h 47m ago</div>
+            <div class="ks-active-item__resume">Resume →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent activations log -->
+    <div class="section-header mt-16">
+      <div class="section-title">Activation History</div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Event</th><th>Scope</th><th>Activated By</th><th>Reason</th><th>Duration</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="td-mono td-primary">ks_9f2e3c11</td><td><span class="badge badge-error">AGENT</span></td><td class="td-primary">Carlos A.</td><td style="font-size:12px;max-width:180px">High error rate — policy violation rate exceeded 18%</td><td class="td-mono">2h 14m</td><td><span class="badge badge-error">ACTIVE</span></td></tr>
+          <tr><td class="td-mono td-primary">ks_7b1d4a09</td><td><span class="badge badge-error">AGENT</span></td><td class="td-primary">System</td><td style="font-size:12px;max-width:180px">Emergency block — output contained PII pattern</td><td class="td-mono">0h 47m</td><td><span class="badge badge-error">ACTIVE</span></td></tr>
+          <tr><td class="td-mono">ks_5c3e1f88</td><td><span class="badge badge-warning">TENANT</span></td><td>Elena M.</td><td style="font-size:12px;max-width:180px">Maintenance window — schema migration</td><td class="td-mono">3h 00m</td><td><span class="badge badge-success">RESOLVED</span></td></tr>
+          <tr><td class="td-mono">ks_2a0e9b77</td><td><span class="badge badge-neutral">AGENT</span></td><td>System</td><td style="font-size:12px;max-width:180px">Rate limit exceeded — 1,240 req/min threshold</td><td class="td-mono">0h 12m</td><td><span class="badge badge-success">RESOLVED</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ DECISION LINEAGE ══════════════════════════════════════════════════ -->
+  <div id="screen-lineage" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Decision Lineage</div>
+        <div class="page-header__sub"><span class="td-mono">gd_8b3c2f11 · compliance-sentinel · db.query</span></div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 16 16"><path d="M3 8h10M8 3v10"/><rect x="2" y="2" width="12" height="12" rx="2"/></svg>
+          Export Evidence Packet
+        </button>
+      </div>
+    </div>
+    <div class="data-table-wrap" style="padding:0">
+      <div class="timeline">
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node info">
+              <svg viewBox="0 0 16 16"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+            </div>
+            <div class="timeline-step__line"></div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Action Received
+              <span class="badge badge-info">INPUT</span>
+              <span class="timeline-step__time">14:31:55.001</span>
+            </div>
+            <div class="text-dim text-sm">Actor: <strong style="color:var(--text-secondary)">compliance-sentinel</strong> · Type: AGENT · Idempotency: <span class="text-mono">idk_3c9e1a4b</span></div>
+            <div class="timeline-step__detail">action_id: 8b3c2f1107dd
+actor_id:  agt_8b3c2f1107
+action:    db.query
+resource:  postgres://prod-eu/users
+payload:   {"table":"users","filter":{"region":"EU"},"fields":["id","email","consent_ts"]}</div>
+          </div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node ok">
+              <svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>
+            </div>
+            <div class="timeline-step__line"></div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Schema Validation Passed
+              <span class="badge badge-success">PASS</span>
+              <span class="timeline-step__time">14:31:55.018</span>
+            </div>
+            <div class="text-dim text-sm">Policy: <span class="cite">Schema Validation v3.0<span class="cite-tooltip"><div class="cite-tooltip__name">Schema Validation v3.0 §1.0</div><div class="cite-tooltip__excerpt">All action payloads must conform to registered JSON Schema for their action name…</div><div class="cite-tooltip__meta">Internal · Effective 2025-09-01</div></span></span> · Latency: <span class="text-mono">17ms</span></div>
+          </div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node ok">
+              <svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>
+            </div>
+            <div class="timeline-step__line"></div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Kill Switch Checked
+              <span class="badge badge-success">CLEAR</span>
+              <span class="timeline-step__time">14:31:55.024</span>
+            </div>
+            <div class="text-dim text-sm">No active kill switch for agent · <span class="text-mono">agt_8b3c2f1107</span> · Tenant scope clear</div>
+          </div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node warn">
+              <svg viewBox="0 0 16 16"><path d="M8 3v5M8 10v.5" stroke-linecap="round"/><path d="M8 1L1 14h14L8 1z"/></svg>
+            </div>
+            <div class="timeline-step__line"></div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Risk Assessment — HIGH
+              <span class="badge badge-warning">HIGH RISK</span>
+              <span class="timeline-step__time">14:31:55.041</span>
+            </div>
+            <div class="text-dim text-sm">Risk score: <strong style="color:var(--status-warning);font-family:var(--font-mono)">72/100</strong> · Path: HIGH_RISK · Trigger: EU citizen data + bulk query</div>
+            <div class="timeline-step__detail">risk_factors:
+  - eu_citizen_data: true  (+35 pts)
+  - bulk_query: true       (+20 pts)
+  - sensitive_fields: true (+17 pts)
+path_selected: HIGH_RISK → REQUIRE_APPROVAL</div>
+          </div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node warn">
+              <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v4M8 11v.5"/></svg>
+            </div>
+            <div class="timeline-step__line"></div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Approval Requested
+              <span class="badge badge-warning">PENDING</span>
+              <span class="timeline-step__time">14:31:55.059</span>
+            </div>
+            <div class="text-dim text-sm">Approval ID: <span class="text-mono">apr_9e7f3b41</span> · SLA: <strong style="color:var(--status-error)">CRITICAL (5 min)</strong> · Assigned: unassigned · Age: <strong style="color:var(--status-error)">3h 58m</strong></div>
+          </div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-step__connector">
+            <div class="timeline-step__node neu">
+              <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="currentColor" opacity=".3"/></svg>
+            </div>
+          </div>
+          <div class="timeline-step__body">
+            <div class="timeline-step__title">
+              Awaiting Human Decision
+              <span class="badge badge-neutral">BLOCKED</span>
+              <span class="timeline-step__time">—</span>
+            </div>
+            <div class="text-dim text-sm">Execution blocked until approval granted · <button class="btn btn-success btn-sm" style="display:inline-flex;margin-left:4px">Approve Now</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AUDIT LOG ════════════════════════════════════════════════════════ -->
+  <div id="screen-audit" class="screen">
+    <div class="page-header">
+      <div>
+        <div class="page-header__title">Audit Explorer</div>
+        <div class="page-header__sub">Cryptographic hash chain · fully tamper-evident · 1,247 events today</div>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 16 16"><path d="M8 1v10M4 8l4 4 4-4M2 14h12"/></svg>
+          Export CSV
+        </button>
+        <button class="btn btn-ghost btn-sm">Verify Chain</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <div class="filter-bar">
+        <input class="filter-search" placeholder="Search events, actors, decisions…" style="flex:1;min-width:200px">
+        <div class="filter-chip active">Today <span class="filter-chip__x">×</span></div>
+        <div class="filter-chip">Event: All</div>
+        <div class="filter-chip">Actor: All</div>
+        <div class="filter-chip">Severity: All</div>
+        <div class="filter-chip">Policy: Any</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Event ID</th><th>Timestamp</th><th>Event Type</th><th>Actor</th><th>Resource</th><th>Outcome</th><th>Hash</th></tr>
+        </thead>
+        <tbody>
+          <tr onclick="selectAudit(this)" class="active">
+            <td class="td-mono td-link">evt_8f3a1c09</td>
+            <td class="td-mono text-dim">14:32:07.441</td>
+            <td><span class="badge badge-success">DECISION_MADE</span></td>
+            <td><span class="badge badge-ai">⬡ pricing-engine</span></td>
+            <td class="td-mono" style="font-size:12px">api.external_call</td>
+            <td><span class="badge badge-success">ALLOWED</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">a3f9…c1e4</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_7c2b0d44</td>
+            <td class="td-mono text-dim">14:32:05.811</td>
+            <td><span class="badge badge-info">RISK_ASSESSED</span></td>
+            <td><span class="badge badge-ai">⬡ compliance-sentinel</span></td>
+            <td class="td-mono" style="font-size:12px">db.query</td>
+            <td><span class="badge badge-warning">HIGH_RISK</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">b2e1…9d7a</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_6a1e9c33</td>
+            <td class="td-mono text-dim">14:31:58.203</td>
+            <td><span class="badge badge-warning">APPROVAL_REQUESTED</span></td>
+            <td><span class="badge badge-neutral">System</span></td>
+            <td class="td-mono" style="font-size:12px">apr_9e7f3b41</td>
+            <td><span class="badge badge-warning">PENDING</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">c4d7…8a2f</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_5f0d8b22</td>
+            <td class="td-mono text-dim">14:30:18.099</td>
+            <td><span class="badge badge-error">KILL_SWITCH_CHECKED</span></td>
+            <td><span class="badge badge-ai">⬡ content-mod-03</span></td>
+            <td class="td-mono" style="font-size:12px">model.invoke</td>
+            <td><span class="badge badge-error">BLOCKED_EMERGENCY</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">d9f2…3c1b</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_4e9c7a11</td>
+            <td class="td-mono text-dim">14:30:14.447</td>
+            <td><span class="badge badge-error">KILL_SWITCH_ACTIVATED</span></td>
+            <td><span class="badge badge-neutral">Carlos A.</span></td>
+            <td class="td-mono" style="font-size:12px">agt_1d9a7e30ff</td>
+            <td><span class="badge badge-error">BLOCKED</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">e1a8…7b3c</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_3d8b6f00</td>
+            <td class="td-mono text-dim">14:29:44.881</td>
+            <td><span class="badge badge-success">ACTION_EXECUTED</span></td>
+            <td><span class="badge badge-neutral">workflow-orch</span></td>
+            <td class="td-mono" style="font-size:12px">file.write</td>
+            <td><span class="badge badge-success">EXECUTED</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">f4c9…2e8d</td>
+          </tr>
+          <tr onclick="selectAudit(this)">
+            <td class="td-mono td-link">evt_2c7a5e99</td>
+            <td class="td-mono text-dim">14:29:01.554</td>
+            <td><span class="badge badge-error">POLICY_EVALUATED</span></td>
+            <td><span class="badge badge-ai">⬡ audit-agent-01</span></td>
+            <td class="td-mono" style="font-size:12px">report.generate</td>
+            <td><span class="badge badge-error">BLOCKED_POLICY</span></td>
+            <td class="td-mono text-dim" style="font-size:10px">a7f3…5d1c</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── DETAIL PANEL ───────────────────────────────────────────────────── -->
+<aside class="detail" id="detail-panel">
+  <!-- Decision detail (default) -->
+  <div id="detail-decision">
+    <div class="detail__header">
+      <div>
+        <div class="detail__title">Decision · <span class="td-mono" style="font-size:12px">gd_4f2e1a9c</span></div>
+        <div class="detail__subtitle">pricing-engine-v2 · api.external_call</div>
+      </div>
+      <div class="detail__close">
+        <svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </div>
+    </div>
+    <div style="padding:12px 14px;border-bottom:1px solid var(--border-subtle)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge badge-success">✓ ALLOWED</span>
+        <span class="badge badge-neutral">FAST path</span>
+        <span class="badge badge-neutral">low risk</span>
+      </div>
+    </div>
+    <div class="kv-grid">
+      <div class="kv-pair"><div class="kv-key">Decision ID</div><div class="kv-val">gd_4f2e1a9c</div></div>
+      <div class="kv-pair"><div class="kv-key">Action ID</div><div class="kv-val">act_3f1b7e2d</div></div>
+      <div class="kv-pair"><div class="kv-key">Timestamp</div><div class="kv-val">14:32:07 UTC</div></div>
+      <div class="kv-pair"><div class="kv-key">Risk Score</div><div class="kv-val" style="color:var(--status-success)">12/100</div></div>
+      <div class="kv-pair"><div class="kv-key">Winning Rule</div><div class="kv-val normal" style="font-family:var(--font-sans);font-size:11px">Rate Limit Policy v1.4 §1.1</div></div>
+      <div class="kv-pair"><div class="kv-key">Path Taken</div><div class="kv-val">FAST</div></div>
+      <div class="kv-pair"><div class="kv-key">Latency</div><div class="kv-val">4ms</div></div>
+      <div class="kv-pair"><div class="kv-key">Token</div><div class="kv-val">gt_cap_9f2e…</div></div>
+    </div>
+
+    <div style="padding:12px 14px;border-bottom:1px solid var(--border-subtle)">
+      <div class="section-title mb-8">Activity</div>
+      <div class="feed">
+        <div class="feed-item">
+          <div class="feed-item__avatar system">⚙</div>
+          <div class="feed-item__content">
+            <div class="feed-item__row">
+              <span class="feed-item__actor">Kernel</span>
+              <span class="feed-item__action">allowed action</span>
+              <span class="feed-item__target">api.external_call</span>
+            </div>
+            <div class="feed-item__meta"><span class="feed-item__time">14:32:07</span><span class="badge badge-success" style="font-size:10px">FAST path</span></div>
+          </div>
+        </div>
+        <div class="feed-item ai-expanded">
+          <div class="feed-item__avatar agent">AI</div>
+          <div class="feed-item__content">
+            <div class="feed-item__row">
+              <span class="feed-item__actor" style="color:var(--accent-ai)">Citadel Sentinel</span>
+              <span class="feed-item__action">evaluated risk</span>
+            </div>
+            <div class="feed-item__detail">risk_score: 12
+path: FAST
+reasoning: trusted actor + low-risk action +
+           within rate limits + no PII fields</div>
+            <div class="feed-item__meta"><span class="feed-item__time">14:32:07</span></div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-item__avatar system">⚙</div>
+          <div class="feed-item__content">
+            <div class="feed-item__row">
+              <span class="feed-item__actor">Policy Engine</span>
+              <span class="feed-item__action">matched rule</span>
+              <span class="feed-item__target">Rate Limit §1.1</span>
+            </div>
+            <div class="feed-item__meta"><span class="feed-item__time">14:32:07</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:12px 14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm w-full" style="justify-content:center" onclick="switchSidebar(null,'lineage')">View Full Lineage →</button>
+        <button class="btn btn-ghost btn-sm w-full" style="justify-content:center;margin-top:4px">Export Evidence Packet</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app -->
+
+<!-- ─── KILL SWITCH MODAL ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="ks-modal">
+  <div class="modal">
+    <div class="modal__title">
+      <svg viewBox="0 0 16 16"><path d="M8 1v7M4.5 3a6 6 0 1 0 7 0"/></svg>
+      Emergency Pause All
+    </div>
+    <div class="modal__body">
+      This will immediately halt execution for <strong>all 14 active agents</strong> across all policy groups. Ongoing actions will be blocked; pending approvals will be queued.
+    </div>
+    <div class="modal__impact">
+      <div class="modal__impact-row"><span>Active agents affected</span><span>14</span></div>
+      <div class="modal__impact-row"><span>Pending actions blocked</span><span>~847</span></div>
+      <div class="modal__impact-row"><span>Estimated recovery time</span><span>Manual</span></div>
+      <div class="modal__impact-row"><span>Audit entries created</span><span>1 + 14</span></div>
+    </div>
+    <div class="modal__confirm-label">
+      Type <strong>PAUSE ALL</strong> to confirm
+    </div>
+    <input class="modal__input" id="ks-confirm-input" placeholder="PAUSE ALL" oninput="checkKSConfirm(this)">
+    <div class="modal__actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="ks-confirm-btn" disabled onclick="executeKillSwitch()">Pause All Agents</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── NAVIGATION ─────────────────────────────────────────────────────── */
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + id);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.topnav__nav-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function switchSidebar(el, id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById('screen-' + id);
+  if (screen) screen.classList.add('active');
+  document.querySelectorAll('.sidebar__item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  // sync topnav
+  document.querySelectorAll('.topnav__nav-item').forEach(i => i.classList.remove('active'));
+}
+
+/* ─── SELECTION ──────────────────────────────────────────────────────── */
+function selectDecision(row) {
+  document.querySelectorAll('.data-table tbody tr').forEach(r => r.classList.remove('active'));
+  row.classList.add('active');
+}
+function selectAgent(row) { selectDecision(row); }
+function selectApproval(row) { selectDecision(row); }
+function selectAudit(row) { selectDecision(row); }
+function selectPolicy() {}
+
+/* ─── KILL SWITCH ────────────────────────────────────────────────────── */
+function openKillSwitchModal() {
+  document.getElementById('ks-modal').classList.add('open');
+  document.getElementById('ks-confirm-input').value = '';
+  document.getElementById('ks-confirm-btn').disabled = true;
+}
+function closeModal() {
+  document.getElementById('ks-modal').classList.remove('open');
+}
+function checkKSConfirm(input) {
+  document.getElementById('ks-confirm-btn').disabled = input.value !== 'PAUSE ALL';
+}
+function executeKillSwitch() {
+  closeModal();
+  alert('Kill switch activated. All agents paused. Event logged to audit chain.');
+}
+function showKSConfirm(scope) {
+  const labels = { agent: 'Pause specific agent?', group: 'Pause policy group?' };
+  alert(labels[scope] || 'Confirm action');
+}
+function resumeAgent() {
+  alert('Resume signal sent. Agent will return to ACTIVE state after policy check.');
+}
+
+/* ─── LIVE TICKER ────────────────────────────────────────────────────── */
+function randomIncrement(id, max) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const current = parseInt(el.textContent.replace(/,/g,''));
+  const next = current + Math.floor(Math.random() * max);
+  el.textContent = next.toLocaleString();
+}
+setInterval(() => {
+  randomIncrement('tick-decisions', 4);
+  randomIncrement('tick-allowed', 3);
+  if (Math.random() > 0.5) randomIncrement('tick-blocked', 1);
+  if (Math.random() > 0.7) randomIncrement('tick-pending', 1);
+}, 2800);
+
+/* ─── MODAL ESC ──────────────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+document.getElementById('ks-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+</script>
+
+<script>
+(function initDashboardMotion() {
+  const ease = 'cubic-bezier(0.22,1,0.36,1)';
+
+  /* ── Shell entrance — staggered panels sliding in ─────────────────── */
+  function fadeIn(el, delay, dir) {
+    if (!el) return;
+    const from = dir === 'down'  ? 'translateY(-12px)'
+               : dir === 'left'  ? 'translateX(-16px)'
+               : dir === 'right' ? 'translateX(16px)'
+               : dir === 'up'    ? 'translateY(12px)'
+               :                   'translateY(0)';
+    el.style.cssText += `opacity:0;transform:${from};transition:opacity 0.55s ${ease} ${delay}ms,transform 0.55s ${ease} ${delay}ms;`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    }));
+  }
+
+  // Shell layers
+  fadeIn(document.querySelector('.topnav'),   0,   'down');
+  fadeIn(document.querySelector('.sidebar'),  60,  'left');
+  fadeIn(document.querySelector('.main'),     120, 'up');
+
+  // Detail panel if present
+  fadeIn(document.querySelector('.detail-panel'), 180, 'right');
+
+  // Page header
+  fadeIn(document.querySelector('.page-header'), 180, 'up');
+
+  // Ticker bar
+  document.querySelectorAll('.ticker-item').forEach((el, i) =>
+    fadeIn(el, 220 + i * 45, 'up'));
+
+  // KPI cards stagger
+  document.querySelectorAll('.kpi-card').forEach((el, i) =>
+    fadeIn(el, 300 + i * 60, 'up'));
+
+  // Sidebar items stagger
+  document.querySelectorAll('.sidebar__item').forEach((el, i) =>
+    fadeIn(el, 80 + i * 18, 'left'));
+
+  // Decisions table rows
+  document.querySelectorAll('#screen-decisions .data-table tbody tr').forEach((el, i) =>
+    fadeIn(el, 500 + i * 40, 'up'));
+
+  // Section header
+  fadeIn(document.querySelector('.section-header'), 480, 'up');
+
+  /* ── Kill switch button pulse ─────────────────────────────────────── */
+  const ksBtn = document.querySelector('.btn-killswitch');
+  if (ksBtn) ksBtn.classList.add('ks-armed');
+
+  /* ── Approval rows slide in when switching to that screen ─────────── */
+  const origSwitchSidebar = window.switchSidebar;
+  window.switchSidebar = function(page, panel) {
+    if (typeof origSwitchSidebar === 'function') origSwitchSidebar(page, panel);
+    if (panel === 'approvals') {
+      requestAnimationFrame(() => {
+        document.querySelectorAll('#screen-approvals .approval-row').forEach((el, i) => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(10px)';
+          el.style.transition = `opacity 0.4s ${ease} ${i * 45}ms, transform 0.4s ${ease} ${i * 45}ms`;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+          }));
+        });
+      });
+    }
+  };
+
+  /* ── Live ticker count animation (countUp on load) ─────────────────── */
+  function countUp(id, target, duration) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const start = performance.now();
+    el.textContent = '0';
+    function step(now) {
+      const p   = Math.min((now - start) / duration, 1);
+      const val = Math.floor((1 - Math.pow(1 - p, 3)) * target);
+      el.textContent = val.toLocaleString();
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = target.toLocaleString();
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Delay countUps until ticker is visible
+  setTimeout(() => {
+    countUp('tick-decisions', 24817, 1200);
+    countUp('tick-allowed',   23409, 1100);
+    countUp('tick-blocked',    1284,  900);
+    countUp('tick-pending',     124,  700);
+  }, 350);
+})();
+</script>
+</body>
+</html>

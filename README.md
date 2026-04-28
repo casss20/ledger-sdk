@@ -22,11 +22,14 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 - **Provider-Agnostic Architecture**: Core commercial logic is decoupled from any specific billing provider. Stripe is the first adapter; future providers plug in without touching core code.
 - **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal via the Stripe adapter.
 - **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
+- **Cost Controls & Budgets**: Tenant, project, agent, and API-key LLM spend budgets with pre-request enforcement actions.
+- **Audited Budget Top-ups**: Executive-only dashboard adjustments for tenant LLM budgets with required reasons and governance audit trail entries.
 - **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
 - **Atomic Usage Tracking**: High-concurrency Postgres counters for precise quota tracking.
 
 ### 3. Governance Lifecycle
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
+- **No-Code Approval Thresholds**: Dashboard operators can configure a safe tenant-level risk threshold that generates a normal immutable runtime policy requiring human approval for actions above the selected score.
 - **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
 - **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
 - **Decision-First Runtime Governance**: Sensitive actions persist a durable governance decision before any execution proof is issued. Short-lived `gt_cap_` tokens then reference that `decision_id`, so runtime outcomes can be traced back to policy version, approval state, operator context, and audit evidence.

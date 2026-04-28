@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en" data-surface="marketing">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing — Citadel</title>
+<meta name="description" content="Citadel pricing. Start free, scale to enterprise. Runtime AI governance for every stage of deployment.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="citadel-tokens.css">
+<style>
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── Nav ───────────────────────────────────────────────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
+  height: var(--nav-h);
+  display: flex; align-items: center;
+  padding: 0 var(--sp-8); gap: var(--sp-8);
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+.nav.scrolled { box-shadow: 0 1px 10px rgba(0,0,0,0.07); }
+.nav__logo { display: flex; align-items: center; gap: 10px; font: 600 16px/1 var(--font-sans); color: var(--text-primary); flex-shrink: 0; }
+.nav__logo-mark { width: 28px; height: 28px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+.nav__links { display: flex; gap: var(--sp-6); margin-left: var(--sp-6); }
+.nav__links a { font-size: 14px; color: var(--text-secondary); transition: color var(--t-fast) var(--ease); }
+.nav__links a:hover, .nav__links a.active { color: var(--text-primary); }
+.nav__spacer { flex: 1; }
+.nav__actions { display: flex; align-items: center; gap: var(--sp-3); }
+.nav__ver { font: 500 12px/1 var(--font-mono); color: var(--text-muted); padding: 3px 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer; font-family: var(--font-sans); transition: all var(--t-fast) var(--ease); text-decoration: none; white-space: nowrap; }
+.btn-sm  { font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: var(--radius-md); }
+.btn-md  { font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: var(--radius-md); }
+.btn-lg  { font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: var(--radius-md); }
+.btn-ghost   { background: transparent; color: var(--text-secondary); border: 1px solid transparent; }
+.btn-ghost:hover { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--border-subtle); }
+.btn-primary { background: var(--accent); color: #fff; border: 1px solid transparent; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-outline { background: transparent; color: var(--text-primary); border: 1px solid var(--border-default); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+.pricing-hero {
+  padding: 80px var(--sp-8) 64px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.pricing-hero h1 {
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 700; line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+}
+.pricing-hero__sub {
+  font-size: 18px; color: var(--text-secondary);
+  max-width: 520px; margin: 0 auto 36px; line-height: 1.6;
+}
+.pricing-toggle {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+.pricing-toggle__btn {
+  font: 500 13px/1 var(--font-sans);
+  padding: 7px 18px;
+  border-radius: var(--radius-full);
+  border: none; cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all var(--t-fast) var(--ease);
+}
+.pricing-toggle__btn.active {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.pricing-toggle__save {
+  font: 600 11px/1 var(--font-sans);
+  color: var(--status-success);
+  background: var(--tint-success);
+  border: 1px solid rgba(39,174,96,0.2);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  margin-left: 4px;
+}
+
+/* ── Plans grid ────────────────────────────────────────────────────────────── */
+.plans-section {
+  padding: 64px var(--sp-8) 80px;
+}
+.plans-grid {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+}
+.plan-card {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  display: flex; flex-direction: column; gap: 24px;
+  position: relative;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.plan-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+.plan-card--featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(94,106,210,0.12);
+}
+.plan-card--featured:hover { box-shadow: 0 0 0 1px var(--accent), 0 12px 40px rgba(94,106,210,0.18); }
+.plan-badge {
+  position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  white-space: nowrap;
+}
+.plan-header { display: flex; flex-direction: column; gap: 10px; }
+.plan-name { font: 700 16px/1 var(--font-sans); color: var(--text-primary); }
+.plan-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.plan-price { display: flex; flex-direction: column; gap: 4px; }
+.plan-price__amount {
+  font-size: 36px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+  color: var(--text-primary);
+}
+.plan-price__amount span { font-size: 18px; font-weight: 500; vertical-align: super; }
+.plan-price__period { font-size: 13px; color: var(--text-muted); }
+.plan-price__custom { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+
+.plan-features { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.plan-feature {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: var(--text-secondary);
+}
+.plan-feature__icon { flex-shrink: 0; margin-top: 1px; }
+.plan-feature__icon--yes { color: var(--status-success); }
+.plan-feature__icon--no  { color: var(--text-muted); }
+.plan-feature strong { color: var(--text-primary); font-weight: 600; }
+
+.plan-cta { margin-top: auto; }
+
+/* ── Feature comparison table ──────────────────────────────────────────────── */
+.compare-section {
+  padding: 80px var(--sp-8);
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-subtle);
+}
+.compare-section__inner { max-width: 1100px; margin: 0 auto; }
+.compare-section h2 {
+  font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+  margin-bottom: 40px; color: var(--text-primary);
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.compare-table th, .compare-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.compare-table thead th {
+  background: var(--bg-canvas);
+  font-weight: 700; font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-default);
+  white-space: nowrap;
+}
+.compare-table thead th:first-child { border-radius: var(--radius-md) 0 0 0; }
+.compare-table thead th:last-child  { border-radius: 0 var(--radius-md) 0 0; }
+.compare-table thead th.featured-col { color: var(--accent); }
+.compare-table .section-row td {
+  padding: 20px 16px 8px;
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: none;
+  background: var(--bg-subtle);
+}
+.compare-table td:not(:first-child) { text-align: center; color: var(--text-secondary); }
+.compare-table td.featured-col { background: rgba(94,106,210,0.04); }
+.compare-check { color: var(--status-success); font-size: 16px; }
+.compare-dash  { color: var(--border-default); font-size: 18px; line-height: 1; }
+.compare-val   { font: 500 13px/1 var(--font-mono); color: var(--text-secondary); }
+
+/* ── FAQ ────────────────────────────────────────────────────────────────────── */
+.faq-section {
+  padding: 80px var(--sp-8);
+}
+.faq-section__inner { max-width: 720px; margin: 0 auto; }
+.faq-section h2 {
+  font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+  margin-bottom: 40px; text-align: center;
+}
+.faq-list { display: flex; flex-direction: column; gap: 2px; }
+.faq-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.faq-item__q {
+  width: 100%; background: none; border: none; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 20px;
+  font: 600 15px/1.3 var(--font-sans);
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--t-fast) var(--ease);
+}
+.faq-item__q:hover { background: var(--bg-subtle); }
+.faq-item__q-chevron {
+  flex-shrink: 0; transition: transform var(--t-fast) var(--ease);
+  color: var(--text-muted);
+}
+.faq-item.open .faq-item__q-chevron { transform: rotate(180deg); }
+.faq-item__a {
+  display: none;
+  padding: 0 20px 18px;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.65;
+}
+.faq-item.open .faq-item__a { display: block; }
+
+/* ── Enterprise CTA ─────────────────────────────────────────────────────────── */
+.enterprise-cta {
+  background: #0D0D0D;
+  padding: 80px var(--sp-8);
+  text-align: center;
+}
+.enterprise-cta__inner {
+  max-width: 640px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 20px; align-items: center;
+}
+.enterprise-cta h2 {
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+  color: #F8F8F8;
+}
+.enterprise-cta p { font-size: 16px; color: #8A8F98; line-height: 1.6; }
+.enterprise-cta__actions { display: flex; gap: 12px; }
+.btn-dark-outline { background: transparent; color: #C8C8C8; border: 1px solid #2A2A2A; }
+.btn-dark-outline:hover { border-color: #555; color: #F8F8F8; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+.footer { background: #0D0D0D; border-top: 1px solid #1E1E1E; padding: 60px var(--sp-8) 40px; }
+.footer__grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 60px; }
+.footer__brand { display: flex; flex-direction: column; gap: 14px; }
+.footer__logo { display: flex; align-items: center; gap: 10px; font: 600 16px/1 var(--font-sans); color: #F8F8F8; }
+.footer__logo-mark { width: 28px; height: 28px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+.footer__tagline { font-size: 14px; color: #555; line-height: 1.6; max-width: 220px; }
+.footer__col h5 { font: 600 12px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: #444; margin-bottom: 16px; }
+.footer__col a { display: block; font-size: 14px; color: #555; margin-bottom: 10px; transition: color var(--t-fast) var(--ease); }
+.footer__col a:hover { color: #C8C8C8; }
+.footer__bottom { max-width: 1100px; margin: 0 auto; padding-top: 24px; border-top: 1px solid #1A1A1A; display: flex; justify-content: space-between; align-items: center; }
+.footer__copy { font-size: 13px; color: #333; }
+.footer__legal { display: flex; gap: 24px; }
+.footer__legal a { font-size: 13px; color: #333; transition: color var(--t-fast) var(--ease); }
+.footer__legal a:hover { color: #666; }
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .plans-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .plans-section { padding: 48px 20px; }
+}
+@media (max-width: 768px) {
+  .pricing-hero { padding: 60px 20px 48px; }
+  .pricing-hero h1 { font-size: 36px; letter-spacing: -0.02em; }
+  .hero-sub { font-size: 16px; }
+  .pricing-toggle { justify-content: center; }
+  .compare-section { padding: 48px 20px; }
+  .compare-section__inner { overflow-x: auto; }
+  .compare-table { min-width: 640px; }
+  .faq-section { padding: 48px 20px; }
+  .pricing-cta { padding: 60px 20px; }
+  .pricing-cta h2 { font-size: 32px; }
+  .cta-actions { flex-direction: column; align-items: center; }
+}
+@media (max-width: 640px) {
+  .plans-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+  .pricing-hero h1 { font-size: 30px; }
+  .plan-card--featured .plan-badge { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
+  <a href="index.html" class="nav__logo">
+    <div class="nav__logo-mark">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 5L11 6.75V10.25L8 12L5 10.25V6.75L8 5Z" fill="white"/></svg>
+    </div>
+    Citadel
+  </a>
+  <nav class="nav__links">
+    <a href="index.html">Home</a>
+    <a href="governance.html">Governance</a>
+    <a href="docs.html">Docs</a>
+    <a href="pricing.html" class="active">Pricing</a>
+  </nav>
+  <div class="nav__spacer"></div>
+  <div class="nav__actions">
+    <span class="nav__ver">v0.9.0-beta</span>
+    <a href="docs.html" class="btn btn-sm btn-ghost">Documentation</a>
+    <a href="#" class="btn btn-sm btn-primary">Request Access</a>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────────── -->
+<section class="pricing-hero">
+  <h1>Simple, predictable pricing</h1>
+  <p class="pricing-hero__sub">Start free. Scale to enterprise. No per-seat tax on agents — you pay for what the kernel evaluates.</p>
+  <div class="pricing-toggle">
+    <button class="pricing-toggle__btn active" id="btn-monthly">Monthly</button>
+    <button class="pricing-toggle__btn" id="btn-annual">Annual <span class="pricing-toggle__save">20% off</span></button>
+  </div>
+</section>
+
+<!-- ── Plans ─────────────────────────────────────────────────────────────────── -->
+<section class="plans-section">
+  <div class="plans-grid">
+
+    <!-- Free -->
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-name">Developer</div>
+        <div class="plan-desc">For individuals and early exploration. No credit card required.</div>
+      </div>
+      <div class="plan-price">
+        <div class="plan-price__amount"><span>$</span>0</div>
+        <div class="plan-price__period">forever free</div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>5,000</strong> governed actions/mo</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>3</strong> active agents</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Policy engine — 5 rules</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Audit log — 7 day retention</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Kill switches (request scope)</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--no" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span style="color:var(--text-muted)">Human approval queues</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--no" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span style="color:var(--text-muted)">Compliance frameworks</span>
+        </div>
+      </div>
+      <div class="plan-cta">
+        <a href="docs.html" class="btn btn-md btn-outline btn-full">Start building →</a>
+      </div>
+    </div>
+
+    <!-- Growth -->
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-name">Growth</div>
+        <div class="plan-desc">For small teams shipping AI agents to production.</div>
+      </div>
+      <div class="plan-price">
+        <div class="plan-price__amount" data-monthly="79" data-annual="63"><span>$</span><span class="price-val">79</span></div>
+        <div class="plan-price__period">per month, billed <span class="billing-period">monthly</span></div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>100,000</strong> governed actions/mo</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>25</strong> active agents</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Policy engine — 50 rules</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Audit log — 90 day retention</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Kill switches — all scopes</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Human approval queues</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--no" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span style="color:var(--text-muted)">Compliance framework reports</span>
+        </div>
+      </div>
+      <div class="plan-cta">
+        <a href="#" class="btn btn-md btn-outline btn-full">Get started →</a>
+      </div>
+    </div>
+
+    <!-- Business — featured -->
+    <div class="plan-card plan-card--featured">
+      <div class="plan-badge">Most Popular</div>
+      <div class="plan-header">
+        <div class="plan-name">Business</div>
+        <div class="plan-desc">For engineering teams with compliance requirements and multi-agent workflows.</div>
+      </div>
+      <div class="plan-price">
+        <div class="plan-price__amount" data-monthly="349" data-annual="279"><span>$</span><span class="price-val">349</span></div>
+        <div class="plan-price__period">per month, billed <span class="billing-period">monthly</span></div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>2,000,000</strong> governed actions/mo</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>250</strong> active agents</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Policy engine — unlimited rules</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Audit log — 1 year retention</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Kill switches — all scopes</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Human approval queues</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>SOC2, ISO27001, NIST, GDPR</strong> reports</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Orchestration API (delegate, handoff, gather)</span>
+        </div>
+      </div>
+      <div class="plan-cta">
+        <a href="#" class="btn btn-md btn-primary btn-full">Start free trial →</a>
+      </div>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-desc">Custom volume, SLAs, VPC deployment, and dedicated support.</div>
+      </div>
+      <div class="plan-price">
+        <div class="plan-price__custom">Custom</div>
+        <div class="plan-price__period">annual contract · volume pricing</div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Unlimited governed actions</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Unlimited active agents</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Audit log — up to 2 years</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>All compliance frameworks incl. HIPAA &amp; PCI DSS</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>VPC / on-prem deployment</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>99.99% uptime SLA</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Dedicated success engineer</span>
+        </div>
+        <div class="plan-feature">
+          <svg class="plan-feature__icon plan-feature__icon--yes" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>SSO / SAML, custom RBAC</span>
+        </div>
+      </div>
+      <div class="plan-cta">
+        <a href="#contact" class="btn btn-md btn-outline btn-full">Talk to Sales →</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Feature comparison ─────────────────────────────────────────────────────── -->
+<section class="compare-section">
+  <div class="compare-section__inner">
+    <h2>Full feature comparison</h2>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="width:40%">Feature</th>
+          <th>Developer</th>
+          <th>Growth</th>
+          <th class="featured-col">Business</th>
+          <th>Enterprise</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="section-row"><td colspan="5">Usage</td></tr>
+        <tr>
+          <td>Governed actions / month</td>
+          <td><span class="compare-val">5,000</span></td>
+          <td><span class="compare-val">100k</span></td>
+          <td class="featured-col"><span class="compare-val">2M</span></td>
+          <td><span class="compare-val">Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Active agents</td>
+          <td><span class="compare-val">3</span></td>
+          <td><span class="compare-val">25</span></td>
+          <td class="featured-col"><span class="compare-val">250</span></td>
+          <td><span class="compare-val">Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Audit retention</td>
+          <td><span class="compare-val">7 days</span></td>
+          <td><span class="compare-val">90 days</span></td>
+          <td class="featured-col"><span class="compare-val">1 year</span></td>
+          <td><span class="compare-val">Up to 2 years</span></td>
+        </tr>
+
+        <tr class="section-row"><td colspan="5">Governance</td></tr>
+        <tr>
+          <td>Policy rules</td>
+          <td><span class="compare-val">5</span></td>
+          <td><span class="compare-val">50</span></td>
+          <td class="featured-col"><span class="compare-val">Unlimited</span></td>
+          <td><span class="compare-val">Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Kill switches</td>
+          <td><span class="compare-val">request only</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Human approval queues</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Capability tokens</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>No-code policy builder</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Trust band system</td>
+          <td><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+
+        <tr class="section-row"><td colspan="5">Compliance</td></tr>
+        <tr>
+          <td>SOC 2, ISO 27001, NIST, GDPR</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>HIPAA &amp; PCI DSS</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>EU AI Act framework</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+
+        <tr class="section-row"><td colspan="5">Integrations &amp; API</td></tr>
+        <tr>
+          <td>LangGraph, Claude Code, Codex, K2.6</td>
+          <td><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Orchestration API</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Webhooks</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+
+        <tr class="section-row"><td colspan="5">Security &amp; Infrastructure</td></tr>
+        <tr>
+          <td>SSO / SAML</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>VPC / on-prem deployment</td>
+          <td><span class="compare-dash">—</span></td>
+          <td><span class="compare-dash">—</span></td>
+          <td class="featured-col"><span class="compare-dash">—</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Uptime SLA</td>
+          <td><span class="compare-val">99.5%</span></td>
+          <td><span class="compare-val">99.9%</span></td>
+          <td class="featured-col"><span class="compare-val">99.95%</span></td>
+          <td><span class="compare-val">99.99%</span></td>
+        </tr>
+        <tr>
+          <td>Cryptographic audit chain</td>
+          <td><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+          <td class="featured-col"><span class="compare-check">✓</span></td>
+          <td><span class="compare-check">✓</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── FAQ ──────────────────────────────────────────────────────────────────── -->
+<section class="faq-section">
+  <div class="faq-section__inner">
+    <h2>Frequently asked questions</h2>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          What counts as a "governed action"?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">A governed action is any call to <code style="font-family:var(--font-mono);font-size:12px">POST /v1/actions</code> that the Citadel kernel evaluates — regardless of whether it's executed, blocked, or escalated to a human. Dry-run calls also count. Actions that fail at schema validation before reaching the kernel do not count.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          How does billing work if I exceed my plan limit?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">We'll email you at 80% and 100% usage. Above the limit, additional actions are billed at $0.0008 per action on Growth and $0.0004 per action on Business — applied automatically with no service interruption. Enterprise customers negotiate overage pricing in their contract.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          Can I self-host the Citadel kernel?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">Yes — VPC and on-premises deployment is available on the Enterprise plan. The kernel runs as a containerized service (Docker/Kubernetes). Audit events can be written to your own database or streamed to your SIEM. Contact us for architecture details.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          Does Citadel work with any AI framework?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">Citadel provides first-class SDK integrations for LangGraph, Claude Code, Codex, and K2.6. Any framework that can make HTTP calls to <code style="font-family:var(--font-mono);font-size:12px">POST /v1/actions</code> works with Citadel — the REST API is framework-agnostic. Additional native integrations (LangChain, CrewAI, AutoGen) are in development.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          What's the difference between PROBATION and REVOKED trust bands?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">PROBATION (score 0.20–0.39) means the agent can still submit actions, but all of them are routed to the human approval queue — nothing executes autonomously. The default probation duration is 7 days, minimum 3. REVOKED (score 0.00–0.19) means all submissions are blocked outright by the kernel. An agent exits PROBATION automatically when its score crosses 0.40.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-item__q">
+          How does the cryptographic audit chain work?
+          <svg class="faq-item__q-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="faq-item__a">Each audit event has an <code style="font-family:var(--font-mono);font-size:12px">event_hash</code> (SHA-256 of the event's own content) and a <code style="font-family:var(--font-mono);font-size:12px">prev_hash</code> linking it to the previous event. This creates a chain where any deletion or modification makes the hashes invalid. You can verify the entire chain at any time via <code style="font-family:var(--font-mono);font-size:12px">GET /v1/audit/verify</code> — it returns which event broke the chain if tampering is detected.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Enterprise CTA ─────────────────────────────────────────────────────────── -->
+<section class="enterprise-cta" id="contact">
+  <div class="enterprise-cta__inner">
+    <h2>Need custom volume, on-prem deployment, or a compliance review?</h2>
+    <p>Talk to our team. We'll walk you through architecture options, framework coverage, and what an enterprise deployment looks like in your environment.</p>
+    <div class="enterprise-cta__actions">
+      <a href="#" class="btn btn-lg btn-primary">Talk to Sales</a>
+      <a href="docs.html" class="btn btn-lg btn-dark-outline">Read the Docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer__grid">
+    <div class="footer__brand">
+      <div class="footer__logo">
+        <div class="footer__logo-mark">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 5L11 6.75V10.25L8 12L5 10.25V6.75L8 5Z" fill="white"/></svg>
+        </div>
+        Citadel
+      </div>
+      <p class="footer__tagline">Runtime AI governance. Every action, every agent, every time.</p>
+    </div>
+    <div class="footer__col">
+      <h5>Product</h5>
+      <a href="governance.html">Governance</a>
+      <a href="#">Security</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="#">Changelog</a>
+    </div>
+    <div class="footer__col">
+      <h5>Developers</h5>
+      <a href="docs.html">Documentation</a>
+      <a href="docs.html#api-reference">API Reference</a>
+      <a href="docs.html#integrations">Integrations</a>
+      <a href="#">Status</a>
+    </div>
+    <div class="footer__col">
+      <h5>Company</h5>
+      <a href="#">About</a>
+      <a href="#">Blog</a>
+      <a href="#">Contact</a>
+      <a href="#">Privacy</a>
+    </div>
+  </div>
+  <div class="footer__bottom">
+    <span class="footer__copy">© 2025 Citadel. All rights reserved.</span>
+    <div class="footer__legal">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Nav scroll
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 10);
+}, { passive: true });
+
+// Toggle monthly/annual
+const btnMonthly = document.getElementById('btn-monthly');
+const btnAnnual  = document.getElementById('btn-annual');
+let isAnnual = false;
+
+function updatePricing() {
+  document.querySelectorAll('.plan-price__amount[data-monthly]').forEach(el => {
+    const val = isAnnual ? el.dataset.annual : el.dataset.monthly;
+    el.querySelector('.price-val').textContent = val;
+  });
+  document.querySelectorAll('.billing-period').forEach(el => {
+    el.textContent = isAnnual ? 'annually' : 'monthly';
+  });
+}
+
+btnMonthly.addEventListener('click', () => {
+  isAnnual = false;
+  btnMonthly.classList.add('active');
+  btnAnnual.classList.remove('active');
+  updatePricing();
+});
+btnAnnual.addEventListener('click', () => {
+  isAnnual = true;
+  btnAnnual.classList.add('active');
+  btnMonthly.classList.remove('active');
+  updatePricing();
+});
+
+// FAQ accordion
+document.querySelectorAll('.faq-item__q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    item.classList.toggle('open');
+  });
+});
+</script>
+
+<script>
+(function initMotion() {
+  const ease = 'cubic-bezier(0.22,1,0.36,1)';
+
+  /* ── Hero entrance ───────────────────────────────────────────────────── */
+  function set(el, delay, dir) {
+    if (!el) return;
+    const from = dir === 'up' ? 'translateY(22px)' : dir === 'scale' ? 'scale(0.95)' : 'translateY(0)';
+    el.style.cssText += `opacity:0;transform:${from};transition:opacity 0.65s ${ease} ${delay}ms,transform 0.65s ${ease} ${delay}ms;`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    }));
+  }
+
+  [
+    ['.pricing-hero .section__kicker', 60,  'up'],
+    ['.pricing-hero h1',               150, 'up'],
+    ['.pricing-hero .hero-sub',        260, 'up'],
+    ['.pricing-toggle',                360, 'up'],
+  ].forEach(([sel, d, dir]) => set(document.querySelector(sel), d, dir));
+
+  /* ── Scroll-reveal engine ────────────────────────────────────────────── */
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('is-visible');
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.06, rootMargin: '0px 0px -50px 0px' });
+
+  function reveal(sel, delay) {
+    document.querySelectorAll(sel).forEach(el => {
+      el.setAttribute('data-reveal', '');
+      if (delay != null) el.style.setProperty('--reveal-delay', delay + 'ms');
+      io.observe(el);
+    });
+  }
+
+  function stagger(sel, step) {
+    document.querySelectorAll(sel).forEach((el, i) => {
+      el.setAttribute('data-reveal', '');
+      el.style.setProperty('--reveal-delay', (i * (step || 80)) + 'ms');
+      io.observe(el);
+    });
+  }
+
+  // Plan cards — stagger with scale effect
+  document.querySelectorAll('.plan-card').forEach((el, i) => {
+    el.setAttribute('data-reveal', 'scale');
+    el.style.setProperty('--reveal-delay', (i * 90) + 'ms');
+    io.observe(el);
+  });
+
+  // Compare section header
+  reveal('.compare-section .section__title, .compare-section .section__desc');
+
+  // Compare table rows stagger
+  stagger('.compare-table tbody tr', 30);
+
+  // FAQ section
+  reveal('.faq-section .section__title, .faq-section .section__desc');
+  stagger('.faq-list > *', 55);
+
+  // Bottom CTA
+  ['.pricing-cta .section__kicker', '.pricing-cta h2', '.pricing-cta p', '.pricing-cta .cta-actions'].forEach((s, i) =>
+    reveal(s, i * 75));
+
+  /* ── Price flip animation on toggle ─────────────────────────────────── */
+  const origUpdatePricing = window.updatePricing;
+  // Patch price elements to animate on toggle
+  document.querySelectorAll('.plan-price__amount').forEach(el => {
+    const valEl = el.querySelector('.price-val');
+    if (!valEl) return;
+    const observer = new MutationObserver(() => {
+      el.style.transition = `opacity 0.18s ${ease}, transform 0.18s ${ease}`;
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-8px)';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+      }, 200);
+    });
+    observer.observe(valEl, { childList: true, subtree: true, characterData: true });
+  });
+})();
+</script>
+</body>
+</html>

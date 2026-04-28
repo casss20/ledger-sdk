@@ -70,5 +70,6 @@ Thumbs.db
 # Project specific
 *.log
 logs/
+.data/
 CITADEL/context/*/  # Session files (exclude runtime context)
 !CITADEL/context/default/.gitkeep

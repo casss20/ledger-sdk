@@ -28,6 +28,72 @@ export interface Approval {
   reason?: string;
 }
 
+export interface ApprovalThresholdPayload {
+  risk_score_threshold: number;
+  approval_priority: 'low' | 'medium' | 'high' | 'critical';
+  approval_expiry_hours: number;
+  reason?: string;
+}
+
+export interface NoCodePolicy {
+  policy_id?: string;
+  name: string;
+  version: string;
+  scope_type: string;
+  scope_value: string;
+  status: string;
+  description: string;
+  rules_json: {
+    rules: Array<{
+      name: string;
+      effect: string;
+      condition: string;
+      approval_priority?: string;
+      approval_expiry_hours?: number;
+      reason?: string;
+    }>;
+    generated_by?: string;
+    control?: Record<string, unknown>;
+  };
+}
+
+export interface CostBudgetPayload {
+  name: string;
+  scope_type: 'tenant' | 'project' | 'agent' | 'api_key';
+  scope_value?: string;
+  amount_cents: number;
+  currency?: string;
+  reset_period: 'daily' | 'weekly' | 'monthly';
+  enforcement_action: 'block' | 'require_approval' | 'throttle';
+  warning_threshold_percent?: number;
+}
+
+export interface CostBudgetDecision {
+  allowed: boolean;
+  enforcement_action: 'allow' | 'block' | 'require_approval' | 'throttle';
+  requires_approval: boolean;
+  throttled: boolean;
+  reason: string;
+  projected_cost_cents: number;
+  current_spend_cents: number;
+  budget_amount_cents: number | null;
+  warning: boolean;
+  period_start: string;
+  period_end: string;
+  budget: {
+    budget_id?: string;
+    name: string;
+    scope_type: string;
+    scope_value: string;
+    enforcement_action: string;
+  } | null;
+}
+
+export interface CostBudgetTopUpPayload {
+  amount_cents: number;
+  reason: string;
+}
+
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth_token');
   const headers = new Headers(init.headers);
@@ -101,6 +167,69 @@ export const api = {
         reviewed_by: reviewedBy,
         reason: reason || 'Rejected from dashboard',
       }),
+    });
+  },
+
+  async getApprovalThresholdPolicy(): Promise<NoCodePolicy | null> {
+    const data = await apiFetch<{ policy: NoCodePolicy | null }>(
+      '/api/policies/no-code/approval-threshold',
+    );
+    return data.policy;
+  },
+
+  async previewApprovalThresholdPolicy(
+    payload: ApprovalThresholdPayload,
+  ): Promise<NoCodePolicy> {
+    const data = await apiFetch<{ policy: NoCodePolicy }>(
+      '/api/policies/no-code/approval-threshold/preview',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+    return data.policy;
+  },
+
+  async applyApprovalThresholdPolicy(
+    payload: ApprovalThresholdPayload,
+  ): Promise<NoCodePolicy> {
+    const data = await apiFetch<{ policy: NoCodePolicy }>(
+      '/api/policies/no-code/approval-threshold',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+    return data.policy;
+  },
+
+  async createCostBudget(payload: CostBudgetPayload) {
+    const data = await apiFetch<{ budget: unknown }>('/v1/billing/budgets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return data.budget;
+  },
+
+  async checkCostBudget(payload: {
+    projected_cost_cents: number;
+    actor_id?: string;
+    project_id?: string;
+    api_key_id?: string;
+    provider?: string;
+    model?: string;
+    request_id?: string;
+  }): Promise<CostBudgetDecision> {
+    return apiFetch<CostBudgetDecision>('/v1/billing/cost/check', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async topUpCostBudget(budgetId: string, payload: CostBudgetTopUpPayload) {
+    return apiFetch('/api/dashboard/billing/budgets/' + budgetId + '/top-up', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 

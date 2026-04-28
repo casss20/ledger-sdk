@@ -3,6 +3,7 @@ name: CI / CD — Test & Deploy
 on:
   push:
     branches: [master, main]
+    tags: ['v*']          # SDK PyPI release gate
   pull_request:
     branches: [master, main]
   workflow_dispatch:
@@ -16,6 +17,21 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  # ──────────────────────────────────────────
+  # 0. SECRET SCANNING
+  # ──────────────────────────────────────────
+  secret-scan:
+    name: Secret Scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ──────────────────────────────────────────
   # 1. BACKEND LINT
   # ──────────────────────────────────────────
@@ -52,7 +68,7 @@ jobs:
           pip install -e ".[all]"
           pip install mypy
       - name: mypy check
-        run: mypy apps/runtime/citadel --ignore-missing-imports --no-error-summary
+        run: mypy apps/runtime/citadel --strict --ignore-missing-imports --no-error-summary
 
   # ──────────────────────────────────────────
   # 3. DOCKER SMOKE TEST
@@ -224,7 +240,7 @@ jobs:
           CITADEL_API_KEYS: test-key:admin
           REQUIRE_AUTH: true
           CITADEL_TESTING: true
-        run: pytest tests/unit/ tests/tokens/ tests/test_api_key_manager.py tests/test_billing.py tests/test_audit_anchoring.py -v --tb=short
+        run: pytest tests/unit/ tests/tokens/ tests/test_api_key_manager.py tests/test_billing.py tests/test_audit_anchoring.py -v --tb=short --cov=apps/runtime/citadel --cov-fail-under=60 --cov-report=term-missing
 
       - name: Run integration tests (requires DB)
         env:
@@ -244,9 +260,8 @@ jobs:
       - name: Check for known vulnerable dependencies
         run: |
           pip install safety
-          safety check --json -o safety-report.json || true
-        # safety can flag transitive deps with no fix — keep || true until
-        # the project pins a clean dependency set.  Revisit quarterly.
+          safety check --json -o safety-report.json
+          safety check
 
   # ──────────────────────────────────────────
   # 6. SDK LINT & TYPECHECK
@@ -271,7 +286,7 @@ jobs:
       - name: Ruff full lint
         run: |
           cd packages/sdk-python
-          ruff check citadel_governance tests || true
+          ruff check citadel_governance tests
 
   typecheck-sdk:
     name: Typecheck Python SDK
@@ -290,7 +305,7 @@ jobs:
       - name: mypy check
         run: |
           cd packages/sdk-python
-          mypy citadel_governance --ignore-missing-imports --no-error-summary || true
+          mypy citadel_governance --ignore-missing-imports --no-error-summary
 
   # ──────────────────────────────────────────
   # 7. SDK TESTS
@@ -339,14 +354,14 @@ jobs:
         working-directory: apps/dashboard
         run: |
           npm ci
-          npm run lint || true
+          npm run lint
           npm run build
 
       - name: Build Landing
         working-directory: apps/landing
         run: |
           npm ci
-          npm run lint || true
+          npm run lint
           npm run build
 
       - name: Build Dashboard Demo
@@ -443,7 +458,7 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping landing deploy."
 
   # ──────────────────────────────────────────
-  # 10. DEPLOY DOCS (Vercel)
+  # 12. DEPLOY DOCS (Vercel)
   # ──────────────────────────────────────────
   deploy-docs:
     name: Deploy Docs
@@ -467,13 +482,13 @@ jobs:
           echo "⚠️ VERCEL_TOKEN not configured. Skipping docs deploy."
 
   # ──────────────────────────────────────────
-  # 11. DEPLOY SDK (PyPI)
+  # 13. DEPLOY SDK (PyPI) — tag-gated
   # ──────────────────────────────────────────
   deploy-sdk:
     name: Deploy SDK to PyPI
     needs: [test-sdk]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v')
     env:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:

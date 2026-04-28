@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from typing import Optional
 
 from citadel.api.dependencies import require_api_key
+from citadel.services.policy_controls import (
+    ApprovalThresholdControl,
+    NoCodePolicyControlService,
+    preview_approval_threshold_policy,
+)
 
 router = APIRouter(tags=["policies"])
 
@@ -15,11 +19,18 @@ class PolicyCreate(BaseModel):
 
 
 class PolicyPatch(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=256)
-    description: Optional[str] = Field(None, max_length=2048)
-    framework: Optional[str] = Field(None, pattern=r"^(SOC2|ISO27001|NIST|GDPR|HIPAA|PCI_DSS|CUSTOM)$")
-    severity: Optional[str] = Field(None, pattern=r"^(low|medium|high|critical)$")
-    status: Optional[str] = Field(None, pattern=r"^(active|disabled|draft|toggle)$")
+    name: str | None = Field(None, min_length=1, max_length=256)
+    description: str | None = Field(None, max_length=2048)
+    framework: str | None = Field(None, pattern=r"^(SOC2|ISO27001|NIST|GDPR|HIPAA|PCI_DSS|CUSTOM)$")
+    severity: str | None = Field(None, pattern=r"^(low|medium|high|critical)$")
+    status: str | None = Field(None, pattern=r"^(active|disabled|draft|toggle)$")
+
+
+class ApprovalThresholdRequest(BaseModel):
+    risk_score_threshold: int = Field(..., ge=0, le=100)
+    approval_priority: str = Field("high", pattern=r"^(low|medium|high|critical)$")
+    approval_expiry_hours: int = Field(24, ge=1, le=168)
+    reason: str | None = Field(None, max_length=512)
 
 
 @router.get("/policies")
@@ -31,6 +42,50 @@ async def list_policies(request: Request, _: str = Depends(require_api_key)):
             tenant_id,
         )
     return {"policies": [dict(r) for r in rows]}
+
+
+@router.get("/policies/no-code/approval-threshold")
+async def get_approval_threshold_policy(request: Request, _: str = Depends(require_api_key)):
+    tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
+    service = NoCodePolicyControlService(request.app.state.db_pool)
+    policy = await service.get_active_approval_threshold(tenant_id)
+    return {"policy": policy}
+
+
+@router.post("/policies/no-code/approval-threshold/preview")
+async def preview_approval_threshold(
+    body: ApprovalThresholdRequest,
+    request: Request,
+    _: str = Depends(require_api_key),
+):
+    tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
+    control = ApprovalThresholdControl(**body.model_dump())
+    try:
+        policy = preview_approval_threshold_policy(control, tenant_id=tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"policy": policy}
+
+
+@router.post("/policies/no-code/approval-threshold")
+async def apply_approval_threshold(
+    body: ApprovalThresholdRequest,
+    request: Request,
+    _: str = Depends(require_api_key),
+):
+    tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
+    created_by = getattr(request.state, "user_id", None) or "api_key"
+    control = ApprovalThresholdControl(**body.model_dump())
+    service = NoCodePolicyControlService(request.app.state.db_pool)
+    try:
+        policy = await service.apply_approval_threshold(
+            tenant_id,
+            control,
+            created_by=created_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"policy": policy}
 
 
 @router.post("/policies")

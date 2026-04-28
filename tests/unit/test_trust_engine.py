@@ -1,17 +1,18 @@
 """
 Tests for trust snapshot engine: computation, storage, backward compatibility.
 """
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from citadel.agent_identity.trust_score import (
-    TrustSnapshotEngine,
-    TrustScorer,
-    TrustScore,
     TrustBand,
     TrustLevel,
+    TrustScore,
+    TrustScorer,
+    TrustSnapshotEngine,
 )
+from citadel.api.routers.dashboard import _trust_factor_breakdown
 
 
 class TestTrustScoreComputation:
@@ -39,6 +40,35 @@ class TestTrustScoreComputation:
         assert factors["health"] == 0.20
         assert factors["compliance"] == 0.15
         assert score <= 1.0
+
+    def test_dashboard_factor_breakdown_uses_current_factor_names(self):
+        """Dashboard explanations should match the live trust engine factors."""
+        factors = {
+            "verification": 0.25,
+            "age": 0.15,
+            "health": 0.20,
+            "quarantine": 0.10,
+            "action_rate": 0.10,
+            "compliance": 0.15,
+            "budget_adherence": 0.05,
+            "challenge_reliability": 0.05,
+            "trend": -0.03,
+        }
+
+        rows = _trust_factor_breakdown(factors)
+
+        assert [row["key"] for row in rows] == [
+            "verification",
+            "age",
+            "health",
+            "quarantine",
+            "action_rate",
+            "compliance",
+            "budget_adherence",
+            "challenge_reliability",
+            "trend",
+        ]
+        assert rows[-1]["direction"] == "negative"
 
     def test_unverified_agent_low_score(self):
         """An unverified agent should score lower."""

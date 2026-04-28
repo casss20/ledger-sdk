@@ -1,9 +1,17 @@
+import json
 import uuid
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from typing import Dict, Any, List, Optional, Literal
+from typing import Any, Literal, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from citadel.execution.kernel import Kernel
+
 from citadel.api.dependencies import get_kernel, require_api_key
+from citadel.commercial.cost_controls import (
+    BudgetTopUp,
+    CostControlService,
+    can_top_up_budget,
+)
+from citadel.execution.kernel import Kernel
 
 router = APIRouter(tags=["dashboard"])
 
@@ -11,12 +19,61 @@ class ApprovalDecisionRequest(BaseModel):
     reviewed_by: str = Field(..., min_length=1, max_length=128)
     reason: Optional[str] = Field(default="Reviewed and approved", max_length=500)
 
+
+class BudgetTopUpRequest(BaseModel):
+    amount_cents: int = Field(..., gt=0)
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+TRUST_FACTOR_LABELS = {
+    "verification": "Verification Status",
+    "age": "Identity Age",
+    "health": "Health Score",
+    "quarantine": "Quarantine Status",
+    "action_rate": "Action Rate",
+    "compliance": "Compliance Record",
+    "budget_adherence": "Budget Adherence",
+    "challenge_reliability": "Challenge Reliability",
+    "trend": "Score Trend",
+}
+
+
+def _dashboard_tenant_id(request: Request) -> str:
+    tenant_id = getattr(request.state, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Tenant not identified")
+    return tenant_id
+
+
+def _dashboard_actor(request: Request) -> tuple[str, str]:
+    actor_id = getattr(request.state, "user_id", None) or "dashboard"
+    role = getattr(request.state, "role", None)
+    if not can_top_up_budget(role):
+        raise HTTPException(status_code=403, detail="Budget top-up requires executive role")
+    return actor_id, role
+
+
+def _trust_factor_breakdown(factors: dict[str, Any] | None) -> list[dict[str, Any]]:
+    values = factors or {}
+    rows: list[dict[str, Any]] = []
+    for key, label in TRUST_FACTOR_LABELS.items():
+        contribution = float(values.get(key, 0.0) or 0.0)
+        rows.append(
+            {
+                "key": key,
+                "label": label,
+                "contribution": contribution,
+                "direction": "positive" if contribution > 0 else "negative" if contribution < 0 else "neutral",
+            }
+        )
+    return rows
+
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     request: Request,
     kernel: Kernel = Depends(get_kernel),
     _: str = Depends(require_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get consolidated statistics for the dashboard."""
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     
@@ -155,6 +212,38 @@ async def get_dashboard_stats(
             },
         }
 
+
+@router.post("/dashboard/billing/budgets/{budget_id}/top-up")
+async def top_up_tenant_budget(
+    budget_id: str,
+    body: BudgetTopUpRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Manual executive-only budget top-up from the dashboard."""
+    tenant_id = _dashboard_tenant_id(request)
+    actor_id, actor_role = _dashboard_actor(request)
+    pool = getattr(request.app.state, "db_pool", None)
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    service = CostControlService(pool)
+    try:
+        result = await service.top_up_tenant_budget(
+            BudgetTopUp(
+                budget_id=budget_id,
+                tenant_id=tenant_id,
+                amount_cents=body.amount_cents,
+                reason=body.reason,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                metadata={"source": "dashboard"},
+            )
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
+
 @router.get("/dashboard/approvals")
 async def list_dashboard_approvals(
     request: Request,
@@ -247,9 +336,11 @@ async def list_dashboard_audit(
     async with kernel.repo.pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 e.event_id, e.event_type, e.actor_id, e.event_ts,
-                a.action_name, a.resource, d.status as decision_status
+                e.action_id, a.action_name, a.resource,
+                d.decision_id, d.status as decision_status, d.risk_score,
+                d.trust_snapshot_id, d.trace_id
             FROM audit_events e
             LEFT JOIN actions a ON e.action_id = a.action_id
             LEFT JOIN decisions d ON e.action_id = d.action_id
@@ -264,14 +355,98 @@ async def list_dashboard_audit(
         "events": [
             {
                 "id": str(row['event_id']),
+                "event_id": str(row['event_id']),
+                "action_id": str(row['action_id']) if row['action_id'] else str(row['event_id']),
+                "decision_id": str(row['decision_id']) if row['decision_id'] else None,
+                "trust_snapshot_id": str(row['trust_snapshot_id']) if row['trust_snapshot_id'] else None,
                 "type": row['event_type'],
                 "actor": row['actor_id'] or "system",
+                "user_id": row['actor_id'] or "system",
+                "action_type": row['action_name'] or row['event_type'],
                 "resource": f"{row['action_name']}:{row['resource']}" if row['action_name'] else "system",
                 "status": row['decision_status'] or "pending",
+                "risk_score": float(row['risk_score'] or 0),
                 "timestamp": row['event_ts'].isoformat() if row['event_ts'] else None,
+                "created_at": row['event_ts'].isoformat() if row['event_ts'] else None,
+                "trace_id": row['trace_id'],
                 "severity": "high" if row['event_type'] in ('action_failed', 'kill_switch_activated') else "medium",
             } for row in rows
         ]
+    }
+
+
+@router.get("/dashboard/decisions/{decision_id}/trust")
+async def get_decision_trust_breakdown(
+    decision_id: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Return the stored trust factor breakdown for a dashboard decision."""
+    tenant_id = _dashboard_tenant_id(request)
+    pool = getattr(request.app.state, "db_pool", None)
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+
+    async with pool.acquire() as conn:
+        await conn.execute("SELECT set_tenant_context($1)", tenant_id)
+        row = await conn.fetchrow(
+            """
+            SELECT
+                d.decision_id,
+                d.status,
+                d.trust_snapshot_id,
+                ts.actor_id,
+                ts.score,
+                ts.band,
+                ts.computed_at,
+                ts.factors,
+                ts.raw_inputs,
+                ts.computation_method
+            FROM decisions d
+            LEFT JOIN actor_trust_snapshots ts
+              ON ts.snapshot_id = d.trust_snapshot_id
+             AND (ts.tenant_id = d.tenant_id OR ts.tenant_id IS NULL)
+            WHERE d.decision_id = $1
+              AND d.tenant_id = $2
+            """,
+            decision_id,
+            tenant_id,
+        )
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Decision not found")
+    if not row["trust_snapshot_id"]:
+        return {
+            "decision_id": decision_id,
+            "trust_snapshot_id": None,
+            "available": False,
+            "reason": "Decision has no trust snapshot reference",
+        }
+    if row["score"] is None:
+        return {
+            "decision_id": decision_id,
+            "trust_snapshot_id": str(row["trust_snapshot_id"]),
+            "available": False,
+            "reason": "Trust snapshot was not found",
+        }
+
+    factors = row["factors"] or {}
+    raw_inputs = row["raw_inputs"] or {}
+    if isinstance(factors, str):
+        factors = json.loads(factors)
+    if isinstance(raw_inputs, str):
+        raw_inputs = json.loads(raw_inputs)
+    return {
+        "decision_id": str(row["decision_id"]),
+        "trust_snapshot_id": str(row["trust_snapshot_id"]),
+        "available": True,
+        "actor_id": row["actor_id"],
+        "score": float(row["score"]),
+        "band": row["band"],
+        "computed_at": row["computed_at"].isoformat() if row["computed_at"] else None,
+        "computation_method": row["computation_method"],
+        "factors": factors,
+        "factor_breakdown": _trust_factor_breakdown(factors),
+        "raw_inputs": raw_inputs,
     }
 
 class KillSwitchBody(BaseModel):
