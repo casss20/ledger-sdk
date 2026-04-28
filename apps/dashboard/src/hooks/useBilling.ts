@@ -1,5 +1,5 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiFetch } from '../lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, apiFetch } from '../lib/api';
 
 export interface BillingSummary {
   tenant_id: string;
@@ -32,6 +32,8 @@ export interface BillingSummary {
       enforcement_action: 'block' | 'require_approval' | 'throttle';
       warning_threshold_percent: number;
       is_active: boolean;
+      current_spend_cents?: number;
+      remaining_cents?: number;
     }>;
     recent_spend_events: Array<{
       event_id: string;
@@ -47,6 +49,7 @@ export interface BillingSummary {
 }
 
 export function useBilling() {
+  const queryClient = useQueryClient();
   const summary = useQuery<BillingSummary>({
     queryKey: ['billing-summary'],
     queryFn: () => apiFetch('/v1/billing/summary'),
@@ -59,5 +62,16 @@ export function useBilling() {
     },
   });
 
-  return { summary, checkout };
+  const topUpBudget = useMutation({
+    mutationFn: (payload: { budgetId: string; amount_cents: number; reason: string }) =>
+      api.topUpCostBudget(payload.budgetId, {
+        amount_cents: payload.amount_cents,
+        reason: payload.reason,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-summary'] });
+    },
+  });
+
+  return { summary, checkout, topUpBudget };
 }

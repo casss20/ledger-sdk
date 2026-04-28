@@ -1,9 +1,16 @@
 import uuid
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from typing import Dict, Any, List, Optional, Literal
+from typing import Any, Literal, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from citadel.execution.kernel import Kernel
+
 from citadel.api.dependencies import get_kernel, require_api_key
+from citadel.commercial.cost_controls import (
+    BudgetTopUp,
+    CostControlService,
+    can_top_up_budget,
+)
+from citadel.execution.kernel import Kernel
 
 router = APIRouter(tags=["dashboard"])
 
@@ -11,12 +18,32 @@ class ApprovalDecisionRequest(BaseModel):
     reviewed_by: str = Field(..., min_length=1, max_length=128)
     reason: Optional[str] = Field(default="Reviewed and approved", max_length=500)
 
+
+class BudgetTopUpRequest(BaseModel):
+    amount_cents: int = Field(..., gt=0)
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+def _dashboard_tenant_id(request: Request) -> str:
+    tenant_id = getattr(request.state, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Tenant not identified")
+    return tenant_id
+
+
+def _dashboard_actor(request: Request) -> tuple[str, str]:
+    actor_id = getattr(request.state, "user_id", None) or "dashboard"
+    role = getattr(request.state, "role", None)
+    if not can_top_up_budget(role):
+        raise HTTPException(status_code=403, detail="Budget top-up requires executive role")
+    return actor_id, role
+
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     request: Request,
     kernel: Kernel = Depends(get_kernel),
     _: str = Depends(require_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get consolidated statistics for the dashboard."""
     tenant_id = getattr(request.state, "tenant_id", "dev_tenant")
     
@@ -154,6 +181,38 @@ async def get_dashboard_stats(
                 "trust_level_breakdown": trust_levels,
             },
         }
+
+
+@router.post("/dashboard/billing/budgets/{budget_id}/top-up")
+async def top_up_tenant_budget(
+    budget_id: str,
+    body: BudgetTopUpRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Manual executive-only budget top-up from the dashboard."""
+    tenant_id = _dashboard_tenant_id(request)
+    actor_id, actor_role = _dashboard_actor(request)
+    pool = getattr(request.app.state, "db_pool", None)
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    service = CostControlService(pool)
+    try:
+        result = await service.top_up_tenant_budget(
+            BudgetTopUp(
+                budget_id=budget_id,
+                tenant_id=tenant_id,
+                amount_cents=body.amount_cents,
+                reason=body.reason,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                metadata={"source": "dashboard"},
+            )
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
 
 @router.get("/dashboard/approvals")
 async def list_dashboard_approvals(

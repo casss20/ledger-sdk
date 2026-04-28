@@ -1,6 +1,12 @@
 """Commercial layer — provider-agnostic entitlement and usage management."""
 
-from .cost_controls import BudgetDecision, CostAttribution, CostBudget, CostControlService
+from .cost_controls import (
+    BudgetDecision,
+    BudgetTopUp,
+    CostAttribution,
+    CostBudget,
+    CostControlService,
+)
 from .entitlement_service import EntitlementService
 from .events import CommercialEvent, CommercialEventProcessor
 from .interface import CommercialRepository
@@ -21,5 +27,6 @@ __all__ = [
     "CostAttribution",
     "CostBudget",
     "BudgetDecision",
+    "BudgetTopUp",
     "CostControlService",
 ]

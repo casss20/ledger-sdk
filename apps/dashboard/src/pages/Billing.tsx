@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AlertTriangle, ArrowUpRight, BarChart3, DollarSign, Shield, Zap } from 'lucide-react';
 
 import { useBilling } from '../hooks/useBilling';
@@ -10,7 +11,13 @@ function formatCents(cents = 0) {
 }
 
 export default function Billing() {
-  const { summary } = useBilling();
+  const { summary, topUpBudget } = useBilling();
+  const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
+  const [topUpDollars, setTopUpDollars] = useState('');
+  const [topUpReason, setTopUpReason] = useState('');
+  const [topUpError, setTopUpError] = useState<string | null>(null);
+  const [topUpSuccess, setTopUpSuccess] = useState(false);
+
   const data = summary.data;
   const costControls = data?.cost_controls;
   const budgets = costControls?.budgets || [];
@@ -19,6 +26,40 @@ export default function Billing() {
   const budgetUsage = largestBudget
     ? Math.min(100, Math.round((monthlySpend / largestBudget.amount_cents) * 100))
     : 0;
+  const selectedBudget = budgets.find((budget) => budget.budget_id === selectedBudgetId);
+  const parsedTopUpCents = Math.round(Number(topUpDollars) * 100);
+  const validTopUpCents =
+    Number.isFinite(parsedTopUpCents) && parsedTopUpCents > 0 ? parsedTopUpCents : 0;
+
+  async function submitTopUp() {
+    if (!selectedBudget) return;
+    setTopUpError(null);
+    if (selectedBudget.scope_type !== 'tenant') {
+      setTopUpError('MVP top-up only supports tenant-level budgets.');
+      return;
+    }
+    if (validTopUpCents <= 0) {
+      setTopUpError('Enter a positive top-up amount.');
+      return;
+    }
+    if (!topUpReason.trim()) {
+      setTopUpError('A reason is required for audit.');
+      return;
+    }
+    try {
+      await topUpBudget.mutateAsync({
+        budgetId: selectedBudget.budget_id,
+        amount_cents: validTopUpCents,
+        reason: topUpReason.trim(),
+      });
+      setSelectedBudgetId(null);
+      setTopUpDollars('');
+      setTopUpReason('');
+      setTopUpSuccess(true);
+    } catch (error) {
+      setTopUpError(error instanceof Error ? error.message : 'Top-up failed.');
+    }
+  }
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500">
@@ -118,17 +159,37 @@ export default function Billing() {
         ) : (
           <div className="space-y-4">
             {budgets.map((budget) => {
-              const usage = Math.min(100, Math.round((monthlySpend / budget.amount_cents) * 100));
+              const spend = budget.current_spend_cents ?? monthlySpend;
+              const usage = Math.min(100, Math.round((spend / budget.amount_cents) * 100));
               return (
                 <div key={budget.budget_id} className="border border-slate-800 rounded-xl p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold text-white">{budget.name}</p>
                       <p className="text-xs text-slate-500 mt-1">
-                        {budget.scope_type}:{budget.scope_value} · {budget.reset_period} · {budget.enforcement_action}
+                        {budget.scope_type}:{budget.scope_value} - {budget.reset_period} - {budget.enforcement_action}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Remaining {formatCents(budget.remaining_cents ?? Math.max(0, budget.amount_cents - spend))}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold text-white">{formatCents(budget.amount_cents)}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-white">{formatCents(budget.amount_cents)}</p>
+                      {budget.scope_type === 'tenant' ? (
+                        <button
+                          className="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-semibold border border-amber-500/20 hover:bg-amber-500/20"
+                          onClick={() => {
+                            setSelectedBudgetId(budget.budget_id);
+                            setTopUpError(null);
+                            setTopUpSuccess(false);
+                          }}
+                        >
+                          Top up
+                        </button>
+                      ) : (
+                        <span className="mt-2 block text-[10px] uppercase tracking-wide text-slate-600">Top-up deferred</span>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-4 h-2 rounded-full bg-slate-800 overflow-hidden">
                     <div className="h-full bg-emerald-500" style={{ width: `${usage}%` }} />
@@ -139,6 +200,75 @@ export default function Billing() {
           </div>
         )}
       </div>
+
+      {topUpSuccess && (
+        <p className="text-sm text-emerald-400">Budget top-up recorded and audit trail updated.</p>
+      )}
+
+      {selectedBudget && (
+        <div className="p-8 rounded-3xl bg-slate-900/50 border border-slate-800">
+          <div className="flex items-start justify-between gap-6 mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-white">Top Up Tenant Budget</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Add budget capacity with an audited executive adjustment.
+              </p>
+            </div>
+            <button
+              className="text-sm text-slate-500 hover:text-white"
+              onClick={() => setSelectedBudgetId(null)}
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Current Budget</p>
+              <p className="text-xl font-semibold text-white mt-1">{formatCents(selectedBudget.amount_cents)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Current Spend</p>
+              <p className="text-xl font-semibold text-white mt-1">{formatCents(selectedBudget.current_spend_cents ?? monthlySpend)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">After Top-up</p>
+              <p className="text-xl font-semibold text-white mt-1">
+                {formatCents(selectedBudget.amount_cents + validTopUpCents)}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label className="md:col-span-1">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Amount</span>
+              <input
+                className="mt-2 w-full rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-white outline-none focus:border-amber-500"
+                inputMode="decimal"
+                placeholder="5000.00"
+                value={topUpDollars}
+                onChange={(event) => setTopUpDollars(event.target.value)}
+              />
+            </label>
+            <label className="md:col-span-2">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Reason</span>
+              <textarea
+                className="mt-2 w-full rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-white outline-none focus:border-amber-500"
+                placeholder="Required for audit, for example: temporary expansion for Q2 evaluation workload"
+                rows={3}
+                value={topUpReason}
+                onChange={(event) => setTopUpReason(event.target.value)}
+              />
+            </label>
+          </div>
+          {topUpError && <p className="mt-4 text-sm text-red-400">{topUpError}</p>}
+          <button
+            className="mt-6 px-6 py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 rounded-xl font-semibold transition-colors"
+            disabled={topUpBudget.isPending}
+            onClick={submitTopUp}
+          >
+            {topUpBudget.isPending ? 'Recording top-up...' : 'Record Top-up'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

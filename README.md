@@ -23,6 +23,7 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 - **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal via the Stripe adapter.
 - **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
 - **Cost Controls & Budgets**: Tenant, project, agent, and API-key LLM spend budgets with pre-request enforcement actions.
+- **Audited Budget Top-ups**: Executive-only dashboard adjustments for tenant LLM budgets with required reasons and governance audit trail entries.
 - **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
 - **Atomic Usage Tracking**: High-concurrency Postgres counters for precise quota tracking.
 

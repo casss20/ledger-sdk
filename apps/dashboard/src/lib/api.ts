@@ -89,6 +89,11 @@ export interface CostBudgetDecision {
   } | null;
 }
 
+export interface CostBudgetTopUpPayload {
+  amount_cents: number;
+  reason: string;
+}
+
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth_token');
   const headers = new Headers(init.headers);
@@ -216,6 +221,13 @@ export const api = {
     request_id?: string;
   }): Promise<CostBudgetDecision> {
     return apiFetch<CostBudgetDecision>('/v1/billing/cost/check', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async topUpCostBudget(budgetId: string, payload: CostBudgetTopUpPayload) {
+    return apiFetch('/api/dashboard/billing/budgets/' + budgetId + '/top-up', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

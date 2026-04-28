@@ -18,6 +18,7 @@ EnforcementAction = str
 VALID_SCOPES = {"tenant", "project", "agent", "api_key"}
 VALID_PERIODS = {"daily", "weekly", "monthly"}
 VALID_ENFORCEMENT_ACTIONS = {"block", "require_approval", "throttle"}
+TOP_UP_ALLOWED_ROLES = {"executive"}
 
 SCOPE_PRIORITY = {
     "api_key": 4,
@@ -87,6 +88,19 @@ class BudgetDecision:
         return self.enforcement_action == "throttle"
 
 
+@dataclass(frozen=True)
+class BudgetTopUp:
+    """Manual enterprise budget top-up request."""
+
+    budget_id: str
+    tenant_id: str
+    amount_cents: int
+    reason: str
+    actor_id: str
+    actor_role: str
+    metadata: dict[str, Any] | None = None
+
+
 def validate_budget(budget: CostBudget) -> None:
     if budget.scope_type not in VALID_SCOPES:
         raise ValueError(f"scope_type must be one of: {', '.join(sorted(VALID_SCOPES))}")
@@ -103,6 +117,21 @@ def validate_budget(budget: CostBudget) -> None:
         raise ValueError("scope_value is required")
     if budget.scope_type == "tenant" and budget.scope_value != budget.tenant_id:
         raise ValueError("tenant-scope budgets must use tenant_id as scope_value")
+
+
+def validate_top_up(top_up: BudgetTopUp) -> None:
+    if top_up.amount_cents <= 0:
+        raise ValueError("amount_cents must be greater than 0")
+    if not top_up.reason or not top_up.reason.strip():
+        raise ValueError("reason is required")
+    if len(top_up.reason.strip()) > 1000:
+        raise ValueError("reason must be 1000 characters or fewer")
+    if not can_top_up_budget(top_up.actor_role):
+        raise PermissionError("budget top-up requires executive role")
+
+
+def can_top_up_budget(role: str | None) -> bool:
+    return (role or "").lower() in TOP_UP_ALLOWED_ROLES
 
 
 def current_period_window(reset_period: ResetPeriod, now: datetime | None = None) -> tuple[datetime, datetime]:
@@ -289,6 +318,78 @@ class CostControlService:
             )
         return [_row_to_dict(row) for row in rows]
 
+    async def top_up_tenant_budget(self, top_up: BudgetTopUp) -> dict[str, Any]:
+        """Increase an existing tenant-scope budget with an audited adjustment."""
+        validate_top_up(top_up)
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT set_tenant_context($1)", top_up.tenant_id)
+                budget = await conn.fetchrow(
+                    """
+                    SELECT *
+                    FROM cost_budgets
+                    WHERE budget_id = $1
+                      AND tenant_id = $2
+                      AND is_active = TRUE
+                    FOR UPDATE
+                    """,
+                    top_up.budget_id,
+                    top_up.tenant_id,
+                )
+                if not budget:
+                    raise ValueError("budget not found")
+                if budget["scope_type"] != "tenant":
+                    raise ValueError("MVP top-up only supports tenant-scope budgets")
+
+                previous_amount = int(budget["amount_cents"])
+                resulting_amount = previous_amount + top_up.amount_cents
+
+                updated_budget = await conn.fetchrow(
+                    """
+                    UPDATE cost_budgets
+                    SET amount_cents = $1, updated_at = NOW()
+                    WHERE budget_id = $2 AND tenant_id = $3
+                    RETURNING *
+                    """,
+                    resulting_amount,
+                    top_up.budget_id,
+                    top_up.tenant_id,
+                )
+                adjustment = await conn.fetchrow(
+                    """
+                    INSERT INTO cost_budget_adjustments (
+                        budget_id, tenant_id, adjustment_type, amount_cents,
+                        previous_amount_cents, resulting_amount_cents,
+                        reason, actor_id, actor_role, metadata_json
+                    )
+                    VALUES ($1, $2, 'top_up', $3, $4, $5, $6, $7, $8, $9::jsonb)
+                    RETURNING *
+                    """,
+                    top_up.budget_id,
+                    top_up.tenant_id,
+                    top_up.amount_cents,
+                    previous_amount,
+                    resulting_amount,
+                    top_up.reason.strip(),
+                    top_up.actor_id,
+                    top_up.actor_role,
+                    json.dumps(top_up.metadata or {}, sort_keys=True),
+                )
+
+                await self._record_top_up_audit(
+                    conn,
+                    top_up=top_up,
+                    previous_amount_cents=previous_amount,
+                    resulting_amount_cents=resulting_amount,
+                    adjustment_id=str(adjustment["adjustment_id"]),
+                    budget_name=budget["name"],
+                )
+
+        return {
+            "budget": _row_to_dict(updated_budget),
+            "adjustment": _row_to_dict(adjustment),
+        }
+
     async def check_budget(self, attribution: CostAttribution) -> BudgetDecision:
         budgets = await self._matching_budgets(attribution)
         if not budgets:
@@ -399,6 +500,7 @@ class CostControlService:
     async def get_summary(self, tenant_id: str) -> dict[str, Any]:
         budgets = await self.list_budgets(tenant_id)
         period_start, period_end = current_period_window("monthly")
+        budget_usage = await self._budget_usage_summary(budgets)
         async with self.pool.acquire() as conn:
             await conn.execute("SELECT set_tenant_context($1)", tenant_id)
             monthly_spend = await conn.fetchval(
@@ -425,9 +527,77 @@ class CostControlService:
             "monthly_spend_cents": monthly_spend or 0,
             "monthly_period_start": period_start.isoformat(),
             "monthly_period_end": period_end.isoformat(),
-            "budgets": budgets,
+            "budgets": [
+                {
+                    **budget,
+                    **budget_usage.get(str(budget["budget_id"]), {}),
+                }
+                for budget in budgets
+            ],
             "recent_spend_events": [_row_to_dict(row) for row in recent_rows],
         }
+
+    async def _budget_usage_summary(
+        self,
+        budgets: list[dict[str, Any]],
+    ) -> dict[str, dict[str, int]]:
+        usage: dict[str, dict[str, int]] = {}
+        for row in budgets:
+            budget = _budget_from_row(row)
+            period_start, period_end = current_period_window(budget.reset_period)
+            current_spend = await self._current_spend(
+                budget=budget,
+                period_start=period_start,
+                period_end=period_end,
+            )
+            usage[str(row["budget_id"])] = {
+                "current_spend_cents": current_spend,
+                "remaining_cents": max(0, int(row["amount_cents"]) - current_spend),
+            }
+        return usage
+
+    async def _record_top_up_audit(
+        self,
+        conn: Any,
+        *,
+        top_up: BudgetTopUp,
+        previous_amount_cents: int,
+        resulting_amount_cents: int,
+        adjustment_id: str,
+        budget_name: str,
+    ) -> None:
+        await conn.execute("SELECT pg_advisory_xact_lock(2)")
+        await conn.execute(
+            """
+            INSERT INTO governance_audit_log (
+                event_type, tenant_id, actor_id, payload_json,
+                trace_id, initiator_role, reason, environment
+            )
+            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, 'production')
+            """,
+            "cost.budget_top_up",
+            top_up.tenant_id,
+            top_up.actor_id,
+            json.dumps(
+                {
+                    "budget_id": top_up.budget_id,
+                    "budget_name": budget_name,
+                    "scope_type": "tenant",
+                    "scope_value": top_up.tenant_id,
+                    "adjustment_id": adjustment_id,
+                    "amount_cents": top_up.amount_cents,
+                    "previous_amount_cents": previous_amount_cents,
+                    "resulting_amount_cents": resulting_amount_cents,
+                    "reason": top_up.reason.strip(),
+                    "actor_role": top_up.actor_role,
+                    "metadata": top_up.metadata or {},
+                },
+                sort_keys=True,
+            ),
+            f"cost-top-up:{adjustment_id}",
+            top_up.actor_role,
+            top_up.reason.strip(),
+        )
 
     async def _matching_budgets(self, attribution: CostAttribution) -> list[CostBudget]:
         scope_values = matching_scope_values(attribution)

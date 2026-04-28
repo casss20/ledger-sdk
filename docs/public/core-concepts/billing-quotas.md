@@ -137,6 +137,23 @@ curl -X POST https://api.citadelsdk.com/v1/billing/cost/spend \
 
 Cost spend and enforcement events are append-only commercial records. They do not replace `audit_events` or `governance_audit_log`.
 
+### Manual Top-ups
+
+Citadel supports an enterprise-safe manual top-up flow for tenant-level LLM budgets. A top-up is an admin adjustment to an existing cost budget, not a consumer wallet deposit and not a Stripe checkout flow.
+
+MVP rules:
+
+- Top-ups increase an existing `tenant` budget's `amount_cents`.
+- The actor must have the `executive` dashboard role.
+- The amount must be positive.
+- A reason is required and is stored for audit review.
+- Each top-up writes an append-only `cost_budget_adjustments` row.
+- The same operation records a `cost.budget_top_up` event in `governance_audit_log` with actor, role, tenant, budget, previous amount, added amount, resulting amount, reason, and timestamp.
+
+The dashboard shows the current budget, current spend, projected budget after top-up, and any failure returned by the API. Agent, project, and API-key top-ups are intentionally deferred until budget ownership and approval workflows are more mature.
+
+Out of scope for the MVP: auto-recharge, invoicing, Stripe checkout, payment collection, and approval routing for large top-ups.
+
 ## Trust-Aware Quotas
 
 Trust bands modify effective quota limits. A HIGHLY_TRUSTED agent gets up to 5× the base rate limit. A PROBATION agent is capped at 50% of the base rate.
