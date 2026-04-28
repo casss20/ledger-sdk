@@ -7,11 +7,13 @@ name = "citadel-runtime"
 version = "0.2.1"
 description = "AI Governance Runtime: Constitution + Audit for Agent Builders (Backend)"
 readme = "README.md"
+# Runtime is BSL-1.1 (source-available, converts to Apache-2.0 after 4 years).
+# The public SDK (packages/sdk-python) is Apache-2.0 to allow unrestricted client use.
 license = {text = "BSL-1.1"}
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
-    {name = "Anthony Cass", email = "anthony@cass.solutions"}
+    {name = "Anthony Cass", email = "casseussergio@gmail.com"}
 ]
 keywords = [
     "ai",

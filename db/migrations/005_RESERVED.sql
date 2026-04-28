@@ -1,0 +1,12 @@
+-- ============================================================================
+-- MIGRATION 005: RESERVED — sequence placeholder
+-- ============================================================================
+--
+-- Migration 005 was reserved but never applied. This file exists to maintain
+-- a continuous sequence and prevent future migrations from accidentally reusing
+-- this slot. No schema changes are made.
+--
+-- If you need to add schema changes, use the next available number after 019.
+-- ============================================================================
+
+-- intentionally empty

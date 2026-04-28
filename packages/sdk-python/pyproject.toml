@@ -7,6 +7,8 @@ name = "citadel-governance"
 version = "0.2.1"
 description = "AI Governance: Constitution + Audit for Agent Builders"
 readme = "README.md"
+# SDK is Apache-2.0 so client code is unrestricted.
+# The runtime (apps/runtime) is BSL-1.1. See LICENSING.md for the full split.
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
