@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Citadel SDK — Documentation</title>
-<meta name="description" content="Citadel SDK documentation. AI governance infrastructure — policy engine, human approvals, kill switch, tamper-proof audit.">
+<meta name="description" content="Citadel SDK documentation. AI governance infrastructure — policy engine, human approvals, cost controls, kill switch, tamper-proof audit.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
@@ -701,7 +701,7 @@ body {
         <span>Commercial</span>
       </div>
       <div class="nav-items">
-        <span class="nav-item" onclick="loadFile('core-concepts/billing-quotas.md')">Billing &amp; Quotas</span>
+        <span class="nav-item" onclick="loadFile('core-concepts/billing-quotas.md')">Billing, Quotas &amp; Budgets</span>
         <span class="nav-item" onclick="loadFile('recipes/multi-tenant-deployment.md')">Multi-Tenant RLS</span>
       </div>
     </div>
@@ -757,6 +757,7 @@ body {
 
       <h2>What's New</h2>
       <p><strong>EU AI Act Ready:</strong> Citadel satisfies Article 12 (automatic logging) and Article 14 (human oversight) out of the box. The August 2026 deadline is approaching — <a href="#" onclick="loadFile('core-concepts/compliance.md')">learn more</a>.</p>
+      <p><strong>Cost Controls &amp; Budgets:</strong> Tenant, project, agent, and API-key LLM spend budgets now support pre-request block, approval, and throttle actions. Manage budget visibility directly in the <a href="https://dashboard.citadelsdk.com">Dashboard</a>.</p>
       <p><strong>Commercial Billing:</strong> Stripe-backed plans and quota enforcement are now live. Manage subscriptions and view usage metrics directly in the <a href="https://dashboard.citadelsdk.com">Dashboard</a>.</p>
 
       <h2>Core Concepts</h2>

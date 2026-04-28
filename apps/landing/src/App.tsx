@@ -5,7 +5,7 @@ import {
   Zap, Activity, Clock,
   CheckCircle2, AlertTriangle, XCircle,
   Users, GitBranch, Globe, FileText, Lock,
-  LayoutDashboard, Menu, X,
+  LayoutDashboard, Menu, X, DollarSign,
 } from 'lucide-react'
 
 /* ─── Navigation ─── */
@@ -109,7 +109,7 @@ function Hero() {
           {/* Sub */}
           <p className="mt-8 max-w-2xl font-sans text-base md:text-lg text-slate-600 leading-relaxed">
             One SDK call to control, audit, and approve every action your agents take.
-            Policy enforcement, human approvals, kill switches, and tamper-proof audit — out of the box.
+            Policy enforcement, human approvals, budget controls, kill switches, and tamper-proof audit — out of the box.
           </p>
 
           {/* CTAs */}
@@ -130,7 +130,7 @@ function Hero() {
 
           {/* Pill strip */}
           <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-            {['Policy Engine', 'Human-in-the-Loop', 'Kill Switch', 'Tamper-Proof Audit', 'Multi-Tenant', 'Open SDK'].map((label) => (
+            {['Policy Engine', 'Human-in-the-Loop', 'Cost Controls', 'Kill Switch', 'Tamper-Proof Audit', 'Multi-Tenant', 'Open SDK'].map((label) => (
               <span key={label} className="px-3 py-1.5 rounded-full glass border border-white/60 text-slate-500 text-xs font-medium">
                 {label}
               </span>
@@ -167,6 +167,12 @@ const floatingFeatures = [
     title: 'Policy Engine',
     description: 'ALLOW, BLOCK, or route to approval. Policies defined in code or dashboard.',
     floatClass: 'animate-float-delayed',
+  },
+  {
+    icon: <DollarSign size={20} />,
+    title: 'Cost Controls',
+    description: 'Set LLM budgets by tenant, project, agent, or key before provider spend happens.',
+    floatClass: 'animate-float-slow',
   },
 ]
 
@@ -436,6 +442,7 @@ const allFeatures = [
   { icon: Users,       title: 'Human Approvals',    body: 'High-risk actions pause and wait for a human decision in the dashboard.',               color: 'text-violet-600',  bg: 'bg-violet-50'  },
   { icon: Lock,        title: 'Kill Switch',        body: 'One click blocks all agent actions globally, per tenant, or per agent. Instant.',       color: 'text-red-600',     bg: 'bg-red-50'     },
   { icon: FileText,    title: 'Tamper-Proof Audit', body: 'Every decision is cryptographically hashed and chained. Cannot be modified.',           color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { icon: DollarSign,  title: 'Cost Controls',      body: 'Pre-request LLM budget checks block, throttle, or require approval before spend.',      color: 'text-amber-600',   bg: 'bg-amber-50'   },
   { icon: GitBranch,   title: 'Multi-Tenant',       body: 'PostgreSQL Row-Level Security. Each customer sees only their own data.',                color: 'text-sky-600',     bg: 'bg-sky-50'     },
   { icon: Globe,       title: 'Open SDK',           body: 'pip install citadel-governance. Works with LangChain, AutoGen, custom. Apache 2.0.', color: 'text-teal-600',    bg: 'bg-teal-50'    },
 ]
