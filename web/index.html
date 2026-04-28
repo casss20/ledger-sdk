@@ -1079,11 +1079,18 @@ a { color: inherit; text-decoration: none; }
   .security-section__inner { grid-template-columns: 1fr; }
   .footer__top { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 768px) {
+  .hero__headline { font-size: 48px; }
+  .hero__cta { flex-wrap: wrap; }
+  .stats-row { flex-wrap: wrap; gap: var(--sp-5); }
+  .pillars__header { text-align: left; }
+}
 @media (max-width: 640px) {
-  .hero__headline { font-size: 40px; }
+  .hero__headline { font-size: 36px; }
   .hero__ticker { flex-wrap: wrap; gap: var(--sp-4); }
   .integrations__grid { grid-template-columns: 1fr 1fr; }
   .footer__top { grid-template-columns: 1fr; }
+  .footer__bottom { flex-direction: column; gap: 12px; }
 }
 </style>
 </head>
