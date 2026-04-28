@@ -36,7 +36,7 @@ export function AuditTable() {
             <th>Action</th>
             <th>Outcome</th>
             <th>Risk Score</th>
-            <th>Trace ID</th>
+            <th>Trust Snapshot</th>
           </tr>
         </thead>
         <tbody>
@@ -51,7 +51,9 @@ export function AuditTable() {
               <td>{row.action_type}</td>
               <td>{row.status}</td>
               <td className="data-num">{row.risk_score}</td>
-              <td className="data-num font-mono text-xs">{row.action_id.slice(0, 8)}</td>
+              <td className="data-num font-mono text-xs">
+                {row.trust_snapshot_id ? row.trust_snapshot_id.slice(0, 8) : "none"}
+              </td>
             </tr>
           ))}
         </tbody>

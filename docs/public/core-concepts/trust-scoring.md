@@ -47,6 +47,8 @@ Token Issued / Action Executed
 
 Every decision stores `trust_snapshot_id` — the exact trust context active at decision time. Full replay capability for audit.
 
+The dashboard uses that same `trust_snapshot_id` to show a decision-level factor breakdown. It reads the stored `actor_trust_snapshots.factors` JSON and raw inputs for the selected decision; it does not recompute trust in the browser.
+
 ---
 
 ## Score Components
@@ -94,6 +96,14 @@ Example response:
   "computed_at": "2026-04-27T14:30:00Z"
 }
 ```
+
+In the Audit Explorer, selecting a decision-linked audit event shows:
+
+- Snapshot ID used by the decision
+- Score and trust band
+- Computation timestamp and method
+- Contributions for the 9 stored factors
+- Raw inputs collapsed into the audit payload for replay
 
 ---
 
