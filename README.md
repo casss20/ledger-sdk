@@ -22,6 +22,7 @@ Citadel is a hardened governance engine that intercepts agent actions, applies m
 - **Provider-Agnostic Architecture**: Core commercial logic is decoupled from any specific billing provider. Stripe is the first adapter; future providers plug in without touching core code.
 - **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal via the Stripe adapter.
 - **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
+- **Cost Controls & Budgets**: Tenant, project, agent, and API-key LLM spend budgets with pre-request enforcement actions.
 - **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
 - **Atomic Usage Tracking**: High-concurrency Postgres counters for precise quota tracking.
 

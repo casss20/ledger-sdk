@@ -57,6 +57,38 @@ export interface NoCodePolicy {
   };
 }
 
+export interface CostBudgetPayload {
+  name: string;
+  scope_type: 'tenant' | 'project' | 'agent' | 'api_key';
+  scope_value?: string;
+  amount_cents: number;
+  currency?: string;
+  reset_period: 'daily' | 'weekly' | 'monthly';
+  enforcement_action: 'block' | 'require_approval' | 'throttle';
+  warning_threshold_percent?: number;
+}
+
+export interface CostBudgetDecision {
+  allowed: boolean;
+  enforcement_action: 'allow' | 'block' | 'require_approval' | 'throttle';
+  requires_approval: boolean;
+  throttled: boolean;
+  reason: string;
+  projected_cost_cents: number;
+  current_spend_cents: number;
+  budget_amount_cents: number | null;
+  warning: boolean;
+  period_start: string;
+  period_end: string;
+  budget: {
+    budget_id?: string;
+    name: string;
+    scope_type: string;
+    scope_value: string;
+    enforcement_action: string;
+  } | null;
+}
+
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth_token');
   const headers = new Headers(init.headers);
@@ -164,6 +196,29 @@ export const api = {
       },
     );
     return data.policy;
+  },
+
+  async createCostBudget(payload: CostBudgetPayload) {
+    const data = await apiFetch<{ budget: unknown }>('/v1/billing/budgets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return data.budget;
+  },
+
+  async checkCostBudget(payload: {
+    projected_cost_cents: number;
+    actor_id?: string;
+    project_id?: string;
+    api_key_id?: string;
+    provider?: string;
+    model?: string;
+    request_id?: string;
+  }): Promise<CostBudgetDecision> {
+    return apiFetch<CostBudgetDecision>('/v1/billing/cost/check', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   killSwitch(

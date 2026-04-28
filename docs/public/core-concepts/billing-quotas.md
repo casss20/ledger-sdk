@@ -8,6 +8,7 @@ The commercial layer ensures that tenants operate within their subscription limi
 1. **Plan Management**: Mapping tenants to subscription-backed plans.
 2. **Quota Enforcement**: Hard-blocking requests that exceed plan limits (e.g., 10,000 actions/mo).
 3. **Payment Recovery**: Handling `past_due` states gracefully without immediate lockout.
+4. **Cost Controls**: Enforcing LLM spend budgets before a request is sent to a model provider.
 
 ## Provider-Agnostic Architecture
 
@@ -71,6 +72,70 @@ UPDATE billing_usage
 SET count = count + 1
 WHERE tenant_id = $1 AND plan_id = $2 AND count < limit;
 ```
+
+## Cost Controls & Budgets
+
+Citadel can enforce LLM spend controls before a model request is made. This is separate from Stripe subscription quotas:
+
+- **Subscription quotas** answer: "Is this tenant allowed to keep using Citadel this month?"
+- **Cost budgets** answer: "Is this specific LLM request allowed before it creates spend?"
+
+Budgets are hierarchical and tenant-scoped:
+
+| Scope | Use case |
+|------|----------|
+| `tenant` | Company-wide or workspace-wide LLM cap |
+| `project` | Product, department, or workload cap |
+| `agent` | Per-agent spend guardrail |
+| `api_key` | Per-key spend guardrail for delegated integrations |
+
+Reset periods are deterministic: `daily`, `weekly`, or `monthly`.
+
+When a projected request would exceed a matching budget, Citadel returns one of three enforcement actions:
+
+| Action | Meaning |
+|--------|---------|
+| `block` | Stop the request before provider spend occurs. |
+| `require_approval` | Surface the request as needing human approval before spend. |
+| `throttle` | Tell the caller to slow or defer the request. |
+
+### Pre-request check
+
+```bash
+curl -X POST https://api.citadelsdk.com/v1/billing/cost/check \
+  -H "Authorization: Bearer $CITADEL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projected_cost_cents": 42,
+    "actor_id": "agent-research-1",
+    "project_id": "research",
+    "provider": "openai",
+    "model": "gpt-4.1"
+  }'
+```
+
+If the response contains `"allowed": false`, the caller must honor `enforcement_action`.
+
+### Spend recording
+
+After execution, record actual spend for attribution and future checks:
+
+```bash
+curl -X POST https://api.citadelsdk.com/v1/billing/cost/spend \
+  -H "Authorization: Bearer $CITADEL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cost_cents": 39,
+    "input_tokens": 1200,
+    "output_tokens": 300,
+    "actor_id": "agent-research-1",
+    "project_id": "research",
+    "provider": "openai",
+    "model": "gpt-4.1"
+  }'
+```
+
+Cost spend and enforcement events are append-only commercial records. They do not replace `audit_events` or `governance_audit_log`.
 
 ## Trust-Aware Quotas
 

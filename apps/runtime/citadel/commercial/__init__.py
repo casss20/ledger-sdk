@@ -1,11 +1,12 @@
 """Commercial layer — provider-agnostic entitlement and usage management."""
 
-from .models import BillingStatus, TenantEntitlements, UsageSnapshot
-from .interface import CommercialRepository
+from .cost_controls import BudgetDecision, CostAttribution, CostBudget, CostControlService
 from .entitlement_service import EntitlementService
-from .usage_service import UsageService
 from .events import CommercialEvent, CommercialEventProcessor
+from .interface import CommercialRepository
 from .middleware import CommercialMiddleware
+from .models import BillingStatus, TenantEntitlements, UsageSnapshot
+from .usage_service import UsageService
 
 __all__ = [
     "BillingStatus",
@@ -17,4 +18,8 @@ __all__ = [
     "CommercialEvent",
     "CommercialEventProcessor",
     "CommercialMiddleware",
+    "CostAttribution",
+    "CostBudget",
+    "BudgetDecision",
+    "CostControlService",
 ]

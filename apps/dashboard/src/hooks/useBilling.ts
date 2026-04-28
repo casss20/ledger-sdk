@@ -17,6 +17,33 @@ export interface BillingSummary {
   };
   features: Record<string, boolean>;
   current_period_end: string | null;
+  cost_controls?: {
+    monthly_spend_cents: number;
+    monthly_period_start: string;
+    monthly_period_end: string;
+    budgets: Array<{
+      budget_id: string;
+      name: string;
+      scope_type: 'tenant' | 'project' | 'agent' | 'api_key';
+      scope_value: string;
+      amount_cents: number;
+      currency: string;
+      reset_period: 'daily' | 'weekly' | 'monthly';
+      enforcement_action: 'block' | 'require_approval' | 'throttle';
+      warning_threshold_percent: number;
+      is_active: boolean;
+    }>;
+    recent_spend_events: Array<{
+      event_id: string;
+      event_ts: string;
+      provider?: string;
+      model?: string;
+      cost_cents: number;
+      actor_id?: string;
+      project_id?: string;
+      api_key_id?: string;
+    }>;
+  };
 }
 
 export function useBilling() {
