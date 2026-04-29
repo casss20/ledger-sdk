@@ -7,6 +7,7 @@ This repository contains code under multiple licenses. The license that applies 
 | Directory | License | Can I use it freely? |
 |---|---|---|
 | `packages/sdk-python/` | **Apache License 2.0** | ✅ Yes — fully open source |
+| `packages/sdk-python-kernel/` | **Apache License 2.0** | ✅ Yes — fully open source |
 | `packages/sdk-typescript/` | **Apache License 2.0** | ✅ Yes — fully open source |
 | `packages/open-spec/` | **Apache License 2.0** | ✅ Yes — fully open source |
 | `apps/runtime/` | **Business Source License 1.1** | ✅ Self-host, modify, evaluate. ❌ Competing hosted service |

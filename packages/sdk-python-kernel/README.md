@@ -186,4 +186,6 @@ CITADEL_ACTOR_ID=my-agent
 
 ## License
 
-Apache-2.0
+**citadel-kernel is Apache License 2.0** — fully open source.
+
+The SDK depends on `citadel-governance` (also Apache 2.0). If you self-host the Citadel runtime backend (`apps/runtime/`), that code is **Business Source License 1.1** (self-host and modify freely, but no competing hosted service without a license agreement).
