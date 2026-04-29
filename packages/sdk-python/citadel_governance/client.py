@@ -143,6 +143,11 @@ class CitadelClient:
         idempotency_key: str | None = None,
         capability_token: str | None = None,
         dry_run: bool = False,
+        projected_cost_cents: int | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
     ) -> CitadelResult:
         """Execute an action under governance control."""
         request: Dict[str, Any] = {
@@ -159,6 +164,16 @@ class CitadelClient:
             request["capability_token"] = capability_token
         if dry_run:
             request["dry_run"] = True
+        if projected_cost_cents is not None:
+            request["projected_cost_cents"] = projected_cost_cents
+        if provider:
+            request["provider"] = provider
+        if model:
+            request["model"] = model
+        if input_tokens is not None:
+            request["input_tokens"] = input_tokens
+        if output_tokens is not None:
+            request["output_tokens"] = output_tokens
 
         response = await self._request("POST", "/v1/actions/execute", json=request)
         _raise_for_status(response)
@@ -182,6 +197,11 @@ class CitadelClient:
         context: Dict[str, Any] | None = None,
         actor_id: str | None = None,
         actor_type: str | None = None,
+        projected_cost_cents: int | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
     ) -> CitadelResult:
         """
         Get a governance decision without executing the action (dry run).
@@ -197,6 +217,11 @@ class CitadelClient:
             actor_id=actor_id,
             actor_type=actor_type,
             dry_run=True,
+            projected_cost_cents=projected_cost_cents,
+            provider=provider,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     async def get_action(self, action_id: str) -> Dict[str, Any]:

@@ -32,6 +32,12 @@ class SubmitActionRequest(BaseModel):
     idempotency_key: Optional[str] = Field(None, max_length=256)
     capability_token: Optional[str] = None
     dry_run: bool = False
+    # Cost/budget fields (optional) — if provided, kernel will enforce budgets
+    projected_cost_cents: Optional[int] = Field(None, ge=0, description="Explicit projected cost in cents")
+    provider: Optional[str] = Field(None, max_length=64, description="LLM provider (e.g., anthropic)")
+    model: Optional[str] = Field(None, max_length=256, description="Model name (e.g., claude-opus-4-7)")
+    input_tokens: Optional[int] = Field(None, ge=0, description="Estimated input tokens")
+    output_tokens: Optional[int] = Field(None, ge=0, description="Estimated output tokens")
     # Lineage fields for orchestration
     root_decision_id: Optional[str] = None
     parent_decision_id: Optional[str] = None
@@ -83,6 +89,29 @@ async def submit_action(
     _: str = Depends(require_api_key),
 ):
     """Submit an action for governance evaluation."""
+    ctx = dict(req.context or {})
+
+    projected_cost = req.projected_cost_cents
+    if projected_cost is None and req.provider and req.model:
+        from citadel.commercial.cost_estimator import estimate_cost
+        projected_cost = estimate_cost(
+            req.provider,
+            req.model,
+            req.input_tokens or 0,
+            req.output_tokens or 0,
+        )
+
+    if projected_cost is not None:
+        ctx["projected_cost_cents"] = projected_cost
+    if req.provider:
+        ctx["provider"] = req.provider
+    if req.model:
+        ctx["model"] = req.model
+    if req.input_tokens:
+        ctx["input_tokens"] = req.input_tokens
+    if req.output_tokens:
+        ctx["output_tokens"] = req.output_tokens
+
     action = Action(
         action_id=uuid.uuid4(),
         actor_id=req.actor_id,
@@ -91,7 +120,7 @@ async def submit_action(
         resource=req.resource,
         tenant_id=req.tenant_id,
         payload=req.payload,
-        context=req.context,
+        context=ctx,
         session_id=req.session_id,
         request_id=req.request_id or str(uuid.uuid4()),
         idempotency_key=req.idempotency_key,
@@ -102,7 +131,7 @@ async def submit_action(
         workflow_id=req.workflow_id,
         created_at=datetime.utcnow(),
     )
-    
+
     result = await kernel.handle(action, capability_token=req.capability_token, dry_run=req.dry_run)
     
     # Convert status to lowercase for API consistency
