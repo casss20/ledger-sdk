@@ -15,20 +15,35 @@ pip install citadel-kernel
 
 ## Quickstart
 
+**Both wedges in 10 lines:**
+
+```python
+import citadel_kernel as ck; import asyncio
+async def main():
+    client = ck.KernelClient(base_url="https://api.citadelsdk.com", api_key="sk_your_key_here")
+    result = await client.execute(action="llm.generate", provider="anthropic", model="claude-opus-4-7", input_tokens=10000, output_tokens=2000)
+    print(f"Wedge A (Cost Blocking): {result.status}")
+    evidence = await client.export_evidence(result.action_id)
+    verified = await client.verify_evidence(result.action_id)
+    print(f"Wedge B (Audit Evidence): {verified['verified']}")
+    await client.close()
+asyncio.run(main())
+```
+
+**Full Example**
+
 ```python
 import citadel_kernel as ck
 import asyncio
 
 async def main():
-    # Create a kernel client
     client = ck.KernelClient(
         base_url="https://api.citadelsdk.com",
         api_key="sk_your_key_here",
         actor_id="my-agent",
     )
 
-    # Execute an action with cost info
-    # Kernel will estimate cost from provider+model+tokens
+    # Wedge A: Hard cost enforcement blocks before API call
     result = await client.execute(
         action="llm.generate",
         resource="anthropic:claude",
@@ -39,17 +54,14 @@ async def main():
     )
 
     if result.status == "executed":
-        print("✓ Cost was within budget, action executed")
-    elif result.status == "pending_approval":
-        print(f"⏸ Approval required: {result.reason}")
-    else:
-        print(f"✗ Blocked: {result.reason}")
+        print("Cost was within budget, action executed")
+    elif result.status == "spend_limit_exceeded":
+        print(f"Blocked: {result.reason}")
 
-    # Export decision evidence for audit/compliance
+    # Wedge B: Cryptographic audit evidence
     evidence = await client.export_evidence(result.action_id)
-    print(f"Decision evidence exported (hash: {evidence['root_hash'][:16]}...)")
+    print(f"Evidence exported (hash: {evidence['root_hash'][:16]}...)")
 
-    # Verify the evidence hasn't been tampered with
     verified = await client.verify_evidence(result.action_id)
     print(f"Evidence verified: {verified['verified']}")
 
@@ -155,6 +167,19 @@ The default client uses environment variables:
 - `CITADEL_URL` — API base URL (defaults to `http://localhost:8000`)
 - `CITADEL_API_KEY` — API key for authentication
 - `CITADEL_ACTOR_ID` — Actor identifier (defaults to `"default"`)
+
+## E2E Verification
+
+Verify both wedges work correctly with the standalone test script at the repository root:
+
+```bash
+# From the repository root
+PYTHONPATH=apps/runtime:. python verify_wedge_e2e.py
+```
+
+This runs without database or API server, using mock collaborators to verify:
+- **Wedge A**: Hard cost enforcement blocks actions before execution
+- **Wedge B**: Cryptographic audit evidence is tamper-evident and exportable
 
 ## What's NOT Included
 
