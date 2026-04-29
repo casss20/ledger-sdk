@@ -1,4 +1,4 @@
-# Citadel × K2.6 (Moonshot AI) Integration
+﻿# Citadel Ã— K2.6 (Moonshot AI) Integration
 
 Govern K2.6 agents with Citadel's policy engine, approval workflows, and audit trails.
 
@@ -82,9 +82,9 @@ result = await task.execute(
 ```
 
 **Returns:**
-- `{"status": "executed", "result": ...}` — Allowed and executed
-- `{"status": "blocked", "reason": ...}` — Blocked by policy
-- `{"status": "pending_approval", "approval_id": ...}` — Awaiting human review
+- `{"status": "executed", "result": ...}` â€” Allowed and executed
+- `{"status": "blocked", "reason": ...}` â€” Blocked by policy
+- `{"status": "pending_approval", "approval_id": ...}` â€” Awaiting human review
 
 ## GovernedK26Workflow
 
@@ -172,4 +172,3 @@ All K2.6 actions are automatically logged to Citadel's audit trail with:
 
 - [Citadel SDK Quick Start](../getting-started/GETTING_STARTED_PYTHON.md)
 - [Governance Policies](../core-concepts/policies.md)
-- [LangGraph Integration](langgraph.md)

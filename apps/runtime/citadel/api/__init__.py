@@ -16,10 +16,12 @@ import logging
 import os
 from typing import AsyncGenerator
 
+import asyncpg
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
 from citadel.config import settings
+from citadel.api.dependencies import get_api_key_manager
 from citadel.api.middleware import setup_middleware, setup_cors
 from citadel.api.routers import actions, approvals, audit, governance, health, metrics, dashboard, agents, policies_crud, connectors as connectors_router, agent_identity
 from citadel.api.routers.audit_rich import router as audit_rich_router
@@ -27,8 +29,6 @@ from citadel.api.routers.orchestration import router as orchestration_router
 from citadel.api.routers.decisions import router as decisions_router
 from citadel.api.routers.admin import router as admin_router
 from citadel.commercial.routes import router as billing_router
-from citadel.commercial.middleware import CommercialMiddleware
-from citadel.utils.telemetry import setup_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -188,8 +188,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     _pool = None
     try:
-        import asyncpg
-
         _pool = await asyncpg.create_pool(
             settings.database_dsn,
             min_size=settings.db_min_size,
@@ -237,9 +235,6 @@ def create_app() -> FastAPI:
     # in test and development environments. Production failures still happen,
     # just at app startup time rather than module import time.
     
-    # Initialize OpenTelemetry
-    setup_telemetry(service_name="citadel-api")
-    
     from citadel.middleware.fastapi_middleware import setup_tenant_middleware
     from citadel.middleware.auth_middleware import AuthMiddleware, setup_auth_endpoints
     from citadel.auth.jwt_token import JWTService
@@ -252,10 +247,6 @@ def create_app() -> FastAPI:
     if settings.security_headers_enabled:
         from citadel.security.owasp_middleware import setup_security_middleware
         setup_security_middleware(app)
-    
-    # ---- NEW: SRE Structured Logging ----
-    from citadel.sre.structured_logging import StructuredLoggingMiddleware
-    app.add_middleware(StructuredLoggingMiddleware)
     
     # Setup Auth services
     # Mocking cache with a simple dict for this integration 
@@ -285,9 +276,6 @@ def create_app() -> FastAPI:
     jwt_service = JWTService(secret_key=jwt_secret)
     
     # Order: Outermost (runs first) to Innermost (runs last)
-    
-    # 3. Billing enforcement (depends on Auth)
-    app.add_middleware(CommercialMiddleware)
     
     # 2. Tenant context (sets up scoped context)
     setup_tenant_middleware(app)
@@ -356,18 +344,55 @@ def create_app() -> FastAPI:
         metrics_wrapper.mount("/", metrics_app)
         app.mount(settings.metrics_endpoint, metrics_wrapper)
     
-    # ---- NEW: SRE Health Check Endpoints ----
-    from citadel.sre.health_checks import HealthCheckManager, HealthCheckResult, HealthStatus
-    health_mgr = HealthCheckManager()
-    db_check = HealthCheckManager.create_db_check(lambda: app.state.db_pool)
-    health_mgr.register("database", db_check)
-    
     @app.get("/health/ready")
     async def readiness():
-        result = await health_mgr.run_all_checks()
-        status_code = 200 if result.status == HealthStatus.HEALTHY else 503
         from fastapi.responses import JSONResponse
-        return JSONResponse(content=result.to_dict(), status_code=status_code)
+
+        pool = getattr(app.state, "db_pool", None)
+        startup_error = getattr(app.state, "db_startup_error", None)
+        if pool is None:
+            return JSONResponse(
+                content={
+                    "status": "unhealthy",
+                    "checks": {
+                        "database": {
+                            "status": "unhealthy",
+                            "message": startup_error or "Database pool is not initialized",
+                        }
+                    },
+                },
+                status_code=503,
+            )
+
+        try:
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+        except Exception as exc:
+            return JSONResponse(
+                content={
+                    "status": "unhealthy",
+                    "checks": {
+                        "database": {
+                            "status": "unhealthy",
+                            "message": f"Database check failed ({type(exc).__name__})",
+                        }
+                    },
+                },
+                status_code=503,
+            )
+
+        return JSONResponse(
+            content={
+                "status": "healthy",
+                "checks": {
+                    "database": {
+                        "status": "healthy",
+                        "message": "Database connection OK",
+                    }
+                },
+            },
+            status_code=200,
+        )
     
     @app.get("/health/live")
     async def liveness():

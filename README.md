@@ -1,65 +1,58 @@
 # Citadel SDK
 
-**Commercial-grade AI Governance: Constitution + Audit for Agent Builders.**
+**Cost enforcement and decision-first audit evidence for agent builders.**
 
-Citadel is a hardened governance engine that intercepts agent actions, applies multi-tenant policies, requires human-in-the-loop approvals for risky tasks, and logs everything to a tamper-proof PostgreSQL audit chain.
+Citadel is being simplified into a wedge-focused governance kernel. The active
+product path is centered on pre-request LLM spend enforcement and cryptographic
+decision evidence. The canonical active-core map is in [`citadel-core/`](citadel-core/).
 
-## Core Capabilities
+Archived research, duplicate demos, and placeholder packages are preserved under
+[`archive/`](archive/) so nothing is lost, but they are no longer presented as
+current product surface.
 
-### 1. Trust-Aware Governance
-- **Five Trust Bands**: Deterministic scoring (0.00-1.00) maps to REVOKED, PROBATION, STANDARD, TRUSTED, HIGHLY_TRUSTED. Trust influences policy without replacing it.
-- **Deterministic Score Computation**: 9 weighted behavioral factors (verification, health, compliance, action rate, etc.) computed at decision time.
-- **Probation & Circuit Breakers**: New agents start in PROBATION. Circuit breaker stages REVOKED when scores drop below 0.15.
-- **Operator Override**: Manual band adjustment with dual approval, auditable reason, and time-bounded expiration.
-- **Trust-Aware Decisions**: Every governance decision stores `trust_snapshot_id` for deterministic replay and audit.
+## Active Core Capabilities
+
+### 1. Runaway Spend Prevention
+- **Pre-request budget checks**: Estimate cost before the LLM/API call and block, require approval, or record spend according to configured budgets.
+- **Hierarchical budget records**: Tenant, project, agent, and API-key scopes are represented in the cost-control schema.
+- **Audited top-ups**: Admin budget adjustments require a reason and write to `governance_audit_log`.
+- **Spend attribution**: Spend events are attributed back to tenant/project/agent/API-key context.
 
 ### 2. Multi-Tenancy & Auth (Cloud Ready)
 - **Strict Tenant Isolation**: Enforced via PostgreSQL Row-Level Security (RLS) and application-level filtering.
 - **API Key Management**: Secure SHA-256 hashed keys with scoped permissions and automatic `last_used` tracking.
 - **JWT Dashboard Auth**: Role-based access for operators and tenant admins.
 
-### 2. Commercial Entitlements & Billing
-- **Provider-Agnostic Architecture**: Core commercial logic is decoupled from any specific billing provider. Stripe is the first adapter; future providers plug in without touching core code.
-- **Stripe Integration**: Built-in support for Stripe Checkout and Customer Portal via the Stripe adapter.
-- **Quota Enforcement**: Request-time enforcement of API calls, agent counts, and retention limits.
-- **Cost Controls & Budgets**: Tenant, project, agent, and API-key LLM spend budgets with pre-request enforcement actions.
-- **Audited Budget Top-ups**: Executive-only dashboard adjustments for tenant LLM budgets with required reasons and governance audit trail entries.
-- **Grace Period Logic**: Automated handling of `past_due` subscriptions to maintain access during payment recovery windows.
-- **Atomic Usage Tracking**: High-concurrency Postgres counters for precise quota tracking.
-
-### 3. Governance Lifecycle
+### 3. Decision-First Audit Evidence
 - **Policy Resolution**: Precedence-based rule matching (`ALLOWED`, `BLOCKED`, `PENDING_APPROVAL`, `RATE_LIMITED`).
 - **No-Code Approval Thresholds**: Dashboard operators can configure a safe tenant-level risk threshold that generates a normal immutable runtime policy requiring human approval for actions above the selected score.
 - **Tamper-Proof Audit**: Every decision is cryptographically hashed and linked in a PostgreSQL chain.
 - **Human-in-the-Loop**: Integrated approval queue for high-risk actions.
 - **Decision-First Runtime Governance**: Sensitive actions persist a durable governance decision before any execution proof is issued. Short-lived `gt_cap_` tokens then reference that `decision_id`, so runtime outcomes can be traced back to policy version, approval state, operator context, and audit evidence.
 - **Runtime Introspection**: High-risk execution paths can call `/v1/introspect` before the next protected operation. Introspection validates token expiry, revocation, workspace/action/resource scope, and central kill-switch state instead of relying on token expiry alone.
-- **Governance Tokens (GT)**: Advanced bypass and delegation system using signed, scoped tokens:
-    - `gt_cap_`: Capability delegation for specific resources.
-    - `gt_app_`: Pre-authorized approval tokens for automated high-risk tasks.
-    - `gt_vlt_`: Secure vault tokens for governed credential access.
+- **Governance Tokens**: The active runtime execution proof token family is `gt_cap_`.
 
 ## Technical Design Pillars
 
-The Citadel is built on five core architectural philosophies:
+Citadel is now organized around a smaller active architecture:
 
-1. **Unified Commercial Identity**: We bridge Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
-2. **The Dual-Write Governance Pipeline**: A deterministic sequence that ensures every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
-3. **Decision-First Execution Rights**: Runtime authorization starts with an auditable decision record, then issues a narrowly scoped, short-lived `gt_cap_` token as execution proof.
-4. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Production-grade security combining PostgreSQL Row-Level Security, OpenTelemetry for full observability, centralized introspection, and Global Kill Switches for emergency intervention.
-5. **Trust-Aware Enforcement**: Deterministic trust scoring (9 weighted factors, 5 bands) enriches policy context without replacing policy authority. Trust adds constraints (approval, quotas, action blocks) but never removes them.
+1. **Spend enforcement before execution**: budget decisions happen before the external API call.
+2. **Decision-first execution rights**: runtime authorization starts with `governance_decisions`, then issues scoped `gt_cap_` proof.
+3. **Cryptographic evidence**: `governance_audit_log` and audit hashes support replay and verification.
+4. **Minimal operator control plane**: dashboard surfaces should support cost controls, approvals, audit evidence, and kill switches.
 
 ## 📁 Repository Structure
 
-Citadel is organized as a **mixed-license monorepo** to separate the open ecosystem from the core runtime:
+Citadel is organized as a monorepo with a wedge-first active core:
 
+- **`citadel-core/`**: Canonical active-core map for the wedge-focused product.
 - **`apps/runtime/`**: The core governance engine and control plane (**BSL 1.1**).
 - **`apps/dashboard/`**: The React-based management interface.
 - **`packages/sdk-python/`**: Public Python SDK for agent integration (**Apache 2.0**).
 - **`packages/open-spec/`**: Governance schemas and token specifications (**Apache 2.0**).
 - **`docs/`**: Technical documentation and public documentation site.
-- **`enterprise/`**: Proprietary modules and premium policy packs.
-- **`tests/`**: Tiered test suite (unit, simulation, hardening).
+- **`archive/`**: Preserved legacy, research, duplicate demos, and placeholder packages that are not active product surface.
+- **`tests/`**: Unit, integration, dashboard, token, and regression tests.
 - **`scripts/`**: Development and administrative utilities.
 
 ## 📦 Packages
@@ -79,14 +72,13 @@ Citadel publishes two distinct Python packages:
 pip install citadel-governance
 ```
 
-### 2. Point it at the hosted API
+### 2. Point it at your Citadel runtime
 
 ```python
 import citadel_governance as cg
 
-# Get your API key from https://dashboard.citadelsdk.com/settings
 cg.configure(
-    base_url="https://api.citadelsdk.com",
+    base_url="http://localhost:8000",
     api_key="YOUR_API_KEY_HERE",
     actor_id="my-agent",
 )
@@ -116,11 +108,11 @@ asyncio.run(main())
 
 ### 4. Watch it in the dashboard
 
-Open **[dashboard.citadelsdk.com](https://dashboard.citadelsdk.com)** and log in with your credentials.
+Open the self-hosted dashboard for your runtime and log in with your operator credentials.
 
 Every action your agent executes appears in the Activity feed in real time. High-risk actions land in the Approval Queue for human review.
 
-> **Demo Environment**: For a quick walkthrough without credentials, try the **[live demo](https://dashboard.citadelsdk.com/demo)** with pre-loaded sample data.
+The preserved standalone demo dashboard now lives in `archive/legacy/apps/dashboard-demo/`.
 
 ### Use as a decorator
 
@@ -194,7 +186,8 @@ Citadel is tested against adversarial scenarios:
 - **[Development Guide](docs/DEVELOPMENT.md)** — Local dev setup, commands, and CI
 - **[Project Structure](docs/PROJECT_STRUCTURE.md)** — Architecture and module map
 - **[Maintainer Guide](docs/MAINTAINER_GUIDE.md)** — Review, release, and quality processes
-- **[Architecture Deep-Dive](docs/ARCHITECTURE.md)** — The three-layer design
+- **[Architecture](docs/ARCHITECTURE.md)** — Active wedge runtime and compatibility boundaries
+- **[Compatibility](docs/COMPATIBILITY.md)** — Deprecated paths, compatibility-only exports, and migration guidance
 - **[Architecture Schema](docs/ARCHITECTURE_SCHEMA.md)** — Module dependency graph
 - **[Kernel Guarantees](docs/KERNEL_GUARANTEES.md)** — Invariants and edge cases
 - **[API Reference](docs/public/api-reference/rest-api.md)** — HTTP endpoints and schemas
@@ -219,6 +212,6 @@ Citadel uses a mixed-license model to protect its core while enabling broad adop
 
 - **Apache 2.0**: SDKs, public schemas, and integration-facing packages in `packages/`.
 - **BSL 1.1 (Source-Available)**: The core self-hostable runtime in `apps/runtime/`.
-- **Proprietary**: Enterprise-only and hosted-cloud-only modules in `enterprise/`.
+- **Archived**: Legacy, research, duplicate demo, and placeholder package material lives in `archive/` and is not active product surface.
 
 See [`LICENSING.md`](./LICENSING.md) for the full package-by-package breakdown.

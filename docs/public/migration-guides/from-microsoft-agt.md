@@ -1,4 +1,4 @@
-# Migrating from Microsoft AutoGen
+﻿# Migrating from Microsoft AutoGen
 
 ## What you'll learn
 
@@ -58,4 +58,3 @@ CITADEL.policies.create({
 ## Next steps
 
 - [Integration: AutoGen](../integrations/autogen.md)
-- [Recipe: Multi-Agent Coordination](../recipes/multi-agent-coordination.md)

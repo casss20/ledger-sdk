@@ -1,4 +1,4 @@
-# Billing & Quotas
+﻿# Billing & Quotas
 
 CITADEL provides a commercial-grade entitlement layer that connects your governance policies to real-world business logic.
 
@@ -15,25 +15,28 @@ The commercial layer ensures that tenants operate within their subscription limi
 Citadel's commercial layer is **provider-agnostic**. Stripe is the first concrete adapter, but the core logic knows nothing about Stripe.
 
 ```
-┌─────────────────────────────────────────────┐
-│  Core Runtime (governance, identity)      │
-│  → reads TenantEntitlements, UsageSnapshot  │
-├─────────────────────────────────────────────┤
-│  Commercial Layer (entitlement_service,    │
-│  usage_service, events)                     │
-│  → depends on CommercialRepository port     │
-├─────────────────────────────────────────────┤
-│  Stripe Adapter (adapters/stripe/)           │
-│  → translates Stripe events to             │
-│    provider-agnostic CommercialEvents        │
-└─────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Core Runtime (governance, identity)      â”‚
+â”‚  â†’ reads TenantEntitlements, UsageSnapshot  â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Commercial Layer (entitlement_service,    â”‚
+â”‚  usage_service, events)                     â”‚
+â”‚  â†’ depends on CommercialRepository port     â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Stripe Adapter (adapters/stripe/)           â”‚
+â”‚  â†’ translates Stripe events to             â”‚
+â”‚    provider-agnostic CommercialEvents        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Key rule:** Core identity and governance code never imports from the Stripe adapter. It only sees the `CommercialRepository` port and provider-agnostic models (`TenantEntitlements`, `UsageSnapshot`, `BillingStatus`).
 
-## The Commercial Middleware
+## Cost-Control Enforcement
 
-Every request to the CITADEL API passes through the `CommercialMiddleware`. This middleware performs an atomic lookup of the tenant's current usage and subscription status.
+Cost-control API calls use the `CostControlService` directly. Legacy commercial
+quota middleware is preserved for compatibility code, but it is no longer wired
+into the default runtime path because subscription gating is not part of the
+active cost-enforcement wedge.
 
 ### Status Codes
 
@@ -156,17 +159,7 @@ Out of scope for the MVP: auto-recharge, invoicing, Stripe checkout, payment col
 
 ## Trust-Aware Quotas
 
-Trust bands modify effective quota limits. A HIGHLY_TRUSTED agent gets up to 5× the base rate limit. A PROBATION agent is capped at 50% of the base rate.
-
-| Trust Band | Spend Multiplier | Rate Limit Multiplier |
-|-----------|-----------------|----------------------|
-| **REVOKED** | 0% | 0% |
-| **PROBATION** | 50% | 50% |
-| **STANDARD** | 100% | 100% |
-| **TRUSTED** | 150% | 200% |
-| **HIGHLY_TRUSTED** | 200% | 500% |
-
-Trust multipliers are applied after billing middleware evaluation. Trust can only reduce, never increase, above the billing plan limit. The final effective quota is `min(plan_limit, trust_multiplier * base_quota)`.
+Trust context may reduce effective limits when the agent is revoked or otherwise restricted, but cost enforcement remains the source of truth. Trust must not raise a tenant above the configured billing or budget limit. The final effective quota is capped by the plan limit and active budget policy.
 
 ## Self-Service Dashboard
 
@@ -181,7 +174,7 @@ To add a new billing provider (e.g., Paddle, Chargebee):
 
 1. Create `citadel/commercial/adapters/<provider>/`
 2. Implement `CommercialRepository` port in `<provider>_repository.py`
-3. Implement event translator in `translator.py` (maps provider events → `CommercialEvent`)
+3. Implement event translator in `translator.py` (maps provider events â†’ `CommercialEvent`)
 4. Register the new adapter in `apps/runtime/citadel/api/__init__.py`
 5. Add provider-specific routes if needed
 

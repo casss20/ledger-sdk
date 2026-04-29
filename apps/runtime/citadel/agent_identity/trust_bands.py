@@ -2,7 +2,7 @@
 Trust Bands — Deterministic score-to-band mapping and band effects.
 
 This module defines:
-- The 5 trust bands with explicit score thresholds
+- Compatibility trust bands with explicit score thresholds
 - What each band means operationally
 - How each band affects policy constraints
 - Deterministic transitions (no hidden logic, no ML)
@@ -20,7 +20,11 @@ from datetime import datetime, timezone
 
 class TrustBand(Enum):
     """
-    Five trust bands with explicit score thresholds.
+    Compatibility trust bands with explicit score thresholds.
+
+    The active operational model is REVOKED / STANDARD / TRUSTED. PROBATION and
+    HIGHLY_TRUSTED remain as stored/API compatibility states until callers and
+    migrations are narrowed in a later pass.
 
     Thresholds are immutable. Changing them requires a code change
     and a new policy version — they are not configurable at runtime.
@@ -241,17 +245,12 @@ PROBATION_CONFIG = {
 
 
 # ── Trust score computation weights ───────────────────────────────────────
-# These weights are part of the policy specification. They are deterministic
-# and documented. Changing them is a policy version change.
+# The active model is intentionally small and operational.
 
 TRUST_FACTOR_WEIGHTS = {
-    "verification": 0.25,       # Verified identity
-    "age": 0.15,                # Age of identity (capped)
-    "health": 0.20,             # Health score from agents table
-    "quarantine": 0.10,         # Not quarantined (bonus) / quarantined (penalty)
-    "action_rate": 0.10,        # Normal action rate (bonus) / excessive (penalty)
-    "compliance": 0.15,          # Compliance certifications
-    "budget_adherence": 0.05,    # Token budget adherence
+    "identity_verification": 0.30,
+    "operational_health": 0.35,
+    "governance_record": 0.35,
 }
 
 # Sum must be 1.0 for normalization

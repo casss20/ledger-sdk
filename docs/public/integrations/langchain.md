@@ -1,4 +1,4 @@
-# LangChain Integration
+﻿# LangChain Integration
 
 ## What you'll learn
 
@@ -63,16 +63,16 @@ The `LedgerCallbackHandler` hooks into LangChain's callback system:
 
 ```
 Agent decides to use tool
-    ↓
+    â†“
 LangChain calls tool
-    ↓
+    â†“
 LedgerCallbackHandler intercepts
-    ↓
+    â†“
 Citadel evaluates against policies
-    ↓
-    ├─ ALLOWED → Execute tool, return result
-    ├─ DENIED → Return error to agent
-    └─ APPROVAL_REQUIRED → Return approval URL
+    â†“
+    â”œâ”€ ALLOWED â†’ Execute tool, return result
+    â”œâ”€ DENIED â†’ Return error to agent
+    â””â”€ APPROVAL_REQUIRED â†’ Return approval URL
 ```
 
 ---
@@ -217,6 +217,5 @@ agent_with_retry = RunnableRetry(
 
 ## Next steps
 
-- [Recipe: Multi-Agent Coordination](../recipes/multi-agent-coordination.md)
 - [Recipe: Email Sending Rate Limit](../recipes/email-sending-rate-limit.md)
 - [Core Concepts: Policies](../core-concepts/policies.md)

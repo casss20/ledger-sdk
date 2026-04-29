@@ -26,15 +26,9 @@ class BudgetTopUpRequest(BaseModel):
 
 
 TRUST_FACTOR_LABELS = {
-    "verification": "Verification Status",
-    "age": "Identity Age",
-    "health": "Health Score",
-    "quarantine": "Quarantine Status",
-    "action_rate": "Action Rate",
-    "compliance": "Compliance Record",
-    "budget_adherence": "Budget Adherence",
-    "challenge_reliability": "Challenge Reliability",
-    "trend": "Score Trend",
+    "identity_verification": "Identity Verification",
+    "operational_health": "Operational Health",
+    "governance_record": "Governance Record",
 }
 
 

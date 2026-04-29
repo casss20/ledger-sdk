@@ -120,10 +120,11 @@ mypy apps/runtime/citadel/ --ignore-missing-imports
 # Commands run
 cd apps/dashboard && npm ci && npm run build
 cd apps/landing && npm ci && npm run build
-cd apps/dashboard-demo && npm ci && npm run build
 ```
 
-**Result:** All three build successfully
+**Result:** Active frontend builds succeed. The preserved standalone dashboard
+demo lives in `archive/legacy/apps/dashboard-demo/` and is not part of the
+active build gate.
 **Status:** ✅ PASS
 
 ---

@@ -1,10 +1,14 @@
 """
-Orchestration Router
+Compatibility-only orchestration router.
 
 POST /v1/orchestrate/delegate - Delegate authority to a child agent
 POST /v1/orchestrate/handoff  - Transfer active authority to another agent
 POST /v1/orchestrate/gather   - Run parallel branches under one root
 POST /v1/orchestrate/introspect - Runtime safety check for any grant
+
+These routes remain mounted for existing SDK/API callers. New wedge-facing
+work should use cost enforcement, decision records, audit evidence, and
+`/v1/introspect` instead of broad orchestration patterns.
 """
 
 import uuid
@@ -25,7 +29,7 @@ from citadel.execution.orchestration import (
 from citadel.tokens.governance_decision import GovernanceDecision, DecisionScope, DecisionType, KillSwitchScope
 from citadel.api.dependencies import get_orchestration_runtime, require_api_key
 
-router = APIRouter(tags=["orchestration"], prefix="/orchestrate")
+router = APIRouter(tags=["compatibility: orchestration"], prefix="/orchestrate")
 
 
 # =========================================================================

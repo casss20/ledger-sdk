@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 
 # Define all 25 documentation tasks
@@ -19,10 +19,8 @@ tasks = [
     
     # Batch 3: Integrations (4 agents, 7 docs)
     {"id": 11, "file": "/mnt/agents/output/CITADEL-docs/integrations/langchain.md", "title": "LangChain Integration", "word_count": 1000, "type": "integration", "framework": "LangChain"},
-    {"id": 12, "file": "/mnt/agents/output/CITADEL-docs/integrations/crewai.md", "title": "CrewAI Integration", "word_count": 1000, "type": "integration", "framework": "CrewAI"},
     {"id": 13, "file": "/mnt/agents/output/CITADEL-docs/integrations/autogen.md", "title": "AutoGen Integration", "word_count": 1000, "type": "integration", "framework": "AutoGen"},
     {"id": 14, "file": "/mnt/agents/output/CITADEL-docs/integrations/kimi-k26.md", "title": "Kimi K2.6 Integration", "word_count": 1000, "type": "integration", "framework": "Kimi"},
-    {"id": 15, "file": "/mnt/agents/output/CITADEL-docs/integrations/openai-agents.md", "title": "OpenAI Agents SDK Integration", "word_count": 1000, "type": "integration", "framework": "OpenAI"},
     {"id": 16, "file": "/mnt/agents/output/CITADEL-docs/integrations/anthropic-sdk.md", "title": "Anthropic SDK Integration", "word_count": 1000, "type": "integration", "framework": "Anthropic"},
     {"id": 17, "file": "/mnt/agents/output/CITADEL-docs/integrations/custom-integration.md", "title": "Custom Integration Guide", "word_count": 1200, "type": "integration", "framework": "Custom"},
     
@@ -30,7 +28,6 @@ tasks = [
     {"id": 18, "file": "/mnt/agents/output/CITADEL-docs/recipes/refund-approval-over-1000.md", "title": "Recipe: Refund Approval Over $1,000", "word_count": 600, "type": "recipe", "recipe": "refund-approval"},
     {"id": 19, "file": "/mnt/agents/output/CITADEL-docs/recipes/email-sending-rate-limit.md", "title": "Recipe: Email Sending Rate Limit", "word_count": 600, "type": "recipe", "recipe": "email-rate-limit"},
     {"id": 20, "file": "/mnt/agents/output/CITADEL-docs/recipes/database-write-protection.md", "title": "Recipe: Database Write Protection", "word_count": 600, "type": "recipe", "recipe": "db-write-protection"},
-    {"id": 21, "file": "/mnt/agents/output/CITADEL-docs/recipes/multi-agent-coordination.md", "title": "Recipe: Multi-Agent Coordination", "word_count": 600, "type": "recipe", "recipe": "multi-agent"},
     {"id": 22, "file": "/mnt/agents/output/CITADEL-docs/recipes/high-risk-action-approval.md", "title": "Recipe: High-Risk Action Approval", "word_count": 600, "type": "recipe", "recipe": "high-risk-approval"},
     {"id": 23, "file": "/mnt/agents/output/CITADEL-docs/recipes/agent-to-agent-authentication.md", "title": "Recipe: Agent-to-Agent Authentication", "word_count": 600, "type": "recipe", "recipe": "agent-auth"},
     {"id": 24, "file": "/mnt/agents/output/CITADEL-docs/recipes/audit-export-for-regulator.md", "title": "Recipe: Audit Export for Regulator", "word_count": 600, "type": "recipe", "recipe": "audit-export"},
@@ -44,9 +41,7 @@ tasks = [
     {"id": 32, "file": "/mnt/agents/output/CITADEL-docs/recipes/model-usage-cost-control.md", "title": "Recipe: Model Usage Cost Control", "word_count": 600, "type": "recipe", "recipe": "model-cost-control"},
     {"id": 33, "file": "/mnt/agents/output/CITADEL-docs/recipes/agent-sandbox-isolation.md", "title": "Recipe: Agent Sandbox Isolation", "word_count": 600, "type": "recipe", "recipe": "sandbox-isolation"},
     {"id": 34, "file": "/mnt/agents/output/CITADEL-docs/recipes/cross-border-data-transfer-compliance.md", "title": "Recipe: Cross-Border Data Transfer Compliance", "word_count": 600, "type": "recipe", "recipe": "cross-border"},
-    {"id": 35, "file": "/mnt/agents/output/CITADEL-docs/recipes/agent-capability-downgrade.md", "title": "Recipe: Agent Capability Downgrade", "word_count": 600, "type": "recipe", "recipe": "capability-downgrade"},
     {"id": 36, "file": "/mnt/agents/output/CITADEL-docs/recipes/automated-compliance-reporting.md", "title": "Recipe: Automated Compliance Reporting", "word_count": 600, "type": "recipe", "recipe": "auto-compliance-report"},
-    {"id": 37, "file": "/mnt/agents/output/CITADEL-docs/recipes/ai-output-verification.md", "title": "Recipe: AI Output Verification", "word_count": 600, "type": "recipe", "recipe": "output-verification"},
     
     # Batch 5: API Reference (4 agents, 7 docs)
     {"id": 38, "file": "/mnt/agents/output/CITADEL-docs/api-reference/rest-api.md", "title": "REST API Reference", "word_count": 1500, "type": "api_ref", "api": "rest"},
@@ -59,7 +54,6 @@ tasks = [
     
     # Batch 6: Guides (3 agents, 6 docs)
     {"id": 45, "file": "/mnt/agents/output/CITADEL-docs/guides/production-deployment.md", "title": "Production Deployment Guide", "word_count": 1500, "type": "guide", "topic": "production-deployment"},
-    {"id": 46, "file": "/mnt/agents/output/CITADEL-docs/guides/monitoring-governance.md", "title": "Monitoring Governance", "word_count": 1200, "type": "guide", "topic": "monitoring"},
     {"id": 47, "file": "/mnt/agents/output/CITADEL-docs/guides/incident-response.md", "title": "Incident Response Guide", "word_count": 1200, "type": "guide", "topic": "incident-response"},
     {"id": 48, "file": "/mnt/agents/output/CITADEL-docs/guides/regulatory-compliance.md", "title": "Regulatory Compliance Guide", "word_count": 1200, "type": "guide", "topic": "regulatory-compliance"},
     {"id": 49, "file": "/mnt/agents/output/CITADEL-docs/guides/security-best-practices.md", "title": "Security Best Practices", "word_count": 1200, "type": "guide", "topic": "security"},

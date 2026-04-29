@@ -130,11 +130,9 @@ npm install
 npm run dev
 npm run build
 
-# Dashboard demo
-cd apps/dashboard-demo
-npm install
-npm run dev
-npm run build
+# Preserved dashboard demo
+# The old standalone demo is archived at archive/legacy/apps/dashboard-demo.
+# It is not part of the active product build.
 ```
 
 ### Docker
@@ -209,7 +207,6 @@ cd packages/sdk-python && pytest tests/ -v --tb=short
 # 4. Frontend builds
 cd apps/dashboard && npm run build
 cd apps/landing && npm run build
-cd apps/dashboard-demo && npm run build
 
 # 5. No uncommitted changes
 git status  # should be clean
@@ -462,7 +459,6 @@ asyncio_mode = "auto"
 | `CITADEL_TESTING` | No | `false` | Disables startup validation (tests only) |
 | `CITADEL_STRIPE_SECRET_KEY` | No | — | Stripe API key |
 | `CITADEL_STRIPE_WEBHOOK_SECRET` | No | — | Stripe webhook signing secret |
-| `CITADEL_OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OpenTelemetry OTLP endpoint |
 | `CITADEL_REDIS_URL` | No | — | Redis for distributed rate limiting |
 | `CITADEL_LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 

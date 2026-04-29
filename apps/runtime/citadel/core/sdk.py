@@ -218,7 +218,7 @@ class CitadelClient:
         dry_run: bool = False,
     ) -> CitadelResult:
         """
-        Delegate authority from a parent decision to a child agent.
+        Compatibility-only helper for legacy orchestration callers.
         """
         request = {
             "parent_decision_id": parent_decision_id,
@@ -265,7 +265,7 @@ class CitadelClient:
         dry_run: bool = False,
     ) -> CitadelResult:
         """
-        Transfer active authority from one agent to another.
+        Compatibility-only helper for legacy orchestration callers.
         """
         request = {
             "current_decision_id": current_decision_id,
@@ -307,7 +307,7 @@ class CitadelClient:
         dry_run: bool = False,
     ) -> CitadelResult:
         """
-        Run parallel child branches under one parent orchestration scope.
+        Compatibility-only helper for legacy orchestration callers.
         """
         request = {
             "parent_decision_id": parent_decision_id,
@@ -344,7 +344,7 @@ class CitadelClient:
         tenant_id: str = None,
     ) -> Dict[str, Any]:
         """
-        Runtime safety check for any grant or decision.
+        Runtime safety check for a grant or decision.
         """
         request = {
             "required_action": required_action,

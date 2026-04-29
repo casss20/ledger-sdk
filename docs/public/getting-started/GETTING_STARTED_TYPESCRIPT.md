@@ -1,4 +1,4 @@
-# Getting Started with Citadel SDK for TypeScript/Node.js
+﻿# Getting Started with Citadel SDK for TypeScript/Node.js
 
 ## What you'll learn
 
@@ -14,7 +14,7 @@
 - TypeScript 5.0+ (optional but recommended)
 - A Citadel API key ([get one free](https://dashboard.citadel.dev))
 
-> 💡 **New to governance?** Citadel embeds compliance directly into your agent runtime. Every tool call passes through the Citadel kernel before execution — making governance non-bypassable and automatic.
+> ðŸ’¡ **New to governance?** Citadel embeds compliance directly into your agent runtime. Every tool call passes through the Citadel kernel before execution â€” making governance non-bypassable and automatic.
 
 ---
 
@@ -34,7 +34,7 @@ Verify the installation:
 node -e "const citadel = require('@citadel/sdk'); console.log(citadel.VERSION)"
 ```
 
-> ⚠️ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
+> âš ï¸ **Note:** If you see `Cannot find module`, ensure your `package.json` includes `"type": "module"` for ESM, or use `require()` for CommonJS.
 
 ---
 
@@ -53,7 +53,7 @@ Load it in your application:
 import 'dotenv/config';
 ```
 
-> 💡 **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
+> ðŸ’¡ **Environment tip:** Use `sandbox` for development (unlimited actions, no billing). Switch to `production` when deploying.
 
 ---
 
@@ -158,7 +158,7 @@ const result = await agent.run('Send welcome email to new@user.com');
 
 ## Step 7: View in dashboard
 
-Open [Citadel Dashboard](https://dashboard.citadel.dev) → **Activity Stream**.
+Open [Citadel Dashboard](https://dashboard.citadel.dev) â†’ **Activity Stream**.
 
 Filter by agent ID:
 ```
@@ -200,4 +200,3 @@ Ensure `@citadel/sdk` types are installed: `npm install -D @citadel/sdk-types`
 - [Core Concepts: Governance Tokens](../core-concepts/governance-tokens.md)
 - [Core Concepts: Policies](../core-concepts/policies.md)
 - [Recipe: Email Sending Rate Limit](../recipes/email-sending-rate-limit.md)
-- [Integration: OpenAI Agents SDK](../integrations/openai-agents.md)

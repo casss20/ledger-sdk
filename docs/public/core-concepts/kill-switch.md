@@ -1,4 +1,4 @@
-# Kill Switch and Emergency Stops
+﻿# Kill Switch and Emergency Stops
 
 ## What you'll learn
 
@@ -13,11 +13,11 @@
 
 ## Overview
 
-The kill switch is Citadel's emergency halt mechanism. It can stop any agent, any agent group, or all agents in an organization — within 100ms.
+The kill switch is Citadel's emergency halt mechanism. It can stop any agent, any agent group, or all agents in an organization â€” within 100ms.
 
 This isn't a monitoring alert or a dashboard button that "suggests" stopping. It's a kernel-level circuit breaker that physically prevents agent execution.
 
-> 💡 **Regulatory context:** EU AI Act Article 14(4)(e) requires "a stop button or similar procedure" for high-risk AI systems. Citadel's kill switch satisfies this requirement architecturally — not as a bolt-on feature.
+> ðŸ’¡ **Regulatory context:** EU AI Act Article 14(4)(e) requires "a stop button or similar procedure" for high-risk AI systems. Citadel's kill switch satisfies this requirement architecturally â€” not as a bolt-on feature.
 
 ---
 
@@ -66,31 +66,31 @@ When an agent's trust score drops below 0.20, the kill switch activates automati
 
 ```python
 # Agent trust score drops to 0.15
-# → Kill switch activates automatically
-# → Agent band transitions to REVOKED
-# → Audit event: TRUST_KILL_SWITCH_DROP
+# â†’ Kill switch activates automatically
+# â†’ Agent band transitions to REVOKED
+# â†’ Audit event: TRUST_KILL_SWITCH_DROP
 ```
 
-This is distinct from manual kill switches — it's a trust-driven circuit breaker that stages REVOKED status when scores collapse.
+This is distinct from manual kill switches â€” it's a trust-driven circuit breaker that stages REVOKED status when scores collapse.
 
 ---
 
 ## How It Works
 
-The kill switch operates at the **kernel level** — below your application code:
+The kill switch operates at the **kernel level** â€” below your application code:
 
 ```
 Agent requests action
-    ↓
+    â†“
 Kill Switch Check (first gate, <1ms)
-    ↓
-    [STOPPED?] → Return KillSwitchActivatedError
-    [RUNNING?] → Continue to policy evaluation
-    ↓
-Trust Evaluation → Band, Score, Constraints
-    ↓
+    â†“
+    [STOPPED?] â†’ Return KillSwitchActivatedError
+    [RUNNING?] â†’ Continue to policy evaluation
+    â†“
+Trust Evaluation â†’ Band, Score, Constraints
+    â†“
 Policy evaluation
-    ↓
+    â†“
 Action execution
 ```
 
@@ -114,7 +114,7 @@ This invalidates future protected operations without waiting for token expiry. I
 
 ### Kill switch before trust
 
-The kill switch is always the **first gate**. Even a HIGHLY_TRUSTED agent with a score of 0.95 will be blocked if the kill switch is active.
+The kill switch is always the **first gate**. Even a healthy TRUSTED agent is blocked if the kill switch is active.
 
 ### Trust circuit breaker
 
@@ -122,12 +122,12 @@ When an agent's score drops below 0.15, the circuit breaker stages REVOKED statu
 
 ```
 Score < 0.15
-    └── STAGE: Prepare REVOKED
-          ├── Score stays < 0.15 for 5 minutes → REVOKE + kill_switch
-          └── Score recovers → Cancel staging
+    â””â”€â”€ STAGE: Prepare REVOKED
+          â”œâ”€â”€ Score stays < 0.15 for 5 minutes â†’ REVOKE + kill_switch
+          â””â”€â”€ Score recovers â†’ Cancel staging
 ```
 
-### Kill switch → trust drop
+### Kill switch â†’ trust drop
 
 When a manual kill switch is activated:
 - The agent's trust band transitions to **REVOKED**
@@ -146,9 +146,9 @@ citadel.kill_switch.deactivate(
 # Trust band is restored (operator sets target band)
 citadel.trust.operator_override(
     agent_id="email-agent-01",
-    target_band="PROBATION",
+    target_band="STANDARD",
     operator_id="op-123",
-    reason="Restored after kill switch — probation review"
+    reason="Restored after kill switch review"
 )
 ```
 
@@ -157,7 +157,7 @@ citadel.trust.operator_override(
 ## Activation Methods
 
 ### Via dashboard
-Navigate to **Kill Switch Panel** → Select agent/namespace → Enter reason → Confirm with MFA.
+Navigate to **Kill Switch Panel** â†’ Select agent/namespace â†’ Enter reason â†’ Confirm with MFA.
 
 ### Via API
 ```python
@@ -197,7 +197,7 @@ citadel.kill_switch.deactivate(
 )
 ```
 
-> ⚠️ **Security note:** Organization-wide kill switches require CSO approval to deactivate. This prevents a single compromised admin account from reactivate a stopped system.
+> âš ï¸ **Security note:** Organization-wide kill switches require CSO approval to deactivate. This prevents a single compromised admin account from reactivate a stopped system.
 
 ---
 
@@ -226,7 +226,7 @@ except citadel.KillSwitchActivatedError:
 citadel.kill_switch.deactivate(agent_id="test-agent", reason="Test complete")
 ```
 
-> 💡 **Best practice:** Run kill switch tests monthly in staging. Add to your CI/CD pipeline.
+> ðŸ’¡ **Best practice:** Run kill switch tests monthly in staging. Add to your CI/CD pipeline.
 
 ---
 
@@ -259,7 +259,7 @@ for record in records:
 
 ## Next steps
 
-- [Incident Response Guide](../guides/incident-response.md) — Full incident playbook
-- [Trust Scoring](./trust-scoring.md) — How trust bands interact with kill switches
+- [Incident Response Guide](../guides/incident-response.md) â€” Full incident playbook
+- [Trust Scoring](./trust-scoring.md) â€” How trust bands interact with kill switches
 - [Recipe: Emergency Shutdown Procedure](../recipes/emergency-shutdown-procedure.md)
 - [Recipe: Trust-Based Kill Switch Rules](../recipes/trust-based-kill-switch-rules.md)

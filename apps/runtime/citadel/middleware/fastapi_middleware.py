@@ -13,16 +13,8 @@ from citadel.middleware.tenant_context import (
     tenant_scope,
     TenantContextError,
 )
-from citadel.utils.telemetry import get_tracer
-
-try:
-    from opentelemetry import propagate
-    _OTEL_AVAILABLE = True
-except ImportError:
-    _OTEL_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
-tracer = get_tracer(__name__)
 
 class TenantContextMiddleware(BaseHTTPMiddleware):
     """
@@ -84,33 +76,12 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         user_id = request.headers.get("X-User-ID")
         
         try:
-            if _OTEL_AVAILABLE:
-                # Extract parent context from headers (W3C Trace Context)
-                parent_ctx = propagate.extract(request.headers)
-                
-                with tracer.start_as_current_span(
-                    f"http_request_{request.method.lower()}",
-                    context=parent_ctx,
-                    attributes={
-                        "http.method": request.method,
-                        "http.url": str(request.url),
-                        "http.route": request.url.path,
-                        "citadel.tenant_id": tenant_id,
-                        "citadel.user_id": user_id or "anonymous"
-                    }
-                ):
-                    async with tenant_scope(
-                        tenant_id=tenant_id,
-                        user_id=user_id,
-                    ):
-                        return await call_next(request)
-            else:
-                async with tenant_scope(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                ):
-                    return await call_next(request)
-                    
+            async with tenant_scope(
+                tenant_id=tenant_id,
+                user_id=user_id,
+            ):
+                return await call_next(request)
+
         except (TenantContextError, ValueError, TypeError) as e:
             logger.error(f"Tenant middleware error ({type(e).__name__}): {e}")
             raise

@@ -55,7 +55,7 @@ Citadel primitives such as `gt_cap_` tokens, `governance_decisions`, `audit_even
 | Query-rewriter-style enforcement | `Kernel.handle()`, precedence checks, execution middleware, and RLS | Implemented across runtime layers |
 | Fail-secure database isolation | Forced PostgreSQL RLS plus explicit tenant context | Implemented |
 | Kill switch / stop button | `KillSwitch`, `kill_switches`, dashboard kill switch panel | Implemented |
-| W3C trace correlation | `trace_id`, `session_id`, optional OpenTelemetry setup | Partially implemented |
+| W3C trace correlation | `trace_id`, `session_id`; OpenTelemetry setup is archived legacy material | Partially implemented |
 | S3 Object Lock / 7-year cold archive | No live archive fan-out in repo | Deferred |
 | Collector-level audit hash chain | Telemetry collector is export-only; audit remains DB-backed | Deferred |
 

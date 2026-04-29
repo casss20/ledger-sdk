@@ -21,7 +21,7 @@ creating a duplicate abstraction.
 | Approval queue | `db/schema.sql`, `apps/runtime/citadel/approval_service.py`, `apps/runtime/citadel/dashboard/approval_queue.py` | Human-in-the-loop approval state is first-class and queryable. |
 | Dashboard workflow | `apps/runtime/citadel/dashboard/*.py`, `apps/dashboard/src/pages/*.tsx` | Posture score, activity stream, approval queue, audit explorer, coverage heatmap, and kill switch panel all exist as Citadel dashboard surfaces. |
 | Embeddable widgets | `packages/widget-library/src/index.ts` | The widget package currently exports ActivityStream, ApprovalQueue, and KillSwitch components. |
-| Telemetry export | `apps/runtime/citadel/utils/telemetry.py`, `monitoring/otel-collector-config.yaml` | OpenTelemetry is optional and exporter resilience is handled by the collector persistent queue. This is telemetry-only, not an audit source of truth. |
+| Telemetry export | Archived under `archive/legacy/runtime/utils/telemetry.py` and `archive/legacy/monitoring/` | OpenTelemetry support is preserved as legacy reference material, but is no longer wired into the default runtime path. Telemetry is not an audit source of truth. |
 
 ## Report Claims Inventory
 
@@ -34,7 +34,7 @@ creating a duplicate abstraction.
 | PostgreSQL RLS enforcement boundary | RLS migrations and tenant context tests | Already implemented | Keep RLS as the database enforcement layer. |
 | Transaction-scoped governance isolation | `set_tenant_context()` and tenant middleware | Partially implemented | Existing tenant scoping is explicit. Broader transaction/session semantics should be evaluated separately. |
 | Fail-secure default deny | RLS denies missing tenant context; kernel blocks policy resolution failures; kill switch denies | Partially implemented | Do not change global policy behavior in this patch. Default-deny across every missing policy is product-sensitive. |
-| W3C trace context and baggage | `trace_id`, `session_id`, telemetry setup | Partially implemented | Future integration should extend existing fields, not create a parallel provenance ID. |
+| W3C trace context and baggage | `trace_id`, `session_id`; telemetry setup is archived | Partially implemented | Future integration should extend existing fields, not create a parallel provenance ID. |
 | Dual-write audit archive to S3 Object Lock and search index | No implemented audit archive fan-out | Defer | Requires infrastructure, retention, legal/compliance, and recovery design. Do not route audit through telemetry collector by default. |
 | Two-layer hash chaining | `audit_events`, `governance_audit_log`, `audit_merkle_roots`, token `chain_hash` | Partially implemented | Hashing exists in multiple layers; "collector gateway chain hash" is not implemented and should not be invented casually. |
 | Kill switch as Article 14 stop button | `KillSwitch`, `kill_switches`, kill switch dashboard/docs | Already implemented | Use existing kill switch language. |

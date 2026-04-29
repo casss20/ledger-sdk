@@ -54,7 +54,7 @@ class DecisionEngine:
         policy_backend: PolicyBackend,
         audit_logger,
         kill_switch,
-        trust_policy_engine=None,  # Optional: TrustPolicyEngine instance
+        trust_policy_engine=None,  # Optional trust constraint adapter
         default_ttl_seconds: int = 3600,
     ):
         self.policies = policy_backend

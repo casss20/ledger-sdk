@@ -1,20 +1,11 @@
 """
-Orchestration Runtime — Shared governance primitives for multi-agent coordination.
+Compatibility-only orchestration runtime.
 
-This module implements the 4 shared orchestration primitives:
-- cg.delegate()
-- cg.handoff()
-- cg.gather()
-- cg.introspect()
-
-Design principles:
-- One governance kernel: all orchestration flows through the existing kernel.handle()
-- Decision-first: every child action gets its own decision
-- Shared lineage: parent/child/root decision ancestry preserved
-- Runtime enforceability: kill switch, introspection, revocation apply to all branches
-- Brownfield compatibility: extends existing Citadel, doesn't replace it
+The active Citadel wedge is cost enforcement plus decision-first evidence. This
+module remains in the runtime for existing callers that use delegation, handoff,
+gather, or grant introspection. It should not be presented as the primary
+product surface or expanded into a general orchestration platform.
 """
-
 import asyncio
 import logging
 import uuid
@@ -151,7 +142,7 @@ class OrchestrationRuntime:
         - Child capability token
         - Audit linkage
         """
-        # 1. Introspect parent — resolve ground truth from vault
+        # 1. Introspect parent - resolve ground truth from vault
         parent_status = await self.introspect_decision(
             parent_decision,
             parent_decision.action,
@@ -232,7 +223,7 @@ class OrchestrationRuntime:
                 reason=f"Governance blocked: {governed.decision.reason}",
             )
 
-        # 6. Issue child capability token — FAIL CLOSED
+        # 6. Issue child capability token - FAIL CLOSED
         # If token issuance fails after kernel approved the child, we must
         # not return a usable child grant. Attempt compensating cleanup.
         child_grant = None
@@ -330,7 +321,7 @@ class OrchestrationRuntime:
         6. Issue new scoped grant
         7. Audit
         """
-        # 1. Introspect current — resolve ground truth from vault
+        # 1. Introspect current - resolve ground truth from vault
         current_status = await self.introspect_decision(
             current_decision,
             current_decision.action,
@@ -349,11 +340,11 @@ class OrchestrationRuntime:
         # Use vault-resolved current decision for all security-critical fields
         resolved_current = current_status.decision if (current_status.decision and current_status.decision.decision_id == current_decision.decision_id) else current_decision
 
-        # 2. (Deferred) Supersede current authority — moved to AFTER kernel validation.
+        # 2. (Deferred) Supersede current authority - moved to AFTER kernel validation.
         #    If we superseded before kernel approval and the kernel blocked,
         #    the old authority would be permanently lost with no recovery path.
 
-        # 3. Validate scope narrowing — handoff must not widen authority.
+        # 3. Validate scope narrowing - handoff must not widen authority.
         if not self._is_narrower_scope(resolved_current.scope, scope):
             await self._audit_handoff_blocked(
                 resolved_current, new_actor_id,
@@ -489,7 +480,7 @@ class OrchestrationRuntime:
         All branches share root_decision_id and trace_id.
         Kill switch checked on each branch.
         """
-        # Validate parent — resolve ground truth from vault
+        # Validate parent - resolve ground truth from vault
         parent_status = await self.introspect_decision(
             parent_decision,
             parent_decision.action,

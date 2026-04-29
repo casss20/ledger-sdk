@@ -1,19 +1,16 @@
-# Framework Integrations
+﻿# Framework Integrations
 
-Citadel provides governed wrappers for popular AI agent frameworks. Each integration includes policy enforcement, approval workflows, and audit trails.
+Citadel's active integration story is runtime spend enforcement and decision evidence for agent actions. Broader framework orchestration examples are preserved under archive/legacy as compatibility/reference material.
 
 ## Available Integrations
 
 | Framework | Status | Description |
 |-----------|--------|-------------|
-| [K2.6 (Moonshot AI)](kimi-k26.md) | ✅ Stable | Governed agents, tasks, and workflows |
-| [LangGraph](langgraph.md) | ✅ Stable | Governed nodes and state graphs |
-| [Codex (OpenAI)](codex.md) | ✅ Stable | Code generation with security review |
-| [Claude Code (Anthropic)](claude-code.md) | ✅ Stable | Agent actions with file controls |
-| [LangChain](langchain.md) | ✅ Stable | Callback handler and chain governance |
-| [CrewAI](crewai.md) | ✅ Stable | Role-based crew governance |
-| [AutoGen](autogen.md) | ✅ Stable | Conversational agent governance |
-| [OpenAI](openai-agents.md) | ✅ Stable | OpenAI client wrapper |
+| [K2.6 (Moonshot AI)](kimi-k26.md) | âœ… Stable | Governed agents, tasks, and workflows |
+| [Codex (OpenAI)](codex.md) | âœ… Stable | Code generation with security review |
+| [Claude Code (Anthropic)](claude-code.md) | âœ… Stable | Agent actions with file controls |
+| [LangChain](langchain.md) | âœ… Stable | Callback handler and chain governance |
+| [AutoGen](autogen.md) | âœ… Stable | Conversational agent governance |
 
 ## Common Patterns
 
@@ -74,11 +71,11 @@ See [Custom Integration Guide](custom-integration.md) for building your own gove
 ## Compliance
 
 All integrations provide:
-- **Policy enforcement** — Pre-flight checks on every action
-- **Approval workflows** — Human-in-the-loop for sensitive operations
-- **Audit trails** — Hash-chained, tamper-evident logs
-- **Kill switches** — Emergency stop capability
-- **Compliance reports** — SOC2, GDPR, NIST mappings
+- **Policy enforcement** â€” Pre-flight checks on every action
+- **Approval workflows** â€” Human-in-the-loop for sensitive operations
+- **Audit trails** â€” Hash-chained, tamper-evident logs
+- **Kill switches** â€” Emergency stop capability
+- **Compliance reports** â€” SOC2, GDPR, NIST mappings
 
 ## Support
 

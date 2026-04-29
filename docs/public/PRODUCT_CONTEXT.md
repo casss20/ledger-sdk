@@ -1,14 +1,14 @@
-# Citadel SDK — Shared Product Context for Documentation Writers
+﻿# Citadel SDK â€” Shared Product Context for Documentation Writers
 
 ## Product Overview
 
-Citadel SDK is a governance layer for AI agents. It embeds compliance, audit, and control directly into agent runtime — making governance non-optional and non-bypassable. Think "Stripe for AI governance" — infrastructure that becomes embedded, then indispensable.
+Citadel SDK is a governance layer for AI agents. It embeds compliance, audit, and control directly into agent runtime â€” making governance non-optional and non-bypassable. Think "Stripe for AI governance" â€” infrastructure that becomes embedded, then indispensable.
 
 ## Technical Design Pillars
 
 1. **Unified Commercial Identity**: Bridging Stripe billing, OAuth identity, and GT tokenization into a single, governed execution context.
 2. **The Dual-Write Governance Pipeline**: Ensuring that every proposed action and its final decision are persisted in a tamper-proof, append-only audit chain.
-3. **The Hardened Runtime (RLS + OTel + Kill Switch)**: Combining PostgreSQL RLS, OpenTelemetry for observability, and Global Kill Switches for production safety.
+3. **The Hardened Runtime (RLS + Kill Switch)**: Combining PostgreSQL RLS and Global Kill Switches for production safety. OpenTelemetry scaffolding is archived legacy material, not active product surface.
 
 ## Architecture Components
 
@@ -16,7 +16,7 @@ Citadel SDK is a governance layer for AI agents. It embeds compliance, audit, an
 - Intercepts all agent tool calls at runtime
 - Evaluates policies against every action before execution
 - Cannot be bypassed by application code (enforced at infrastructure layer)
-- Equivalent to PostgreSQL RLS query rewriter — policies applied before execution
+- Equivalent to PostgreSQL RLS query rewriter â€” policies applied before execution
 
 ### 2. RLS Auth (Row-Level Security for Agents)
 - Per-agent identity with cryptographically signed tokens
@@ -48,7 +48,7 @@ Citadel SDK is a governance layer for AI agents. It embeds compliance, audit, an
 ### Governance Tokens (`gt_`)
 - Opaque token format (e.g., `gt_1Aa2Bb3Cc4Dd`)
 - References governance decisions stored in Citadel's vault
-- Non-portable — only resolvable by Citadel
+- Non-portable â€” only resolvable by Citadel
 - Creates data gravity: accumulated governance history increases switching cost
 - Analogous to Stripe's `pm_` PaymentMethod tokens
 
@@ -73,23 +73,20 @@ spec:
 ```
 
 ### Enforcement Types
-- `allow` — Pass through (logged only)
-- `deny` — Block action
-- `require_approval` — Hold for human approval
-- `rate_limit` — Throttle to N per window
-- `require_auth` — Demand additional agent authentication
-- `alert_only` — Log and notify, don't block
+- `allow` â€” Pass through (logged only)
+- `deny` â€” Block action
+- `require_approval` â€” Hold for human approval
+- `rate_limit` â€” Throttle to N per window
+- `require_auth` â€” Demand additional agent authentication
+- `alert_only` â€” Log and notify, don't block
 
 ### Trust Scoring
-- Each agent has a deterministic trust score (0.00-1.00) computed from 9 weighted behavioral factors.
-- Score maps to one of five trust bands: REVOKED (0.00-0.19), PROBATION (0.20-0.39), STANDARD (0.40-0.59), TRUSTED (0.60-0.79), HIGHLY_TRUSTED (0.80-1.00).
-- Trust bands influence policy enforcement: add approval requirements, reduce spend/rate limits, block specific actions.
-- Trust never bypasses kill switch, lineage, or entitlement checks. Trust can only ADD constraints — never remove them.
-- Probation: New agents start in PROBATION with 7-day default duration. Blocks delegation and handoff.
-- Circuit breaker: Score below 0.15 triggers staged REVOKED transition.
-- Operator override: Manual band adjustment with dual approval, auditable reason, and time-bounded expiration.
+- Each agent has a deterministic trust score (0.00-1.00) computed from three operational factors: `identity_verification`, `operational_health`, and `governance_record`.
+- The active runtime treats trust as a compact governance signal for decision evidence, not a broad behavioral analytics product.
+- Historical bands remain API/storage compatibility values, but the wedge-focused operating model is REVOKED / STANDARD / TRUSTED.
+- Trust never bypasses kill switch, lineage, spend enforcement, or entitlement checks. Trust can only add constraints or context.
 - Every governance decision stores `trust_snapshot_id` for deterministic replay.
-- Analogous to credit score for agents, but policy remains the sole authority.
+- Policy remains the sole authority.
 
 ## SDK APIs
 
@@ -142,59 +139,59 @@ result, err := governed.Execute()
 ```
 
 ## Dashboard (Stream 3b)
-- **Governance Posture Score** — Unified health metric (0-100%)
-- **Activity Stream** — Prioritized violation queue (Datadog Security Inbox pattern)
-- **Coverage Heatmap** — Policy enforcement density across AI lifecycle
-- **Kill Switch Panel** — Emergency controls with role-based access
-- **Audit Explorer** — Full-text search with facet filtering on all governance events
-- **Approval Queue** — Human-in-the-loop oversight interface
+- **Governance Posture Score** â€” Unified health metric (0-100%)
+- **Activity Stream** â€” Prioritized violation queue (Datadog Security Inbox pattern)
+- **Coverage Heatmap** â€” Policy enforcement density across AI lifecycle
+- **Kill Switch Panel** â€” Emergency controls with role-based access
+- **Audit Explorer** â€” Full-text search with facet filtering on all governance events
+- **Approval Queue** â€” Human-in-the-loop oversight interface
 
 ## Regulatory Alignment
-- **EU AI Act Article 12** — Automatic logging (✅ hash-chained audit)
-- **EU AI Act Article 14** — Human oversight with kill switch (✅ built-in)
-- **EU AI Act Article 11** — Technical documentation (✅ policy-as-code)
-- **SOC 2** — Audit trail and access controls (✅ permission-gated immutability)
-- **HIPAA** — Audit logging for PHI access (✅ separate audit trail product)
-- **NIST AI RMF** — Risk management framework mapping (✅ trust scoring)
+- **EU AI Act Article 12** â€” Automatic logging (âœ… hash-chained audit)
+- **EU AI Act Article 14** â€” Human oversight with kill switch (âœ… built-in)
+- **EU AI Act Article 11** â€” Technical documentation (âœ… policy-as-code)
+- **SOC 2** â€” Audit trail and access controls (âœ… permission-gated immutability)
+- **HIPAA** â€” Audit logging for PHI access (âœ… separate audit trail product)
+- **NIST AI RMF** â€” Risk management framework mapping (âœ… trust scoring)
 
 ## Competitive Differentiation
-- **Kernel-level enforcement** — Not a policy dashboard; governance embedded in runtime
-- **Non-bypassable** — Like PostgreSQL RLS, enforced below application layer
-- **Immutable audit** — Hash-chained, append-only, S3 Object Lock COMPLIANCE mode
-- **Kill switch as first-class** — EU AI Act Article 14 compliant by design
-- **Governance tokens** — Data gravity through non-portable `gt_` token accumulation
+- **Kernel-level enforcement** â€” Not a policy dashboard; governance embedded in runtime
+- **Non-bypassable** â€” Like PostgreSQL RLS, enforced below application layer
+- **Immutable audit** â€” Hash-chained, append-only, S3 Object Lock COMPLIANCE mode
+- **Kill switch as first-class** â€” EU AI Act Article 14 compliant by design
+- **Governance tokens** â€” Data gravity through non-portable `gt_` token accumulation
 
 ## Integration Patterns
-- **LangChain** — Callback handler intercepts tool calls
-- **CrewAI** — Task-level governance hooks
-- **AutoGen** — Agent conversation interceptors
-- **OpenAI Agents SDK** — Built-in `guardrails` parameter
-- **Anthropic SDK** — Message-level policy evaluation
-- **Kimi k1.6** — Tool use interception via middleware
+- **LangChain** â€” Callback handler intercepts tool calls
+- **CrewAI** â€” Task-level governance hooks
+- **AutoGen** â€” Agent conversation interceptors
+- **OpenAI Agents SDK** â€” Built-in `guardrails` parameter
+- **Anthropic SDK** â€” Message-level policy evaluation
+- **Kimi k1.6** â€” Tool use interception via middleware
 
 ## Common Recipes
-1. Refund approval over $1,000 → require_approval
-2. Email sending rate limit → rate_limit 100/hour
-3. Database write protection → deny on production without approval
-4. Multi-agent coordination → require_auth between agents
-5. High-risk action approval → require_approval + comprehensive audit
-6. Agent-to-agent authentication → gt_ token exchange
-7. Audit export for regulator → generate compliance proof package
-8. Emergency shutdown → kill switch all agents in namespace
-9. Multi-tenant deployment → RLS tenant isolation per customer
-10. Compliance proof generation → hash chain verification report
+1. Refund approval over $1,000 â†’ require_approval
+2. Email sending rate limit â†’ rate_limit 100/hour
+3. Database write protection â†’ deny on production without approval
+4. Multi-agent coordination â†’ require_auth between agents
+5. High-risk action approval â†’ require_approval + comprehensive audit
+6. Agent-to-agent authentication â†’ gt_ token exchange
+7. Audit export for regulator â†’ generate compliance proof package
+8. Emergency shutdown â†’ kill switch all agents in namespace
+9. Multi-tenant deployment â†’ RLS tenant isolation per customer
+10. Compliance proof generation â†’ hash chain verification report
 
 ## Error Codes
-- `LEDGER_001` — Policy denied action
-- `LEDGER_002` — Approval required
-- `LEDGER_003` — Rate limit exceeded (429)
-- `LEDGER_004` — Agent not authenticated (401)
-- `LEDGER_005` — Kill switch activated
-- `LEDGER_006` — Audit trail unavailable
-- `LEDGER_007` — Trust band below minimum (REVOKED or PROBATION)
-- `LEDGER_008` — Invalid governance token
-- `LEDGER_009` — Subscription Payment Required (402)
-- `LEDGER_010` — Usage Quota Exceeded (429)
+- `LEDGER_001` â€” Policy denied action
+- `LEDGER_002` â€” Approval required
+- `LEDGER_003` â€” Rate limit exceeded (429)
+- `LEDGER_004` â€” Agent not authenticated (401)
+- `LEDGER_005` â€” Kill switch activated
+- `LEDGER_006` â€” Audit trail unavailable
+- `LEDGER_007` â€” Trust state below minimum
+- `LEDGER_008` â€” Invalid governance token
+- `LEDGER_009` â€” Subscription Payment Required (402)
+- `LEDGER_010` â€” Usage Quota Exceeded (429)
 
 ## Rate Limits
 - Free tier: 1,000 governed actions/day
@@ -203,15 +200,15 @@ result, err := governed.Execute()
 - Burst limit: 10x base rate for 60 seconds
 
 ## Webhook Events
-- `governance.action.allowed` — Action passed policy check
-- `governance.action.denied` — Action blocked
-- `governance.approval.required` — Human approval queued
-- `governance.kill_switch.activated` — Emergency halt triggered
-- `governance.trust_band.changed` — Agent trust band updated (REVOKED/PROBATION/STANDARD/TRUSTED/HIGHLY_TRUSTED)
-- `governance.trust_score.computed` — Agent trust score recalculated
-- `governance.trust_probation.started` — Probation period began
-- `governance.trust_probation.ended` — Probation period expired
-- `governance.audit.exported` — Compliance package generated
+- `governance.action.allowed` â€” Action passed policy check
+- `governance.action.denied` â€” Action blocked
+- `governance.approval.required` â€” Human approval queued
+- `governance.kill_switch.activated` â€” Emergency halt triggered
+- `governance.trust_band.changed` — Agent trust band updated
+- `governance.trust_score.computed` â€” Agent trust score recalculated
+- `governance.trust_probation.started` â€” Probation period began
+- `governance.trust_probation.ended` â€” Probation period expired
+- `governance.audit.exported` â€” Compliance package generated
 
 ## Production Deployment
 - Docker image: `citadel/sdk:latest`

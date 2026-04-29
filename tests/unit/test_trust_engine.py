@@ -35,38 +35,26 @@ class TestTrustScoreComputation:
             "failed_challenges": 0,
         }
         score, factors = engine._compute_score(raw)
-        assert score >= 0.70  # Should be in TRUSTED or HIGHLY_TRUSTED
-        assert factors["verification"] == 0.25
-        assert factors["health"] == 0.20
-        assert factors["compliance"] == 0.15
+        assert score >= 0.70
+        assert factors["identity_verification"] == 0.30
+        assert factors["operational_health"] == 0.35
+        assert factors["governance_record"] == 0.35
         assert score <= 1.0
 
     def test_dashboard_factor_breakdown_uses_current_factor_names(self):
         """Dashboard explanations should match the live trust engine factors."""
         factors = {
-            "verification": 0.25,
-            "age": 0.15,
-            "health": 0.20,
-            "quarantine": 0.10,
-            "action_rate": 0.10,
-            "compliance": 0.15,
-            "budget_adherence": 0.05,
-            "challenge_reliability": 0.05,
-            "trend": -0.03,
+            "identity_verification": 0.30,
+            "operational_health": 0.35,
+            "governance_record": -0.12,
         }
 
         rows = _trust_factor_breakdown(factors)
 
         assert [row["key"] for row in rows] == [
-            "verification",
-            "age",
-            "health",
-            "quarantine",
-            "action_rate",
-            "compliance",
-            "budget_adherence",
-            "challenge_reliability",
-            "trend",
+            "identity_verification",
+            "operational_health",
+            "governance_record",
         ]
         assert rows[-1]["direction"] == "negative"
 
@@ -88,7 +76,7 @@ class TestTrustScoreComputation:
         }
         score, factors = engine._compute_score(raw)
         assert score < 0.60  # Should be STANDARD or lower
-        assert factors["verification"] == 0.0
+        assert factors["identity_verification"] == 0.0
 
     def test_quarantined_agent_penalty(self):
         """Quarantine should significantly lower score."""
@@ -107,7 +95,7 @@ class TestTrustScoreComputation:
             "failed_challenges": 0,
         }
         score, factors = engine._compute_score(raw)
-        assert factors["quarantine"] == -0.30
+        assert factors["operational_health"] < 0
         assert score < 0.50  # Should be PROBATION or lower
 
 
@@ -128,7 +116,7 @@ class TestTrustScoreComputation:
             "failed_challenges": 0,
         }
         score, factors = engine._compute_score(raw)
-        assert factors["action_rate"] == -0.10
+        assert factors["operational_health"] < 0.35
 
     def test_violations_penalty(self):
         """Multiple violations should lower score."""
@@ -147,7 +135,7 @@ class TestTrustScoreComputation:
             "failed_challenges": 0,
         }
         score, factors = engine._compute_score(raw)
-        assert factors["compliance"] == -0.15
+        assert factors["governance_record"] <= 0.0
 
     def test_score_clamped(self):
         """Score should never exceed [0.0, 1.0]."""
@@ -169,45 +157,24 @@ class TestTrustScoreComputation:
         score, _ = engine._compute_score(raw)
         assert 0.0 <= score <= 1.0
 
-    def test_trend_bonus(self):
-        """Rapid improvement should get a small bonus."""
+    def test_budget_pressure_reduces_governance_record(self):
+        """Spend pressure should affect the governance record factor."""
         engine = TrustSnapshotEngine(None)
         raw = {
             "identity_verified": True,
             "health_score": 100,
             "quarantined": False,
             "actions_today": 50,
-            "token_spend": 100,
-            "token_budget": 10000,
+            "token_spend": 95000,
+            "token_budget": 100000,
             "compliance_tags": ["gdpr"],
             "identity_created_at": datetime.now(timezone.utc) - timedelta(days=30),
             "violations_7d": 0,
             "challenge_count": 10,
             "failed_challenges": 0,
-            "previous_score": 0.10,
         }
         score, factors = engine._compute_score(raw)
-        assert factors["trend"] == 0.02
-
-    def test_trend_penalty(self):
-        """Rapid drop should get a small additional penalty."""
-        engine = TrustSnapshotEngine(None)
-        raw = {
-            "identity_verified": False,
-            "health_score": 50,
-            "quarantined": True,
-            "actions_today": 2000,
-            "token_spend": 90000,
-            "token_budget": 100000,
-            "compliance_tags": [],
-            "identity_created_at": datetime.now(timezone.utc) - timedelta(days=1),
-            "violations_7d": 0,
-            "challenge_count": 10,
-            "failed_challenges": 9,
-            "previous_score": 0.95,
-        }
-        score, factors = engine._compute_score(raw)
-        assert factors["trend"] == -0.03
+        assert factors["governance_record"] == pytest.approx(0.25)
 
 
 

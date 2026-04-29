@@ -9,10 +9,6 @@ from enum import Enum
 
 from .trust_bands import (
     TrustBand,
-    PROBATION_CONFIG,
-    TRUST_FACTOR_WEIGHTS,
-    get_band_constraints,
-    is_band_transition_allowed,
     get_transition_reason_code,
 )
 from .trust_audit import TrustAuditLogger
@@ -69,12 +65,13 @@ class TrustSnapshotEngine:
     This replaces the old TrustScorer that overwrote agent_identities.metadata.
     Every computation produces a new row in actor_trust_snapshots.
 
-    Features:
-    - Deterministic score computation from raw inputs
-    - Automatic band mapping with explicit thresholds
-    - Probation management
-    - Audit logging for all transitions
-    - Backward compatibility with existing TrustScorer API
+    The active score model is intentionally operational and small:
+    - identity_verification
+    - operational_health
+    - governance_record
+
+    Legacy callers still receive a numeric score and TrustBand value, but the
+    score no longer pretends to be a rich behavioral biometric model.
     """
 
     def __init__(self, db_pool=None):
@@ -371,96 +368,39 @@ class TrustSnapshotEngine:
 
     def _compute_score(self, raw_inputs: Dict[str, Any]) -> tuple[float, Dict[str, float]]:
         """
-        Deterministic trust score computation from raw inputs.
+        Deterministic operational trust score computation from raw inputs.
 
         This is the heart of the trust engine. It must be:
         - Fully deterministic: same inputs always produce same output
-        - Documented: every factor is explained
+        - Small: three operational factors, not a behavioral model
         - Bounded: score always in [0.0, 1.0]
         - Verifiable: factors sum to the score
         """
-        factors = {}
+        factors: dict[str, float] = {}
 
-        # 1. Verification (weight: 0.25)
-        if raw_inputs.get("identity_verified", False):
-            factors["verification"] = 0.25
-        else:
-            factors["verification"] = 0.0
+        factors["identity_verification"] = (
+            0.30 if raw_inputs.get("identity_verified", False) else 0.0
+        )
 
-        # 2. Age of identity (weight: 0.15, max)
-        created_at = raw_inputs.get("identity_created_at")
-        if created_at:
-            age_days = (datetime.now(timezone.utc) - created_at).days
-            age_bonus = min(age_days * 0.005, 0.15)  # 0.5% per day, cap at 30 days
-            factors["age"] = age_bonus
-        else:
-            factors["age"] = 0.0
-
-        # 3. Health score (weight: 0.20)
         health_score = raw_inputs.get("health_score", 100)
-        factors["health"] = (health_score / 100.0) * 0.20
-
-        # 4. Quarantine (weight: 0.10)
+        operational_health = max(0.0, min(1.0, health_score / 100.0)) * 0.35
         if raw_inputs.get("quarantined", False):
-            factors["quarantine"] = -0.30  # Major penalty
-        else:
-            factors["quarantine"] = 0.10
+            operational_health -= 0.35
+        if raw_inputs.get("actions_today", 0) > 1000:
+            operational_health -= 0.15
+        factors["operational_health"] = max(-0.35, min(0.35, operational_health))
 
-        # 5. Action rate (weight: 0.10)
-        actions_today = raw_inputs.get("actions_today", 0)
-        if actions_today > 1000:
-            factors["action_rate"] = -0.10  # Suspicious volume
-        elif actions_today > 100:
-            factors["action_rate"] = 0.05
-        else:
-            factors["action_rate"] = 0.10
-
-        # 6. Compliance (weight: 0.15)
+        governance_record = 0.35
         violations = raw_inputs.get("violations_7d", 0)
-        if violations == 0:
-            factors["compliance"] = 0.15
-        elif violations < 3:
-            factors["compliance"] = 0.05
-        else:
-            factors["compliance"] = -0.15
+        if violations > 0:
+            governance_record -= min(0.35, violations * 0.12)
 
-        # 7. Budget adherence (weight: 0.05)
         token_budget = raw_inputs.get("token_budget", 100000)
         if token_budget > 0:
             budget_ratio = raw_inputs.get("token_spend", 0) / token_budget
             if budget_ratio > 0.9:
-                factors["budget_adherence"] = -0.05
-            else:
-                factors["budget_adherence"] = 0.05
-        else:
-            factors["budget_adherence"] = 0.0
-
-        # 8. Challenge reliability (bonus, not in core weights)
-        challenge_count = raw_inputs.get("challenge_count", 0)
-        failed_challenges = raw_inputs.get("failed_challenges", 0)
-        if challenge_count > 0:
-            fail_rate = failed_challenges / max(challenge_count, 1)
-            if fail_rate > 0.5:
-                factors["challenge_reliability"] = -0.05
-            else:
-                factors["challenge_reliability"] = 0.05
-        else:
-            factors["challenge_reliability"] = 0.0
-
-        # 9. Trend bonus/penalty (small, based on previous score)
-        previous_score = raw_inputs.get("previous_score")
-        if previous_score is not None:
-            score_diff = sum(factors.values()) - previous_score
-            if score_diff < -0.15:
-                # Rapid drop — small additional penalty for instability
-                factors["trend"] = -0.03
-            elif score_diff > 0.15:
-                # Rapid improvement — small bonus for recovery
-                factors["trend"] = 0.02
-            else:
-                factors["trend"] = 0.0
-        else:
-            factors["trend"] = 0.0
+                governance_record -= 0.10
+        factors["governance_record"] = max(-0.35, min(0.35, governance_record))
 
         # Compute total score
         score = sum(factors.values())

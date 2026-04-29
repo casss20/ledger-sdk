@@ -72,4 +72,3 @@ Cross-region replication for audit trail:
 ## Next steps
 
 - [Production Deployment](production-deployment.md)
-- [Monitoring Governance](monitoring-governance.md)

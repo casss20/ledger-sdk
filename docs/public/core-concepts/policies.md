@@ -1,4 +1,4 @@
-# Policies and YAML Syntax
+﻿# Policies and YAML Syntax
 
 ## What you'll learn
 
@@ -147,8 +147,6 @@ spec:
   enforcement:
     type: conditional
     conditions:
-      - if: trust_band == "HIGHLY_TRUSTED"
-        then: allow
       - if: trust_band == "TRUSTED"
         then: require_approval
         approvers: [data-owner]
@@ -160,11 +158,9 @@ spec:
 
 ### Important rules
 
-1. **Trust can only ADD constraints** — it cannot override a policy `deny`
-2. **Kill switch is checked first** — trust never bypasses emergency stop
-3. **Probation overrides band** — if `probation_until` > now, agent is PROBATION regardless of score
-4. **Even HIGHLY_TRUSTED needs approval for `destroy`** — no band bypasses destructive action controls
-
+1. Trust can only add constraints; it cannot override a policy `deny`.
+2. Kill switch is checked first; trust never bypasses emergency stop.
+3. No trust state bypasses destructive action controls.
 ---
 
 ## Policy Composition
@@ -247,6 +243,6 @@ citadel.policies.rollback("refund-approval-over-1000", to_version="v1")
 
 ## Next steps
 
-- [Kill Switch](./kill-switch.md) — Emergency override for policies
-- [Trust Scoring](./trust-scoring.md) — Dynamic policy based on agent behavior
+- [Kill Switch](./kill-switch.md) â€” Emergency override for policies
+- [Trust Scoring](./trust-scoring.md) â€” Dynamic policy based on agent behavior
 - [Recipe: Refund Approval Over $1,000](../recipes/refund-approval-over-1000.md)

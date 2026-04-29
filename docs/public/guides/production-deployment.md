@@ -150,6 +150,5 @@ GET /metrics          # Prometheus metrics
 
 ## Next steps
 
-- [Monitoring Governance](monitoring-governance.md)
 - [Security Best Practices](security-best-practices.md)
 - [Scaling to Millions of Agents](scaling-to-millions-of-agents.md)

@@ -60,12 +60,6 @@ durable = [
 sidecar = [
     "aiohttp>=3.8",
 ]
-otel = [
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-instrumentation-fastapi>=0.41b0",
-    "opentelemetry-exporter-otlp>=1.20.0",
-]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -85,10 +79,6 @@ all = [
     "prometheus-client>=0.17",
     "asyncpg>=0.29",
     "PyJWT>=2.8",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-instrumentation-fastapi>=0.41b0",
-    "opentelemetry-exporter-otlp>=1.20.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -110,6 +100,8 @@ target-version = ["py310", "py311", "py312"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "F",   # Pyflakes
@@ -133,3 +125,5 @@ disallow_untyped_defs = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = ["apps/runtime"]
+cache_dir = ".pytest_cache_citadel"
+addopts = "-p no:cacheprovider"

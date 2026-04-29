@@ -1,4 +1,4 @@
-# Human Approvals and Oversight
+﻿# Human Approvals and Oversight
 
 ## What you'll learn
 
@@ -23,50 +23,46 @@ This satisfies EU AI Act Article 14(4)(b): "natural persons overseeing high-risk
 
 ```
 Agent requests action
-    ↓
+    â†“
 Kill Switch Check (first gate)
-    ↓
-Trust Evaluation → Band, Score, Constraints
-    ↓
+    â†“
+Trust Evaluation â†’ Band, Score, Constraints
+    â†“
 Policy evaluation: require_approval
-    ↓
-Trust constraints merged → May add additional approval requirements
-    ↓
+    â†“
+Trust constraints merged â†’ May add additional approval requirements
+    â†“
 Action PAUSED
-    ↓
+    â†“
 Notifications sent to approvers
-    ↓
+    â†“
 Approver reviews context
-    ↓
-    ├─ APPROVE → Action resumes and executes
-    ├─ DENY → Action rejected, agent notified
-    └─ TIMEOUT → Auto-rejected after timeout
-    ↓
+    â†“
+    â”œâ”€ APPROVE â†’ Action resumes and executes
+    â”œâ”€ DENY â†’ Action rejected, agent notified
+    â””â”€ TIMEOUT â†’ Auto-rejected after timeout
+    â†“
 Decision recorded in audit trail (with trust_snapshot_id)
 ```
 
 ---
 
-## Trust Band Approval Matrix
+## Trust-Aware Approval Context
 
-Trust bands determine which actions require approval:
+Trust is a decision input, not an approval system by itself. The active runtime uses the compact REVOKED / STANDARD / TRUSTED operating model:
 
-| Action | REVOKED | PROBATION | STANDARD | TRUSTED | HIGHLY_TRUSTED |
-|--------|---------|-----------|----------|---------|----------------|
-| **execute** | blocked | allowed + introspection | allowed | allowed | allowed |
-| **delegate** | blocked | blocked | allowed | allowed | allowed |
-| **handoff** | blocked | blocked | approval | allowed | allowed |
-| **gather** | blocked | blocked | approval | allowed | allowed |
-| **destroy** | blocked | blocked | approval | approval | approval |
-| **revoke** | blocked | blocked | approval | approval | allowed |
-| **kill_switch_trigger** | blocked | blocked | approval | allowed | allowed |
+| Action | REVOKED | STANDARD | TRUSTED |
+|--------|---------|----------|---------|
+| **execute** | blocked | allowed | allowed |
+| **destroy** | blocked | approval | approval |
+| **revoke** | blocked | approval | approval |
+| **kill_switch_trigger** | blocked | approval | allowed |
 
 ### Key Rules
 
-- **Trust can only ADD approval requirements** — it cannot remove them
-- **Even HIGHLY_TRUSTED needs approval for `destroy`** — no band bypasses destructive action controls
-- **Probation blocks `delegate`, `handoff`, `gather`** regardless of score
-- **REVOKED blocks everything** — emergency state
+- Trust can only add approval requirements or context.
+- No trust state bypasses destructive action controls.
+- REVOKED blocks execution and token issuance.
 
 ---
 
@@ -116,11 +112,9 @@ enforcement:
 enforcement:
   type: require_approval
   approvers:
-    - condition: trust_band == "PROBATION"
-      roles: [security-manager]
     - condition: trust_band == "STANDARD"
       roles: [team-lead]
-    - condition: trust_band in ["TRUSTED", "HIGHLY_TRUSTED"]
+    - condition: trust_band == "TRUSTED"
       roles: [senior-engineer]
 ```
 
@@ -179,7 +173,7 @@ Escalation chain:
 0h: Initial notification
 4h: First reminder
 8h: Second reminder
-24h: Timeout → Auto-deny
+24h: Timeout â†’ Auto-deny
 48h: Escalation notification to manager
 ```
 
@@ -269,6 +263,6 @@ citadel.approvals.delegate(
 
 ## Next steps
 
-- [Kill Switch](./kill-switch.md) — Emergency stops when approvals aren't enough
-- [Trust Scoring](./trust-scoring.md) — How trust bands reduce or increase approval burden
+- [Kill Switch](./kill-switch.md) â€” Emergency stops when approvals aren't enough
+- [Trust Scoring](./trust-scoring.md) â€” How trust bands reduce or increase approval burden
 - [Recipe: High-Risk Action Approval](../recipes/high-risk-action-approval.md)
