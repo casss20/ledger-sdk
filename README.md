@@ -1,10 +1,10 @@
 # Citadel SDK
 
-**Cost enforcement and decision-first audit evidence for agent builders.**
+**Hard cost enforcement + cryptographic audit evidence for AI agents.**
 
-Citadel is being simplified into a wedge-focused governance kernel. The active
-product path is centered on pre-request LLM spend enforcement and cryptographic
-decision evidence. The canonical active-core map is in [`citadel-core/`](citadel-core/).
+The minimal governance kernel is now live on PyPI: **[citadel-governance 0.2.2](https://pypi.org/project/citadel-governance/0.2.2/)**
+
+Citadel provides two essential wedges: (1) pre-request budget checks that block LLM calls before they execute, and (2) tamper-evident decision audit bundles for regulatory compliance. The canonical active-core map is in [`citadel-core/`](citadel-core/).
 
 Archived research, duplicate demos, and placeholder packages are preserved under
 [`archive/`](archive/) so nothing is lost, but they are no longer presented as
@@ -61,21 +61,21 @@ Citadel now focuses on a minimal kernel with two wedges:
 
 | Package | Install | Purpose | License | Status |
 |---|---|---|---|---|
-| **citadel-kernel** | `pip install citadel-kernel` | Minimal SDK: cost enforcement + audit evidence | **Apache 2.0** | ⚡ Active |
-| **citadel-governance** | `pip install citadel-governance` | Full SDK: governance + approval + introspection | **Apache 2.0** | 🔄 Legacy |
-| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted backend service | **BSL 1.1** | 🔄 Legacy |
+| **citadel-governance 0.2.2** | `pip install citadel-governance` | Minimal SDK: cost enforcement + audit evidence | **Apache 2.0** | ✅ Live on PyPI |
+| **citadel-governance 0.1.0** | `pip install citadel-governance==0.1.0` | Full SDK: governance + approval + introspection | **Apache 2.0** | 🔄 Archived |
+| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted backend service | **BSL 1.1** | 🔄 Dev only |
 
-**New users: Start with `citadel-kernel`.** It's lightweight, embeddable, and requires only cost estimation and cryptographic audit.
+**New users: Install `citadel-governance` (0.2.2).** It's lightweight, embeddable, and provides hard cost enforcement + cryptographic audit evidence.
 
-### Quick Start: Citadel Kernel (Recommended)
+### Quick Start: Minimal Kernel (0.2.2 — Live on PyPI)
 
-1. **Set up the backend** — See [BACKEND_SETUP.md](BACKEND_SETUP.md) for Docker or local Python setup.
-
-2. **Install the SDK**
+1. **Install the SDK**
 
 ```bash
-pip install citadel-kernel
+pip install citadel-governance
 ```
+
+2. **Set up the backend** — See [BACKEND_SETUP.md](BACKEND_SETUP.md) for Docker or local Python setup.
 
 3. **Execute actions with cost enforcement and audit**
 
@@ -110,7 +110,7 @@ async def main():
 asyncio.run(main())
 ```
 
-See [`packages/sdk-python-kernel/README.md`](packages/sdk-python-kernel/README.md) for full documentation.
+See [`packages/sdk-python-kernel/README.md`](packages/sdk-python-kernel/README.md) for full documentation, or check out the package on [PyPI](https://pypi.org/project/citadel-governance/0.2.2/).
 
 ### Legacy SDKs (Archived)
 
