@@ -1,17 +1,24 @@
 # Citadel Kernel — Minimal Governance for AI Agents
 
-**Hard cost enforcement + cryptographic decision audit evidence.**
+**Early Alpha (0.1.0) — Hard cost enforcement + cryptographic decision audit evidence.**
 
 A lightweight, embeddable governance kernel for agent frameworks. Zero dashboard, orchestration, or billing baggage. Just two wedges:
 
 1. **Pre-execution cost blocking** — estimate LLM cost, check budgets, BLOCK before the API call if exceeded
 2. **Cryptographic audit evidence** — export decision bundles with tamper-evident hash chains for regulatory review
 
+## Prerequisites
+
+- Python 3.10+
+- A running Citadel runtime backend (see [BACKEND_SETUP.md](../../BACKEND_SETUP.md) for local development)
+
 ## Installation
 
 ```bash
 pip install citadel-kernel
 ```
+
+**Note**: Early alpha. API may change. Pricing tables are hardcoded and will drift with provider updates.
 
 ## Quickstart
 
@@ -72,7 +79,9 @@ asyncio.run(main())
 
 ## Cost Estimation
 
-The kernel automatically estimates cost from provider + model + token counts:
+The kernel automatically estimates cost from provider + model + token counts.
+
+**Note (Early Alpha)**: Pricing is hardcoded from April 2026 Anthropic rates. For production, update pricing tables in `apps/runtime/citadel/commercial/cost_estimator.py` or use explicit `projected_cost_cents`.
 
 ```python
 # Kernel estimates cost from Anthropic pricing tables

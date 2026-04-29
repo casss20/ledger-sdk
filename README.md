@@ -55,110 +55,76 @@ Citadel is organized as a monorepo with a wedge-first active core:
 - **`tests/`**: Unit, integration, dashboard, token, and regression tests.
 - **`scripts/`**: Development and administrative utilities.
 
-## 📦 Packages
+## 📦 Packages (Early Alpha)
 
-Citadel publishes two distinct Python packages:
+Citadel now focuses on a minimal kernel with two wedges:
 
-| Package | Install | Purpose | License |
-|---|---|---|---|
-| **citadel-governance** | `pip install citadel-governance` | Client SDK for agent integration | **Apache 2.0** |
-| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted governance backend | **BSL 1.1** |
+| Package | Install | Purpose | License | Status |
+|---|---|---|---|---|
+| **citadel-kernel** | `pip install citadel-kernel` | Minimal SDK: cost enforcement + audit evidence | **Apache 2.0** | ⚡ Active |
+| **citadel-governance** | `pip install citadel-governance` | Full SDK: governance + approval + introspection | **Apache 2.0** | 🔄 Legacy |
+| **citadel-runtime** | `pip install -e ".[all]"` (from repo) | Self-hosted backend service | **BSL 1.1** | 🔄 Legacy |
 
-> **Note:** The backend runtime (`citadel-runtime`) is not published to PyPI. It is meant to be deployed as a service (Docker, Fly.io, etc.). The SDK (`citadel-governance`) is the only PyPI package for agent integration.
+**New users: Start with `citadel-kernel`.** It's lightweight, embeddable, and requires only cost estimation and cryptographic audit.
 
-### 1. Install the SDK
+### Quick Start: Citadel Kernel (Recommended)
+
+1. **Set up the backend** — See [BACKEND_SETUP.md](BACKEND_SETUP.md) for Docker or local Python setup.
+
+2. **Install the SDK**
 
 ```bash
-pip install citadel-governance
+pip install citadel-kernel
 ```
 
-### 2. Point it at your Citadel runtime
+3. **Execute actions with cost enforcement and audit**
 
 ```python
-import citadel_governance as cg
-
-cg.configure(
-    base_url="http://localhost:8000",
-    api_key="YOUR_API_KEY_HERE",
-    actor_id="my-agent",
-)
-```
-
-### 3. Execute an action under governance
-
-```python
+import citadel_kernel as ck
 import asyncio
 
 async def main():
-    result = await cg.execute(
-        action="stripe.refund",
-        resource="charge:ch_123",
-        payload={"amount": 5000},
+    client = ck.KernelClient(
+        base_url="http://localhost:8000",
+        api_key="your_key_here",
+        actor_id="my-agent",
     )
-
-    if result.status == "executed":
-        print("Permitted and logged.")
-    elif result.status == "pending_approval":
-        print("Queued for human review.")
-    else:
-        print(f"Blocked: {result.reason}")
+    
+    # Wedge A: Hard cost enforcement blocks before API call
+    result = await client.execute(
+        action="llm.generate",
+        provider="anthropic",
+        model="claude-opus-4-7",
+        input_tokens=10000,
+        output_tokens=2000,
+    )
+    print(f"Status: {result.status}")
+    
+    # Wedge B: Cryptographic audit evidence
+    evidence = await client.export_evidence(result.action_id)
+    verified = await client.verify_evidence(result.action_id)
+    print(f"Evidence verified: {verified['verified']}")
+    
+    await client.close()
 
 asyncio.run(main())
 ```
 
-### 4. Watch it in the dashboard
+See [`packages/sdk-python-kernel/README.md`](packages/sdk-python-kernel/README.md) for full documentation.
 
-Open the self-hosted dashboard for your runtime and log in with your operator credentials.
+### Legacy SDKs (Archived)
 
-Every action your agent executes appears in the Activity feed in real time. High-risk actions land in the Approval Queue for human review.
+The full `citadel-governance` SDK and decorator patterns are preserved in the codebase but not recommended for new projects. They support the complete governance stack (approval workflows, introspection, etc.) but are more complex. Use `citadel-kernel` for new work.
 
-The preserved standalone demo dashboard now lives in `archive/legacy/apps/dashboard-demo/`.
+### Backend Setup
 
-### Use as a decorator
+**For local development and testing**, see [BACKEND_SETUP.md](BACKEND_SETUP.md) for:
+- Quick Docker setup
+- Local Python development
+- Database setup (SQLite or PostgreSQL)
+- Troubleshooting
 
-```python
-@cg.guard(action="github.repo_delete", resource="repo:{name}")
-async def delete_repo(name: str):
-    # Only runs if governance allows it
-    await github.repos.delete(name)
-```
-
-### Self-hosted setup (Quick Dev)
-
-Run PostgreSQL in Docker, then start the API locally:
-
-```bash
-# 1. Start PostgreSQL
-docker compose up -d postgres
-
-# 2. Copy and edit environment variables
-cp .env.example .env
-# Edit .env — set CITADEL_JWT_SECRET and CITADEL_API_KEYS
-
-# 3. Install backend locally
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[all]"
-
-# 4. Start the backend
-uvicorn citadel.api:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Self-hosted setup (Full Docker)
-
-Run everything in containers:
-
-```bash
-# 1. Configure environment
-cp .env.example .env
-# Edit .env — set CITADEL_JWT_SECRET, CITADEL_API_KEYS, and CITADEL_ADMIN_BOOTSTRAP_PASSWORD
-
-# 2. Start the full stack
-docker compose up --build -d
-
-# 3. Verify readiness
-curl http://localhost:8000/v1/health/ready
-```
+**For production deployment**, configure PostgreSQL, environment secrets, reverse proxy, and monitoring as described in `apps/runtime/README.md`.
 
 ### Optional: Redis for distributed features
 
