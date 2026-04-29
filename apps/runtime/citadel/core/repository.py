@@ -172,7 +172,26 @@ class Repository:
             parent_actor_id=row.get('parent_actor_id'),
             workflow_id=row.get('workflow_id'),
         )
-    
+
+    async def fetch_audit_events_for_decision(
+        self,
+        decision_id: str,
+        tenant_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """Fetch all audit events for a decision, in chronological order."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT event_id, event_type, actor_id, payload_json, event_ts
+                FROM governance_audit_log
+                WHERE decision_id = $1 AND ($2::text IS NULL OR tenant_id = $2)
+                ORDER BY event_ts ASC
+                """,
+                decision_id,
+                tenant_id,
+            )
+        return [dict(row) for row in rows]
+
     # =========================================================================
     # APPROVALS
     # =========================================================================

@@ -28,6 +28,7 @@ from citadel.api.routers.audit_rich import router as audit_rich_router
 from citadel.api.routers.orchestration import router as orchestration_router
 from citadel.api.routers.decisions import router as decisions_router
 from citadel.api.routers.admin import router as admin_router
+from citadel.api.routers.evidence import router as evidence_router
 from citadel.commercial.routes import router as billing_router
 
 logger = logging.getLogger(__name__)
@@ -314,6 +315,7 @@ def create_app() -> FastAPI:
     app.include_router(orchestration_router, prefix="/v1")
     app.include_router(decisions_router, prefix="/v1")
     app.include_router(admin_router, prefix="/v1")
+    app.include_router(evidence_router)
     app.include_router(billing_router)
     
     # Prometheus metrics (protected with API key auth)
