@@ -223,6 +223,31 @@ class AuditService:
             override_action_id=cached_decision.action_id,
         )
     
+    async def spend_limit_exceeded(
+        self,
+        action: Action,
+        decision: Any,  # commercial.cost_controls.BudgetDecision
+    ) -> int:
+        """Log a pre-execution budget block."""
+        budget = getattr(decision, "budget", None)
+        return await self._log(
+            action=action,
+            event_type='spend_limit_exceeded',
+            payload={
+                'enforcement_action': decision.enforcement_action,
+                'reason': decision.reason,
+                'projected_cost_cents': decision.projected_cost_cents,
+                'current_spend_cents': decision.current_spend_cents,
+                'budget_amount_cents': decision.budget_amount_cents,
+                'budget_id': budget.budget_id if budget else None,
+                'budget_name': budget.name if budget else None,
+                'scope_type': budget.scope_type if budget else None,
+                'scope_value': budget.scope_value if budget else None,
+                'period_start': decision.period_start.isoformat() if decision.period_start else None,
+                'period_end': decision.period_end.isoformat() if decision.period_end else None,
+            }
+        )
+
     async def escalation_triggered(
         self,
         action: Action,

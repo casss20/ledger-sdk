@@ -21,6 +21,7 @@ from citadel.services.capability_service import CapabilityService
 from citadel.services.audit_service import AuditService
 from citadel.execution.executor import Executor as ActionExecutor
 from citadel.tokens import TokenVault, KillSwitch, TokenVerifier
+from citadel.commercial.cost_controls import CostControlService
 
 from citadel.execution.orchestration import OrchestrationRuntime
 
@@ -99,6 +100,8 @@ async def get_kernel(request: Request) -> Kernel:
     audit_service = AuditService(repo)
     executor = ActionExecutor()
     
+    cost_service = CostControlService(pool)
+
     return Kernel(
         repository=repo,
         policy_resolver=policy_resolver,
@@ -107,6 +110,7 @@ async def get_kernel(request: Request) -> Kernel:
         capability_service=capability_service,
         audit_service=audit_service,
         executor=executor,
+        cost_service=cost_service,
     )
 
 

@@ -50,6 +50,7 @@ class Kernel:
         capability_service,
         audit_service,
         executor,
+        cost_service=None,
     ):
         self.repo = repository
         self.policy = policy_resolver
@@ -58,6 +59,7 @@ class Kernel:
         self.caps = capability_service
         self.audit = audit_service
         self.executor = executor
+        self.cost_service = cost_service
 
     async def handle(
         self,
@@ -159,6 +161,33 @@ class Kernel:
             )
             return KernelResult(action=action, decision=decision, executed=False, result=None, error=precedence_result.reason)
 
+        # 4.5 Hard spend enforcement — BLOCK before any LLM/API call if a
+        # budget is exceeded. In-process check using the operator-configured
+        # CostControlService. Only blocks when enforcement_action == "block".
+        if self.cost_service is not None and action.tenant_id:
+            budget_decision = await self._check_spend_budget(action)
+            if (
+                budget_decision is not None
+                and not budget_decision.allowed
+                and budget_decision.enforcement_action == "block"
+            ):
+                await self.audit.spend_limit_exceeded(action, budget_decision)
+                decision = await self._terminal_decision(
+                    action,
+                    KernelStatus.BLOCKED_POLICY,
+                    "spend_limit_exceeded",
+                    budget_decision.reason,
+                    policy_snapshot_id=snapshot.snapshot_id if snapshot else None,
+                    capability_token=capability_token,
+                )
+                return KernelResult(
+                    action=action,
+                    decision=decision,
+                    executed=False,
+                    result=None,
+                    error=budget_decision.reason,
+                )
+
         # 5. Risk assessment / approval check
         approval_check = await self.approvals.check_required(action, snapshot)
 
@@ -229,6 +258,36 @@ class Kernel:
             result=result,
             error=exec_error
         )
+
+    async def _check_spend_budget(self, action: Action):
+        """Build a CostAttribution from the action context and ask the cost
+        service whether this request would exceed any active budget."""
+        from citadel.commercial.cost_controls import CostAttribution
+
+        ctx = action.context or {}
+        projected = int(ctx.get("projected_cost_cents") or 0)
+        try:
+            return await self.cost_service.check_budget(
+                CostAttribution(
+                    tenant_id=action.tenant_id,
+                    projected_cost_cents=projected,
+                    actor_id=action.actor_id,
+                    project_id=ctx.get("project_id"),
+                    api_key_id=ctx.get("api_key_id"),
+                    provider=ctx.get("provider"),
+                    model=ctx.get("model"),
+                    input_tokens=int(ctx.get("input_tokens") or 0),
+                    output_tokens=int(ctx.get("output_tokens") or 0),
+                    request_id=action.request_id,
+                    decision_id=str(action.action_id),
+                )
+            )
+        except (ValueError, TypeError, KeyError, ConnectionError, TimeoutError) as exc:
+            # Fail open on infrastructure errors — block only on a real
+            # budget-exceeded signal. The audit chain still records the
+            # downstream decision.
+            logger.warning(f"Budget check failed ({type(exc).__name__}): {exc}")
+            return None
 
     async def _terminal_decision(
         self,
