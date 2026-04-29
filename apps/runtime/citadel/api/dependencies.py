@@ -23,8 +23,6 @@ from citadel.execution.executor import Executor as ActionExecutor
 from citadel.tokens import TokenVault, KillSwitch, TokenVerifier
 from citadel.commercial.cost_controls import CostControlService
 
-from citadel.execution.orchestration import OrchestrationRuntime
-
 # Global pool reference (set in lifespan)
 _pool: Optional = None
 
@@ -114,8 +112,10 @@ async def get_kernel(request: Request) -> Kernel:
     )
 
 
-async def get_orchestration_runtime(request: Request) -> OrchestrationRuntime:
+async def get_orchestration_runtime(request: Request):
     """Dependency: Get orchestration runtime instance with DB pool from app state."""
+    from citadel.execution.orchestration import OrchestrationRuntime
+
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
         raise HTTPException(
