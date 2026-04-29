@@ -16,7 +16,8 @@ is the source of truth for what should be treated as active core.
 | Action lifecycle audit | `apps/runtime/citadel/services/audit_service.py`, `db/migrations/001_initial_schema.sql` |
 | Emergency stop | `apps/runtime/citadel/tokens/kill_switch.py` |
 | Minimal operator control plane | `apps/dashboard/`, `apps/runtime/citadel/api/routers/dashboard.py` |
-| Developer integration | `packages/sdk-python/` |
+| Developer integration — main SDK | `packages/sdk-python/` |
+| Developer integration — minimal kernel SDK | `packages/sdk-python-kernel/`, `packages/sdk-python/` (dependency) |
 
 ## Archived This Pass
 
@@ -47,6 +48,24 @@ is the source of truth for what should be treated as active core.
 | `docs/public/integrations/openai-agents.md` | `archive/legacy/docs/public/integrations/openai-agents.md` | Broad handoff/orchestration example moved out of active docs. |
 | `docs/public/integrations/langgraph.md` | `archive/legacy/docs/public/integrations/langgraph.md` | Graph orchestration example moved out of active docs. |
 | `docs/public/recipes/multi-agent-coordination.md` | `archive/legacy/docs/public/recipes/multi-agent-coordination.md` | Multi-agent orchestration recipe moved out of active docs. |
+
+## Deleted This Pass (Repo Cleanup for Minimal Wedge)
+
+The following directories and files were **deleted** (not archived) as part of preparing the repository for early alpha release of the minimal citadel-kernel wedge. These are explicitly not preserved because they are infrastructure configs or platform-level assets with no future reference value in the wedge-focused repo:
+
+| Deleted | Reason |
+| --- | --- |
+| `demo/` | Demo scripts not needed for minimal wedge |
+| `web/` (all static website files) | Marketing website, not part of wedge |
+| `docs/ARCHITECTURE*.md`, `docs/COMPATIBILITY.md`, `docs/DEVELOPMENT.md`, `docs/MAINTAINER_GUIDE.md`, `docs/PROJECT_STRUCTURE.md`, `docs/ROADMAP.md` | Broad platform documentation not wedge-specific |
+| `docs/adr/` (architectural decision records) | Platform-level ADRs, not wedge-specific |
+| `docs/internal/` (internal documentation) | Internal platform docs, not wedge-specific |
+| `docs/public/` (public platform guides) | Broad platform integration guides, not wedge-specific |
+| `docs/recipes/` (orchestration recipes) | Multi-agent orchestration recipes, not wedge-specific |
+| `tests/dashboard/`, `tests/integration/`, `tests/regression/`, `tests/security/`, `tests/simulations/` | Platform test suites not wedge-specific |
+| `fly.toml`, `docker-compose.yml`, `Dockerfile`, `vercel.json` | Deployment infrastructure configs |
+| `alembic.ini` | Database migration config (migrations themselves in `db/` remain) |
+| `setup.py`, `MANIFEST.in` | Legacy build files (pyproject.toml is canonical) |
 
 ## Deferred Runtime Cleanup
 
